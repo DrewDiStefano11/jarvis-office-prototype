@@ -102,7 +102,7 @@ describe('Agent Profiles Foundation', () => {
 
   it('runtime state is not embedded in profile fixtures', () => {
     agentProfiles.forEach(p => {
-      const untypedProfile = p as Record<string, unknown>;
+      const untypedProfile = p as unknown as Record<string, unknown>;
       expect(untypedProfile.currentStatus).toBeUndefined();
       expect(untypedProfile.progress).toBeUndefined();
       expect(untypedProfile.currentTaskId).toBeUndefined();
