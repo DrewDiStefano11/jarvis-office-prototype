@@ -8,7 +8,10 @@ export function handleMovementCommand(
     activeCommands: Record<string, number>
 ) {
     const cmdId = currentCommandCounter + 1;
-    activeCommands[agentId] = cmdId;
+    const newActiveCommands = {
+        ...activeCommands,
+        [agentId]: cmdId
+    };
 
     const newAgents = agents.map(a => {
         if (a.id === agentId) {
@@ -25,7 +28,7 @@ export function handleMovementCommand(
     return {
         nextCommandId: cmdId,
         newAgents,
-        newActiveCommands: activeCommands
+        newActiveCommands
     };
 }
 

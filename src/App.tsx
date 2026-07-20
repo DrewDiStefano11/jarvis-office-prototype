@@ -5,6 +5,7 @@ import { INITIAL_AGENTS } from './domain/seed';
 import { Agent } from './types';
 import { EventBus } from './game/EventBus';
 import { validateMovementCommand } from './domain/navigation';
+import { handleMovementCommand, handleMovementCompleted, handleResetAll as handleResetAllDomain } from './domain/state';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
@@ -24,30 +25,16 @@ function App() {
             setSelectedAgentId(agentId);
         };
 
-        const handleMovementCompleted = (data: { agentId: string, locationId: string, commandId: number }) => {
-            // Only update if this is the most recent command for this agent (prevents stale updates on reset/re-dispatch)
-            if (activeCommands.current[data.agentId] === data.commandId) {
-                setAgents(prev => prev.map(a => {
-                    if (a.id === data.agentId) {
-                        return {
-                            ...a,
-                            currentStatus: 'idle',
-                            currentLocation: data.locationId,
-                            targetLocation: null,
-                            statusMessage: 'Arrived'
-                        };
-                    }
-                    return a;
-                }));
-            }
+        const handleMovementCompletedEvent = (data: { agentId: string, locationId: string, commandId: number }) => {
+            setAgents(prev => handleMovementCompleted(data.agentId, data.locationId, data.commandId, prev, activeCommands.current));
         };
 
         EventBus.on('agent-selected', handleAgentSelected);
-        EventBus.on('movement-completed', handleMovementCompleted);
+        EventBus.on('movement-completed', handleMovementCompletedEvent);
 
         return () => {
             EventBus.removeListener('agent-selected', handleAgentSelected);
-            EventBus.removeListener('movement-completed', handleMovementCompleted);
+            EventBus.removeListener('movement-completed', handleMovementCompletedEvent);
         };
     }, []);
 
@@ -67,34 +54,24 @@ function App() {
             return;
         }
 
-        const cmdId = ++commandIdCounter.current;
-        activeCommands.current[agentId] = cmdId;
+        setAgents(prev => {
+            const result = handleMovementCommand(agentId, locationId, commandIdCounter.current, prev, activeCommands.current);
+            commandIdCounter.current = result.nextCommandId;
+            activeCommands.current = result.newActiveCommands;
 
-        // Authoritative update in React
-        setAgents(prev => prev.map(a => {
-            if (a.id === agentId) {
-                return { ...a, currentStatus: 'moving', targetLocation: locationId, statusMessage: `Moving to ${locationId}` };
-            }
-            return a;
-        }));
-
-        EventBus.emit('react-move-agent', { agentId, locationId, commandId: cmdId });
+            EventBus.emit('react-move-agent', { agentId, locationId, commandId: result.nextCommandId });
+            return result.newAgents;
+        });
     };
 
     const handleResetAll = () => {
         setErrorMsg(null);
 
-        // Invalidate all active commands so no pending tweens complete and overwrite reset
-        activeCommands.current = {};
-
-        // Authoritative reset in React
-        setAgents(prev => prev.map(a => ({
-            ...a,
-            currentStatus: 'idle',
-            currentLocation: a.homeDesk,
-            targetLocation: null,
-            statusMessage: 'Reset to home'
-        })));
+        setAgents(prev => {
+            const result = handleResetAllDomain(prev);
+            activeCommands.current = result.newActiveCommands;
+            return result.newAgents;
+        });
 
         EventBus.emit('react-reset-all');
     };
