@@ -1,5 +1,5 @@
 import { WaypointNode } from '../types';
-import { WAYPOINTS, OFFICE_LOCATIONS } from './seed';
+import { WAYPOINTS, OFFICE_LOCATIONS, INITIAL_AGENTS } from './seed';
 
 export function getPath(startNodeId: string, endNodeId: string): WaypointNode[] {
     if (startNodeId === endNodeId) {
@@ -38,7 +38,6 @@ export function getLocationById(locationId: string) {
     return OFFICE_LOCATIONS.find(loc => loc.id === locationId);
 }
 
-// Simple heuristic: find the closest node to a given (x,y)
 export function getClosestNode(x: number, y: number): WaypointNode {
     let closestNode = WAYPOINTS[0];
     let minDistance = Infinity;
@@ -52,4 +51,22 @@ export function getClosestNode(x: number, y: number): WaypointNode {
     }
 
     return closestNode;
+}
+
+export function validateMovementCommand(agentId: string, destinationId: string): { valid: boolean, error?: string } {
+    const agent = INITIAL_AGENTS.find(a => a.id === agentId);
+    if (!agent) {
+        return { valid: false, error: `Unknown agent ID: ${agentId}` };
+    }
+
+    const destination = OFFICE_LOCATIONS.find(l => l.id === destinationId);
+    if (!destination) {
+        return { valid: false, error: `Unknown destination ID: ${destinationId}` };
+    }
+
+    if (!destination.canOccupy) {
+        return { valid: false, error: `Destination ${destination.displayName} cannot be occupied.` };
+    }
+
+    return { valid: true };
 }

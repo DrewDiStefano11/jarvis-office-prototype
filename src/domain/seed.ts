@@ -128,16 +128,6 @@ export const INITIAL_AGENTS: Agent[] = [
     }
 ];
 
-// Coordinate layout (rough 1024x768 scale)
-// Executive: top center (512, 150)
-// Research: upper left (256, 256)
-// Personal Ops: upper right (768, 256)
-// Meeting Room: center (512, 384)
-// Shared Project: below meeting (512, 512)
-// Governance: lower right (768, 600)
-// Audit: lower center (512, 650)
-// Lab: lower left (256, 600)
-
 export const OFFICE_LOCATIONS: OfficeLocation[] = [
     { id: 'jarvis_desk', displayName: "Jarvis's Desk", x: 512, y: 150, type: 'desk', department: 'Executive', canOccupy: true, approachNodeId: 'n_exec_desk' },
     { id: 'delivery_point', displayName: 'Final Delivery', x: 512, y: 100, type: 'delivery', department: 'Executive', canOccupy: true, approachNodeId: 'n_exec_desk' },
@@ -163,33 +153,26 @@ export const OFFICE_LOCATIONS: OfficeLocation[] = [
     { id: 'agent_builder_lab', displayName: "Agent Builder Lab (Offline)", x: 256, y: 600, type: 'lab', department: 'Agent Builder Laboratory', canOccupy: false, approachNodeId: 'n_lab' }
 ];
 
-// Waypoint Graph definition
 export const WAYPOINTS: WaypointNode[] = [
-    // Center North-South Corridor
     { id: 'n_c_1', x: 512, y: 200, connections: ['n_exec_desk', 'n_c_2'] },
     { id: 'n_c_2', x: 512, y: 256, connections: ['n_c_1', 'n_c_3', 'n_c_w1', 'n_c_e1'] },
-    { id: 'n_c_3', x: 512, y: 320, connections: ['n_c_2', 'n_c_4'] }, // Above meeting
-    { id: 'n_c_4', x: 512, y: 450, connections: ['n_c_3', 'n_c_5', 'n_meeting'] }, // Below meeting
-    { id: 'n_c_5', x: 512, y: 560, connections: ['n_c_4', 'n_c_6', 'n_project', 'n_c_w2', 'n_c_e2'] }, // Below project
+    { id: 'n_c_3', x: 512, y: 320, connections: ['n_c_2', 'n_c_4'] },
+    { id: 'n_c_4', x: 512, y: 450, connections: ['n_c_3', 'n_c_5', 'n_meeting'] },
+    { id: 'n_c_5', x: 512, y: 560, connections: ['n_c_4', 'n_c_6', 'n_project', 'n_c_w2', 'n_c_e2'] },
     { id: 'n_c_6', x: 512, y: 600, connections: ['n_c_5', 'n_audit'] },
 
-    // West Corridor (Upper)
     { id: 'n_c_w1', x: 350, y: 256, connections: ['n_c_2', 'n_res_manager', 'n_res_specialist'] },
-    // East Corridor (Upper)
     { id: 'n_c_e1', x: 650, y: 256, connections: ['n_c_2', 'n_ops_desk', 'n_ops_storage'] },
 
-    // West Corridor (Lower)
     { id: 'n_c_w2', x: 350, y: 560, connections: ['n_c_5', 'n_lab'] },
-    // East Corridor (Lower)
     { id: 'n_c_e2', x: 650, y: 560, connections: ['n_c_5', 'n_gov_desk'] },
 
-    // Approach nodes for specific locations
     { id: 'n_exec_desk', x: 512, y: 180, connections: ['n_c_1'] },
     { id: 'n_res_manager', x: 256, y: 280, connections: ['n_c_w1'] },
     { id: 'n_res_specialist', x: 200, y: 280, connections: ['n_c_w1'] },
     { id: 'n_ops_desk', x: 768, y: 280, connections: ['n_c_e1'] },
     { id: 'n_ops_storage', x: 800, y: 230, connections: ['n_c_e1'] },
-    { id: 'n_meeting', x: 450, y: 384, connections: ['n_c_4'] }, // Enter from west side
+    { id: 'n_meeting', x: 450, y: 384, connections: ['n_c_4'] },
     { id: 'n_project', x: 450, y: 512, connections: ['n_c_5'] },
     { id: 'n_gov_desk', x: 768, y: 560, connections: ['n_c_e2'] },
     { id: 'n_audit', x: 512, y: 620, connections: ['n_c_6'] },

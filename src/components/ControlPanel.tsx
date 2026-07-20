@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Agent } from '../types';
 import { OFFICE_LOCATIONS } from '../domain/seed';
 
@@ -8,6 +8,7 @@ interface ControlPanelProps {
     onSelectAgent: (agentId: string) => void;
     onSendToLocation: (agentId: string, locationId: string) => void;
     onResetAll: () => void;
+    errorMsg: string | null;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -15,8 +16,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     agents,
     onSelectAgent,
     onSendToLocation,
-    onResetAll
+    onResetAll,
+    errorMsg
 }) => {
+    const occupiableLocations = OFFICE_LOCATIONS.filter(loc => loc.canOccupy);
+    const [selectedDestination, setSelectedDestination] = useState<string>('');
+
     return (
         <div style={{
             display: 'flex',
@@ -37,6 +42,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 </div>
             </div>
 
+            {errorMsg && (
+                <div style={{ backgroundColor: '#f44336', color: '#fff', padding: '10px', borderRadius: '4px', fontSize: '0.9rem' }}>
+                    {errorMsg}
+                </div>
+            )}
+
             {/* Developer Controls */}
             <div style={{
                 backgroundColor: '#282b30',
@@ -47,10 +58,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <h3 style={{ margin: '0 0 15px 0', fontSize: '1.1rem', color: '#fff' }}>Controls</h3>
 
                 <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Select Agent:</label>
+                    <label htmlFor="agent-select" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Select Agent:</label>
                     <select
+                        id="agent-select"
                         value={selectedAgent?.id || ''}
                         onChange={(e) => onSelectAgent(e.target.value)}
+                        className="accessible-select"
                         style={{ width: '100%', padding: '8px', backgroundColor: '#36393e', color: '#fff', border: '1px solid #424549', borderRadius: '4px' }}
                     >
                         <option value="" disabled>-- Select an Agent --</option>
@@ -64,41 +77,48 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
                         <button
                             onClick={() => onSendToLocation(selectedAgent.id, selectedAgent.homeDesk)}
+                            className="accessible-button"
                             style={buttonStyle}
                         >
                             Send to Home Desk
                         </button>
                         <button
                             onClick={() => onSendToLocation(selectedAgent.id, 'meeting_room')}
+                            className="accessible-button"
                             style={buttonStyle}
                         >
                             Send to Meeting Room
                         </button>
                         <button
                             onClick={() => onSendToLocation(selectedAgent.id, 'project_table')}
+                            className="accessible-button"
                             style={buttonStyle}
                         >
                             Send to Project Table
                         </button>
 
                         <div style={{ marginTop: '5px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Send to specific location:</label>
+                            <label htmlFor="specific-location-select" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Send to specific location:</label>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <select
                                     id="specific-location-select"
+                                    value={selectedDestination}
+                                    onChange={(e) => setSelectedDestination(e.target.value)}
+                                    className="accessible-select"
                                     style={{ flex: 1, padding: '8px', backgroundColor: '#36393e', color: '#fff', border: '1px solid #424549', borderRadius: '4px' }}
                                 >
-                                    {OFFICE_LOCATIONS.map(loc => (
+                                    <option value="" disabled>-- Location --</option>
+                                    {occupiableLocations.map(loc => (
                                         <option key={loc.id} value={loc.id}>{loc.displayName}</option>
                                     ))}
                                 </select>
                                 <button
                                     onClick={() => {
-                                        const select = document.getElementById('specific-location-select') as HTMLSelectElement;
-                                        if (select && select.value) {
-                                            onSendToLocation(selectedAgent.id, select.value);
+                                        if (selectedDestination) {
+                                            onSendToLocation(selectedAgent.id, selectedDestination);
                                         }
                                     }}
+                                    className="accessible-button"
                                     style={{ ...buttonStyle, flex: '0 0 auto', padding: '8px 15px' }}
                                 >
                                     Go
@@ -112,6 +132,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
                 <button
                     onClick={onResetAll}
+                    className="accessible-button"
                     style={{ ...buttonStyle, backgroundColor: '#d32f2f', color: '#fff', border: 'none' }}
                 >
                     Reset All Positions
@@ -149,6 +170,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     </div>
                 )}
             </div>
+
+            <style>{`
+                .accessible-button:focus-visible, .accessible-select:focus-visible {
+                    outline: 2px solid #64b5f6 !important;
+                    outline-offset: 2px;
+                }
+                .accessible-button, .accessible-select {
+                    outline: none;
+                }
+            `}</style>
         </div>
     );
 };
@@ -179,5 +210,4 @@ const buttonStyle: React.CSSProperties = {
     cursor: 'pointer',
     fontSize: '0.9rem',
     transition: 'background-color 0.2s',
-    outline: 'none'
 };

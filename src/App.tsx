@@ -4,29 +4,50 @@ import { ControlPanel } from './components/ControlPanel';
 import { INITIAL_AGENTS } from './domain/seed';
 import { Agent } from './types';
 import { EventBus } from './game/EventBus';
+import { validateMovementCommand } from './domain/navigation';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
 
-    // React state for agents
+    // React is authoritative for agent state
     const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // Listen to events from Phaser
+    // commandId generation to handle strict cancellation and state tracking
+    const commandIdCounter = useRef(0);
+    // Track active commands per agent to prevent stale state updates
+    const activeCommands = useRef<{ [agentId: string]: number }>({});
+
     useEffect(() => {
-        // When an agent is clicked in Phaser, update selection in React
-        EventBus.on('agent-selected', (agentId: string) => {
+        const handleAgentSelected = (agentId: string) => {
             setSelectedAgentId(agentId);
-        });
+        };
 
-        // When an agent's state updates in Phaser (e.g. movement, status change)
-        EventBus.on('agent-updated', (updatedAgent: Agent) => {
-            setAgents(prev => prev.map(a => a.id === updatedAgent.id ? updatedAgent : a));
-        });
+        const handleMovementCompleted = (data: { agentId: string, locationId: string, commandId: number }) => {
+            // Only update if this is the most recent command for this agent (prevents stale updates on reset/re-dispatch)
+            if (activeCommands.current[data.agentId] === data.commandId) {
+                setAgents(prev => prev.map(a => {
+                    if (a.id === data.agentId) {
+                        return {
+                            ...a,
+                            currentStatus: 'idle',
+                            currentLocation: data.locationId,
+                            targetLocation: null,
+                            statusMessage: 'Arrived'
+                        };
+                    }
+                    return a;
+                }));
+            }
+        };
+
+        EventBus.on('agent-selected', handleAgentSelected);
+        EventBus.on('movement-completed', handleMovementCompleted);
 
         return () => {
-            EventBus.removeListener('agent-selected');
-            EventBus.removeListener('agent-updated');
+            EventBus.removeListener('agent-selected', handleAgentSelected);
+            EventBus.removeListener('movement-completed', handleMovementCompleted);
         };
     }, []);
 
@@ -34,27 +55,48 @@ function App() {
 
     const handleSelectAgent = (agentId: string) => {
         setSelectedAgentId(agentId);
-        // Tell Phaser to select this agent visually
         EventBus.emit('react-select-agent', agentId);
     };
 
     const handleSendToLocation = (agentId: string, locationId: string) => {
-        // Tell Phaser to initiate movement
-        EventBus.emit('react-move-agent', { agentId, locationId });
+        setErrorMsg(null);
 
-        // Optimistically update React state (optional, Phaser will emit agent-updated anyway)
+        const validation = validateMovementCommand(agentId, locationId);
+        if (!validation.valid) {
+            setErrorMsg(validation.error || 'Invalid command');
+            return;
+        }
+
+        const cmdId = ++commandIdCounter.current;
+        activeCommands.current[agentId] = cmdId;
+
+        // Authoritative update in React
         setAgents(prev => prev.map(a => {
             if (a.id === agentId) {
                 return { ...a, currentStatus: 'moving', targetLocation: locationId, statusMessage: `Moving to ${locationId}` };
             }
             return a;
         }));
+
+        EventBus.emit('react-move-agent', { agentId, locationId, commandId: cmdId });
     };
 
     const handleResetAll = () => {
+        setErrorMsg(null);
+
+        // Invalidate all active commands so no pending tweens complete and overwrite reset
+        activeCommands.current = {};
+
+        // Authoritative reset in React
+        setAgents(prev => prev.map(a => ({
+            ...a,
+            currentStatus: 'idle',
+            currentLocation: a.homeDesk,
+            targetLocation: null,
+            statusMessage: 'Reset to home'
+        })));
+
         EventBus.emit('react-reset-all');
-        setSelectedAgentId(null);
-        // Phaser will handle resetting the logical state and emit updates
     };
 
     return (
@@ -67,7 +109,6 @@ function App() {
             backgroundColor: '#111'
         }} id="app-root">
 
-            {/* Left side: Phaser Game (75% width on desktop) */}
             <div style={{
                 flex: '3',
                 minWidth: '300px',
@@ -77,7 +118,6 @@ function App() {
                 <PhaserGame ref={phaserRef} />
             </div>
 
-            {/* Right side: React Controls (25% width on desktop) */}
             <div style={{
                 flex: '1',
                 minWidth: '300px',
@@ -91,12 +131,10 @@ function App() {
                     onSelectAgent={handleSelectAgent}
                     onSendToLocation={handleSendToLocation}
                     onResetAll={handleResetAll}
+                    errorMsg={errorMsg}
                 />
             </div>
 
-            {/* Media query handling for mobile layout could be added via standard CSS if needed,
-                but flex-wrap or standard react responsive patterns would apply here.
-                For simplicity, using inline styles with fixed flex values. */}
             <style>{`
                 @media (max-width: 768px) {
                     #app-root {
