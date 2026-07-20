@@ -50,13 +50,11 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
 
     useEffect(() =>
     {
-        EventBus.on('current-scene-ready', (scene_instance: Scene) =>
+        const handleSceneReady = (scene_instance: Scene) =>
         {
             if (currentActiveScene && typeof currentActiveScene === 'function')
             {
-
                 currentActiveScene(scene_instance);
-
             }
 
             if (typeof ref === 'function')
@@ -66,11 +64,12 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
             {
                 ref.current = { game: game.current, scene: scene_instance };
             }
-            
-        });
+        };
+
+        EventBus.on('current-scene-ready', handleSceneReady);
         return () =>
         {
-            EventBus.removeListener('current-scene-ready');
+            EventBus.removeListener('current-scene-ready', handleSceneReady);
         }
     }, [currentActiveScene, ref]);
 
