@@ -17,6 +17,40 @@ export const ALLOWED_ACTIVITY_IDS = [
 
 export type AgentActivityId = typeof ALLOWED_ACTIVITY_IDS[number];
 
+export type AgentProfileValidationCode =
+  | "DUPLICATE_PROFILE_ID"
+  | "DUPLICATE_AGENT_ID"
+  | "DUPLICATE_THEME_ID"
+  | "MISSING_REQUIRED_TEXT"
+  | "MISSING_ACCESSIBLE_DESCRIPTION"
+  | "MISSING_ACCESSIBLE_THEME_LABEL"
+  | "MISSING_ICON_ID"
+  | "UNKNOWN_THEME_ID"
+  | "UNKNOWN_WORKSPACE_ID"
+  | "UNKNOWN_SPRITE_ID"
+  | "UNKNOWN_ACTIVITY_ID"
+  | "DUPLICATE_ACTIVITY_ID"
+  | "INVALID_ACTIVITY_ID_FORMAT"
+  | "INVALID_ACTIVITY_LABEL"
+  | "INVALID_VISUAL_STATE"
+  | "MISSING_PERMANENT_AGENT"
+  | "UNEXPECTED_PERMANENT_AGENT";
+
+export interface AgentProfileValidationIssue {
+  readonly code: AgentProfileValidationCode;
+  readonly severity: "error" | "warning";
+  readonly message: string;
+  readonly profileId?: string;
+  readonly stableAgentId?: string;
+  readonly themeId?: string;
+  readonly field?: string;
+}
+
+export interface AgentProfileValidationResult {
+  readonly isValid: boolean;
+  readonly issues: readonly AgentProfileValidationIssue[];
+}
+
 export interface AgentActivityLabel {
   readonly id: AgentActivityId;
   readonly label: string;

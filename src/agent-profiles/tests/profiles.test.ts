@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { agentProfiles, agentThemes } from '../profiles';
 import { validateAgentProfiles } from '../validation';
-import { getAgentProfileByAgentId, requireAgentProfileByAgentId, createAgentProfileMap } from '../adapters';
+import { getAgentProfileByAgentId, requireAgentProfileByAgentId, createAgentProfileMap, createAgentProfileMapStrict } from '../adapters';
 
 describe('Agent Profiles Foundation', () => {
   const knownWorkspaceIds = [
@@ -22,6 +22,14 @@ describe('Agent Profiles Foundation', () => {
     expect(stableIds).toContain('sentinel');
   });
 
+  it('all canonical workspace and sprite IDs are used', () => {
+    const usedWorkspaces = new Set(agentProfiles.map(p => p.workspaceId));
+    knownWorkspaceIds.forEach(id => expect(usedWorkspaces.has(id)).toBe(true));
+
+    const usedSprites = new Set(agentProfiles.map(p => p.spriteId));
+    knownSpriteIds.forEach(id => expect(usedSprites.has(id)).toBe(true));
+  });
+
   it('profile IDs are unique', () => {
     const ids = new Set(agentProfiles.map(p => p.profileId));
     expect(ids.size).toBe(agentProfiles.length);
@@ -32,17 +40,15 @@ describe('Agent Profiles Foundation', () => {
     expect(ids.size).toBe(agentProfiles.length);
   });
 
-  it('every profile has an accessible description', () => {
+  it('every profile and theme has an accessible description', () => {
     agentProfiles.forEach(p => {
       expect(p.accessibleDescription).toBeDefined();
       expect(p.accessibleDescription.length).toBeGreaterThan(0);
     });
-  });
 
-  it('every theme reference resolves', () => {
-    const themeIds = new Set(agentThemes.map(t => t.id));
-    agentProfiles.forEach(p => {
-      expect(themeIds.has(p.themeId)).toBe(true);
+    agentThemes.forEach(t => {
+      expect(t.accessibleThemeLabel).toBeDefined();
+      expect(t.accessibleThemeLabel.length).toBeGreaterThan(0);
     });
   });
 
@@ -51,10 +57,38 @@ describe('Agent Profiles Foundation', () => {
       profiles: agentProfiles,
       themes: agentThemes,
       knownWorkspaceIds,
-      knownSpriteIds
+      knownSpriteIds,
+      requiredAgentIds: ['jarvis', 'atlas', 'scout', 'archive', 'sentinel']
     });
     expect(result.isValid).toBe(true);
-    expect(result.errors).toHaveLength(0);
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it('partial profile collection does not trigger permanent-agent completeness', () => {
+    const partialProfiles = [agentProfiles[0], agentProfiles[1]];
+    const result = validateAgentProfiles({
+      profiles: partialProfiles,
+      themes: agentThemes,
+      knownWorkspaceIds,
+      knownSpriteIds
+    });
+    // It should be valid since we omit requiredAgentIds
+    expect(result.isValid).toBe(true);
+  });
+
+  it('default collection completeness triggers missing agent errors', () => {
+    const partialProfiles = [agentProfiles[1]]; // no jarvis
+    const result = validateAgentProfiles({
+      profiles: partialProfiles,
+      themes: agentThemes,
+      knownWorkspaceIds,
+      knownSpriteIds,
+      requiredAgentIds: ['jarvis', 'atlas']
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues.some(i => i.code === 'MISSING_PERMANENT_AGENT' && i.stableAgentId === 'jar')).toBe(false);
+    expect(result.issues.some(i => i.code === 'MISSING_PERMANENT_AGENT' && i.stableAgentId === 'jarvis')).toBe(true);
   });
 
   it('invalid references are rejected', () => {
@@ -73,9 +107,9 @@ describe('Agent Profiles Foundation', () => {
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.errors).toContain(`Unknown theme reference: unknown_theme in profile ${invalidProfile.profileId}`);
-    expect(result.errors).toContain(`Unknown workspace reference: unknown_workspace in profile ${invalidProfile.profileId}`);
-    expect(result.errors).toContain(`Unknown sprite reference: unknown_sprite in profile ${invalidProfile.profileId}`);
+    expect(result.issues.some(i => i.code === 'UNKNOWN_THEME_ID')).toBe(true);
+    expect(result.issues.some(i => i.code === 'UNKNOWN_WORKSPACE_ID')).toBe(true);
+    expect(result.issues.some(i => i.code === 'UNKNOWN_SPRITE_ID')).toBe(true);
   });
 
   it('duplicate profiles are rejected', () => {
@@ -87,15 +121,42 @@ describe('Agent Profiles Foundation', () => {
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.errors).toContain(`Duplicate profile ID found: ${duplicateProfile.profileId}`);
-    expect(result.errors).toContain(`Duplicate stable agent ID found: ${duplicateProfile.stableAgentId} in profile ${duplicateProfile.profileId}`);
+    expect(result.issues.some(i => i.code === 'DUPLICATE_PROFILE_ID')).toBe(true);
+    expect(result.issues.some(i => i.code === 'DUPLICATE_AGENT_ID')).toBe(true);
   });
 
-  it('repeated loading returns equivalent data', () => {
+  it('invalid visual states are rejected', () => {
+    const invalidProfile = {
+      ...agentProfiles[0],
+      visualState: 'working' as 'placeholder'
+    };
+    const result = validateAgentProfiles({
+      profiles: [invalidProfile],
+      themes: agentThemes,
+      knownWorkspaceIds
+    });
+    expect(result.isValid).toBe(false);
+    expect(result.issues.some(i => i.code === 'INVALID_VISUAL_STATE')).toBe(true);
+  });
+
+  it('missing icons are rejected', () => {
+    const invalidProfile = { ...agentProfiles[0], iconId: '' };
+    const result = validateAgentProfiles({ profiles: [invalidProfile], themes: agentThemes, knownWorkspaceIds });
+    expect(result.isValid).toBe(false);
+    expect(result.issues.some(i => i.code === 'MISSING_ICON_ID')).toBe(true);
+  });
+
+  it('missing accessible theme label detected', () => {
+    const invalidTheme = { ...agentThemes[0], accessibleThemeLabel: '' };
+    const result = validateAgentProfiles({ profiles: agentProfiles, themes: [invalidTheme], knownWorkspaceIds });
+    expect(result.isValid).toBe(false);
+    expect(result.issues.some(i => i.code === 'MISSING_ACCESSIBLE_THEME_LABEL')).toBe(true);
+  });
+
+  it('repeated loading returns deeply equal validation results', () => {
     const result1 = validateAgentProfiles({ profiles: agentProfiles, themes: agentThemes, knownWorkspaceIds });
     const result2 = validateAgentProfiles({ profiles: agentProfiles, themes: agentThemes, knownWorkspaceIds });
-    expect(result1.isValid).toEqual(result2.isValid);
-    expect(result1.errors).toEqual(result2.errors);
+    expect(result1).toEqual(result2);
   });
 
   it('helpers do not mutate their inputs', () => {
@@ -110,14 +171,15 @@ describe('Agent Profiles Foundation', () => {
 
   it('runtime state is not embedded in profile fixtures', () => {
     agentProfiles.forEach(p => {
-      const untypedProfile = p as unknown as Record<string, unknown>;
-      expect(untypedProfile.currentStatus).toBeUndefined();
-      expect(untypedProfile.progress).toBeUndefined();
-      expect(untypedProfile.currentTaskId).toBeUndefined();
+      const keys = Object.keys(p);
+      expect(keys).not.toContain('currentStatus');
+      expect(keys).not.toContain('progress');
+      expect(keys).not.toContain('currentTaskId');
+      expect(keys).not.toContain('queueCount');
+      expect(keys).not.toContain('isTemporary');
 
       p.supportedActivities.forEach(a => {
         expect(a.label).not.toMatch(/\d+%/);
-        // Exclude 'idle' which often legitimately describes current state generically.
         if (a.id !== 'idle') {
            expect(a.label.toLowerCase()).not.toContain('task');
         }
@@ -125,22 +187,61 @@ describe('Agent Profiles Foundation', () => {
     });
   });
 
-  it('rejects unknown activity IDs at runtime', () => {
-    const invalidProfile = {
-      ...agentProfiles[0],
-      supportedActivities: [
-        { id: 'jumping' as unknown as import('./../types').AgentActivityId, label: 'Jumping around' }
-      ]
-    };
+  describe('Activity validation', () => {
+    it('rejects unknown activity IDs at runtime', () => {
+      const invalidProfile = {
+        ...agentProfiles[0],
+        supportedActivities: [
+          { id: 'jumping' as unknown as import('./../types').AgentActivityId, label: 'Jumping around' }
+        ]
+      };
 
-    const result = validateAgentProfiles({
-      profiles: [invalidProfile],
-      themes: agentThemes,
-      knownWorkspaceIds
+      const result = validateAgentProfiles({
+        profiles: [invalidProfile],
+        themes: agentThemes,
+        knownWorkspaceIds
+      });
+
+      expect(result.isValid).toBe(false);
+      expect(result.issues.some(i => i.code === 'UNKNOWN_ACTIVITY_ID')).toBe(true);
     });
 
-    expect(result.isValid).toBe(false);
-    expect(result.errors).toContain(`Unknown activity ID found: jumping in profile ${invalidProfile.profileId}`);
+    it('rejects duplicate activity IDs', () => {
+      const invalidProfile = {
+        ...agentProfiles[0],
+        supportedActivities: [
+          { id: 'idle' as const, label: 'Idle' },
+          { id: 'idle' as const, label: 'Still idle' }
+        ]
+      };
+      const result = validateAgentProfiles({ profiles: [invalidProfile], themes: agentThemes, knownWorkspaceIds });
+      expect(result.isValid).toBe(false);
+      expect(result.issues.some(i => i.code === 'DUPLICATE_ACTIVITY_ID')).toBe(true);
+    });
+
+    it('rejects invalid activity labels', () => {
+      const invalidProfile = {
+        ...agentProfiles[0],
+        supportedActivities: [
+          { id: 'idle' as const, label: '   ' }
+        ]
+      };
+      const result = validateAgentProfiles({ profiles: [invalidProfile], themes: agentThemes, knownWorkspaceIds });
+      expect(result.isValid).toBe(false);
+      expect(result.issues.some(i => i.code === 'INVALID_ACTIVITY_LABEL')).toBe(true);
+    });
+
+    it('rejects invalid activity format (uppercase)', () => {
+      const invalidProfile = {
+        ...agentProfiles[0],
+        supportedActivities: [
+          { id: 'IDLE' as unknown as import('./../types').AgentActivityId, label: 'Idle' }
+        ]
+      };
+      const result = validateAgentProfiles({ profiles: [invalidProfile], themes: agentThemes, knownWorkspaceIds });
+      expect(result.isValid).toBe(false);
+      expect(result.issues.some(i => i.code === 'INVALID_ACTIVITY_ID_FORMAT')).toBe(true);
+    });
   });
 
   describe('Adapters', () => {
@@ -161,16 +262,32 @@ describe('Agent Profiles Foundation', () => {
       expect(() => requireAgentProfileByAgentId(agentProfiles, 'unknown')).toThrow('Agent profile not found for agent ID: unknown');
     });
 
-    it('createAgentProfileMap returns a valid map', () => {
-      const map = createAgentProfileMap(agentProfiles);
-      expect(map.size).toBe(5);
-      expect(map.get('scout')?.stableAgentId).toBe('scout');
-      expect(map.get('unknown')).toBeUndefined();
+    it('safe map result succeeds', () => {
+      const result = createAgentProfileMap(agentProfiles);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.size).toBe(5);
+        expect(result.value.get('scout')?.stableAgentId).toBe('scout');
+      }
     });
 
-    it('createAgentProfileMap does not silently overwrite duplicates', () => {
+    it('safe map does not throw and returns typed failure on duplicate', () => {
       const duplicateProfiles = [agentProfiles[0], { ...agentProfiles[0], profileId: 'another_id' }];
-      expect(() => createAgentProfileMap(duplicateProfiles)).toThrow(/Duplicate stable agent ID found during map creation: /);
+      const result = createAgentProfileMap(duplicateProfiles);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.issues.length).toBe(1);
+        expect(result.issues[0].code).toBe('DUPLICATE_AGENT_ID');
+      }
+    });
+
+    it('strict map helper throws only when explicitly called', () => {
+      const duplicateProfiles = [agentProfiles[0], { ...agentProfiles[0], profileId: 'another_id' }];
+      expect(() => createAgentProfileMapStrict(duplicateProfiles)).toThrow(/Failed to create strict map/);
+
+      const map = createAgentProfileMapStrict(agentProfiles);
+      expect(map.size).toBe(5);
     });
   });
 });

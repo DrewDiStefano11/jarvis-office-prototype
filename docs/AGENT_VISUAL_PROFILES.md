@@ -50,6 +50,12 @@ Each `VisualTheme` contains:
 ## Accessibility Requirements
 Every profile must include an `accessibleDescription`, detailing both the agent's identity and visual theme for visually impaired users or screen readers. The theme itself has an `accessibleThemeLabel`.
 
+## Validation Contract
+Validation relies on structured, typed objects (`AgentProfileValidationResult`, `AgentProfileValidationIssue`) rather than throwing exceptions or returning raw strings.
+
+- `validateAgentProfiles`: Generically validates metadata constraints (e.g., references resolve, required fields are present). Pass `requiredAgentIds` to enforce the presence of explicit permanent agents.
+- Map adapters safely reject duplicates: `createAgentProfileMap` returns `{ ok: true, value: Map }` or `{ ok: false, issues: Issue[] }` without throwing. An explicit strict helper `createAgentProfileMapStrict` will throw if duplicate IDs exist.
+
 ## References and Integration
 - **Office Layout Assignments:** When determining where an agent sits or belongs, the office layout manager should map the `workspaceId` found in the visual profile to the corresponding node in the active node graph.
 - **Sprites:** The `spriteId` directly corresponds to the texture key needed by Phaser. The scene should request the profile for an agent, look up `spriteId`, and instantiate the sprite.

@@ -1,4 +1,4 @@
-import { AgentProfile, StableAgentId } from './types';
+import { AgentProfile, StableAgentId, AgentProfileValidationIssue } from './types';
 
 export function getAgentProfileByAgentId(
   profiles: readonly AgentProfile[],
@@ -25,15 +25,50 @@ export class DuplicateAgentError extends Error {
   }
 }
 
+export type CreateAgentProfileMapResult =
+  | {
+      readonly ok: true;
+      readonly value: ReadonlyMap<StableAgentId, AgentProfile>;
+    }
+  | {
+      readonly ok: false;
+      readonly issues: readonly AgentProfileValidationIssue[];
+    };
+
 export function createAgentProfileMap(
   profiles: readonly AgentProfile[]
-): ReadonlyMap<StableAgentId, AgentProfile> {
+): CreateAgentProfileMapResult {
   const map = new Map<StableAgentId, AgentProfile>();
+  const issues: AgentProfileValidationIssue[] = [];
+
   for (const profile of profiles) {
     if (map.has(profile.stableAgentId)) {
-      throw new DuplicateAgentError(`Duplicate stable agent ID found during map creation: ${profile.stableAgentId}`);
+      issues.push({
+        code: 'DUPLICATE_AGENT_ID',
+        severity: 'error',
+        message: `Duplicate stable agent ID found during map creation: ${profile.stableAgentId}`,
+        profileId: profile.profileId,
+        stableAgentId: profile.stableAgentId
+      });
+    } else {
+      map.set(profile.stableAgentId, profile);
     }
-    map.set(profile.stableAgentId, profile);
   }
-  return map;
+
+  if (issues.length > 0) {
+    return { ok: false, issues };
+  }
+
+  return { ok: true, value: map };
+}
+
+export function createAgentProfileMapStrict(
+  profiles: readonly AgentProfile[]
+): ReadonlyMap<StableAgentId, AgentProfile> {
+  const result = createAgentProfileMap(profiles);
+  if (!result.ok) {
+    const errorMessages = result.issues.map(i => i.message).join(', ');
+    throw new DuplicateAgentError(`Failed to create strict map. Issues: ${errorMessages}`);
+  }
+  return result.value;
 }
