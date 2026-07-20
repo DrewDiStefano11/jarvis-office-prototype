@@ -109,7 +109,7 @@ function App() {
             backgroundColor: '#111'
         }} id="app-root">
 
-            <div style={{
+            <div className="office-canvas-pane" style={{
                 flex: '3',
                 minWidth: '300px',
                 height: '100%',
@@ -118,7 +118,7 @@ function App() {
                 <PhaserGame ref={phaserRef} />
             </div>
 
-            <div style={{
+            <div className="office-control-pane" style={{
                 flex: '1',
                 minWidth: '300px',
                 maxWidth: '400px',
@@ -141,17 +141,18 @@ function App() {
                         flex-direction: column !important;
                         overflow-y: auto !important;
                     }
-                    #app-root > div:first-child {
+                    .office-canvas-pane {
                         height: 50vh !important;
                         flex: none !important;
                     }
-                    #app-root > div:last-child {
+                    .office-control-pane {
                         max-width: none !important;
+                        width: 100% !important;
                         border-left: none !important;
                         border-top: 1px solid #333;
                     }
                 }
-                body, html { margin: 0; padding: 0; }
+                body, html { margin: 0; padding: 0; overflow-x: hidden; }
             `}</style>
         </div>
     );
