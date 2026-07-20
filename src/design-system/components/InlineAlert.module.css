@@ -1,0 +1,53 @@
+.alert {
+    display: flex;
+    align-items: flex-start;
+    padding: var(--spacing-3);
+    border-radius: var(--radius-md);
+    border: var(--border-width-sm) solid transparent;
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-sm);
+    gap: var(--spacing-3);
+}
+
+.icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.content {
+    flex-grow: 1;
+}
+
+.title {
+    font-weight: var(--font-weight-medium);
+    margin: 0 0 var(--spacing-1) 0;
+}
+
+.message {
+    margin: 0;
+}
+
+/* Variants using status semantics */
+.info {
+    background-color: var(--status-working-background);
+    color: var(--status-working-text);
+    border-color: var(--status-working-border);
+}
+
+.success {
+    background-color: var(--status-completed-background);
+    color: var(--status-completed-text);
+    border-color: var(--status-completed-border);
+}
+
+.warning {
+    background-color: var(--status-paused-background);
+    color: var(--status-paused-text);
+    border-color: var(--status-paused-border);
+}
+
+.error {
+    background-color: var(--status-error-background);
+    color: var(--status-error-text);
+    border-color: var(--status-error-border);
+}

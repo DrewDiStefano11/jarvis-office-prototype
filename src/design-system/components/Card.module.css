@@ -1,0 +1,17 @@
+.card {
+    background-color: var(--color-surface-primary);
+    border: var(--border-width-sm) solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-4);
+    font-family: var(--font-family-base);
+    color: var(--color-text-primary);
+}
+
+.panel {
+    background-color: var(--color-surface-secondary);
+    border: var(--border-width-sm) solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-3);
+    font-family: var(--font-family-base);
+}

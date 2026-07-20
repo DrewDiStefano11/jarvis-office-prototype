@@ -1,0 +1,18 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+    base: './',
+    plugins: [react()],
+    build: {
+        rollupOptions: {
+            input: 'showcase.html'
+        },
+        outDir: 'dist-showcase',
+        emptyOutDir: true
+    },
+    server: {
+        port: 8081,
+        open: '/showcase.html'
+    }
+});

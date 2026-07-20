@@ -1,0 +1,31 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--color-overlay);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: var(--z-index-modal);
+}
+
+.modal {
+    background-color: var(--color-surface-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-6);
+    max-width: 90vw;
+    width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    font-family: var(--font-family-base);
+}
+
+.closeButton {
+    position: absolute;
+    top: var(--spacing-2);
+    right: var(--spacing-2);
+}

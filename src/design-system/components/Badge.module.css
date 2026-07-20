@@ -1,0 +1,79 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    font-family: var(--font-family-base);
+    white-space: nowrap;
+    border: var(--border-width-sm) solid transparent;
+}
+
+.default {
+    background-color: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+    border-color: var(--color-border-subtle);
+}
+
+/* Status variants */
+.idle {
+    background-color: var(--status-idle-background);
+    color: var(--status-idle-text);
+    border-color: var(--status-idle-border);
+}
+
+.working {
+    background-color: var(--status-working-background);
+    color: var(--status-working-text);
+    border-color: var(--status-working-border);
+}
+
+.paused {
+    background-color: var(--status-paused-background);
+    color: var(--status-paused-text);
+    border-color: var(--status-paused-border);
+}
+
+.queued {
+    background-color: var(--status-queued-background);
+    color: var(--status-queued-text);
+    border-color: var(--status-queued-border);
+}
+
+.completed {
+    background-color: var(--status-completed-background);
+    color: var(--status-completed-text);
+    border-color: var(--status-completed-border);
+}
+
+.error {
+    background-color: var(--status-error-background);
+    color: var(--status-error-text);
+    border-color: var(--status-error-border);
+}
+
+.blocked {
+    background-color: var(--status-blocked-background);
+    color: var(--status-blocked-text);
+    border-color: var(--status-blocked-border);
+}
+
+.cancelled {
+    background-color: var(--status-cancelled-background);
+    color: var(--status-cancelled-text);
+    border-color: var(--status-cancelled-border);
+}
+
+.recovery-required {
+    background-color: var(--status-recovery-required-background);
+    color: var(--status-recovery-required-text);
+    border-color: var(--status-recovery-required-border);
+}
+
+.offline {
+    background-color: var(--status-offline-background);
+    color: var(--status-offline-text);
+    border-color: var(--status-offline-border);
+}
