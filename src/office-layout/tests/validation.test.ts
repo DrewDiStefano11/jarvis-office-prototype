@@ -30,7 +30,7 @@ describe('Office Layout Validation', () => {
     it('default layout passes validation', () => {
         const result = validateLayout(defaultOfficeLayout);
         expect(result.isValid).toBe(true);
-        expect(result.errors).toEqual([]);
+        expect(result.issues).toEqual([]);
     });
 
     it('rejects duplicate IDs in layout', () => {
@@ -43,7 +43,7 @@ describe('Office Layout Validation', () => {
         };
         const result = validateLayout(invalidLayout);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Duplicate ID found: room-entrance (Room)');
+        expect(result.issues.some(i => i.code === 'DUPLICATE_ID')).toBe(true);
     });
 
     it('rejects missing room references', () => {
@@ -56,7 +56,7 @@ describe('Office Layout Validation', () => {
         };
         const result = validateLayout(invalidLayout);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Workstation desk-invalid references missing room: room-missing');
+        expect(result.issues.some(i => i.code === 'WORKSTATION_UNKNOWN_ROOM')).toBe(true);
     });
 
     it('rejects positions outside room bounds', () => {
@@ -70,7 +70,7 @@ describe('Office Layout Validation', () => {
         };
         const result = validateLayout(invalidLayout);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(`SpawnPoint spawn-outside is outside room ${room.id} bounds`);
+        expect(result.issues.some(i => i.code === 'SPAWN_OUT_OF_BOUNDS')).toBe(true);
     });
 
     it('rejects invalid or empty room dimensions', () => {
@@ -82,7 +82,7 @@ describe('Office Layout Validation', () => {
         };
         const result = validateLayout(invalidLayout);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Room room-bad has invalid dimensions');
+        expect(result.issues.some(i => i.code === 'INVALID_DIMENSIONS')).toBe(true);
     });
 
     it('rejects workstations in blocked areas', () => {
@@ -91,12 +91,12 @@ describe('Office Layout Validation', () => {
             ...defaultOfficeLayout,
             workstations: [
                 ...defaultOfficeLayout.workstations,
-                { id: 'desk-blocked', roomId: 'room-main-office', position: { x: block.bounds.x, y: block.bounds.y }, label: 'Blocked' }
+                { id: 'desk-blocked', roomId: 'room-main-office', position: { x: block.bounds.x + 1, y: block.bounds.y + 1 }, label: 'Blocked' }
             ]
         };
         const result = validateLayout(invalidLayout);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Workstation desk-blocked occupies a blocked area');
+        expect(result.issues.some(i => i.code === 'WORKSTATION_IN_BLOCKED_AREA')).toBe(true);
     });
 
     it('does not mutate layout on validation', () => {
@@ -110,7 +110,7 @@ describe('Asset Manifest Validation', () => {
     it('default manifest passes validation', () => {
         const result = validateAssetManifest(defaultAssetManifest);
         expect(result.isValid).toBe(true);
-        expect(result.errors).toEqual([]);
+        expect(result.issues).toEqual([]);
     });
 
     it('rejects duplicate sprite IDs', () => {
@@ -122,7 +122,7 @@ describe('Asset Manifest Validation', () => {
         };
         const result = validateAssetManifest(invalidManifest);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(`Duplicate Sprite ID found: ${defaultAssetManifest.entries[0].id}`);
+        expect(result.issues.some(i => i.code === 'DUPLICATE_ASSET_ID')).toBe(true);
     });
 
     it('rejects invalid animation ranges', () => {
@@ -130,7 +130,7 @@ describe('Asset Manifest Validation', () => {
             entries: [
                 {
                     id: 'sprite-test',
-                    filePath: 'test.png',
+                    filePath: 'assets/test.png',
                     category: 'agent' as const,
                     frameWidth: 32,
                     frameHeight: 32,
@@ -145,7 +145,7 @@ describe('Asset Manifest Validation', () => {
         };
         const result = validateAssetManifest(invalidManifest);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("Sprite sprite-test has invalid animation range for 'invalid'");
+        expect(result.issues.some(i => i.code === 'ANIMATION_START_GT_END')).toBe(true);
     });
 
     it('rejects static placeholders claiming animations', () => {
@@ -160,7 +160,7 @@ describe('Asset Manifest Validation', () => {
         };
         const result = validateAssetManifest(invalidManifest);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(`Sprite ${invalidManifest.entries[0].id} is a static placeholder but claims animations`);
+        expect(result.issues.some(i => i.code === 'STATIC_CLAIMS_ANIMATIONS')).toBe(true);
     });
 
     it('rejects unsupported asset categories', () => {
@@ -174,30 +174,40 @@ describe('Asset Manifest Validation', () => {
         };
         const result = validateAssetManifest(invalidManifest);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(`Sprite ${invalidManifest.entries[0].id} has unsupported category: unsupported-cat`);
+        expect(result.issues.some(i => i.code === 'UNSUPPORTED_CATEGORY')).toBe(true);
     });
 
-    it('verifies placeholder asset paths exist and match dimensions', () => {
-        const publicDir = path.resolve(__dirname, '../../../public');
+    it('verifies placeholder asset paths exist, match dimensions, and are valid PNGs', () => {
+        // Let's resolve safely based on cwd since vitest runs from repo root
+        const safePublicDir = path.resolve(process.cwd(), 'public');
+        const buffers: Buffer[] = [];
+
         defaultAssetManifest.entries.forEach(entry => {
             if (entry.isPlaceholder) {
-                const fullPath = path.join(publicDir, entry.filePath);
+                const fullPath = path.join(safePublicDir, entry.filePath);
                 expect(fs.existsSync(fullPath)).toBe(true);
 
-                // Read actual dimensions
+                // Read actual dimensions & check PNG sig
                 const dims = readPngDimensions(fullPath);
                 expect(dims).not.toBeNull();
                 expect(dims!.width).toBe(entry.frameWidth);
                 expect(dims!.height).toBe(entry.frameHeight);
+                expect(dims!.width).toBeGreaterThan(1);
+
+                // Read entire file to compare later
+                buffers.push(fs.readFileSync(fullPath));
             }
         });
+
+        // Agent placeholders shouldn't be all byte-identical (due to hash color)
+        const allIdentical = buffers.every(b => b.equals(buffers[0]));
+        expect(allIdentical).toBe(false);
     });
 
     it('ensures chair, computer, and wall-tile are in manifest', () => {
-        const ids = defaultAssetManifest.entries.map(e => e.id);
-        expect(ids).toContain('sprite-chair');
-        expect(ids).toContain('sprite-computer');
-        expect(ids).toContain('sprite-wall-tile');
+        const result = validateAssetManifest({ entries: [] });
+        expect(result.isValid).toBe(false);
+        expect(result.issues.filter(i => i.code === 'MISSING_REQUIRED_ASSET')).toHaveLength(3);
     });
 });
 
@@ -205,10 +215,10 @@ describe('Workspace Assignments Validation', () => {
     it('default assignments pass validation', () => {
         const result = validateAssignments(workspaceAssignments, defaultOfficeLayout, defaultAssetManifest);
         expect(result.isValid).toBe(true);
-        expect(result.errors).toEqual([]);
+        expect(result.issues).toEqual([]);
     });
 
-    it('assignments correctly cover canonical permanent agents', () => {
+    it('assignments exactly match canonical permanent agents', () => {
         const assignedAgents = workspaceAssignments.map(a => a.agentId);
         expect(assignedAgents).toHaveLength(PERMANENT_AGENT_IDS.length);
         PERMANENT_AGENT_IDS.forEach(id => {
@@ -218,9 +228,9 @@ describe('Workspace Assignments Validation', () => {
 
     it('rejects assignments with missing workstation', () => {
         const invalidAssignments = [
-            ...workspaceAssignments,
+            ...workspaceAssignments.filter(a => a.agentId !== 'scout'),
             {
-                agentId: 'scout',
+                agentId: 'scout' as const,
                 workstationId: 'desk-missing',
                 spawnPointId: workspaceAssignments[0].spawnPointId,
                 primaryDestinationId: workspaceAssignments[0].primaryDestinationId,
@@ -230,13 +240,14 @@ describe('Workspace Assignments Validation', () => {
         ];
         const result = validateAssignments(invalidAssignments, defaultOfficeLayout, defaultAssetManifest);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Duplicate Assignment for agent: scout');
+        expect(result.issues.some(i => i.code === 'UNKNOWN_WORKSPACE')).toBe(true);
     });
 
     it('rejects unknown agent IDs', () => {
         const invalidAssignments = [
+            ...workspaceAssignments,
             {
-                agentId: 'unknown-agent',
+                agentId: 'unknown-agent' as string,
                 workstationId: workspaceAssignments[0].workstationId,
                 spawnPointId: workspaceAssignments[0].spawnPointId,
                 primaryDestinationId: workspaceAssignments[0].primaryDestinationId,
@@ -246,16 +257,16 @@ describe('Workspace Assignments Validation', () => {
         ];
         const result = validateAssignments(invalidAssignments, defaultOfficeLayout, defaultAssetManifest);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Unknown or invalid agent ID: unknown-agent');
+        expect(result.issues.some(i => i.code === 'UNKNOWN_AGENT_ID')).toBe(true);
     });
 
     it('rejects duplicate agent assignments', () => {
         const invalidAssignments = [
             workspaceAssignments[0],
-            workspaceAssignments[0]
+            ...workspaceAssignments
         ];
         const result = validateAssignments(invalidAssignments, defaultOfficeLayout, defaultAssetManifest);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(`Duplicate Assignment for agent: ${workspaceAssignments[0].agentId}`);
+        expect(result.issues.some(i => i.code === 'DUPLICATE_ASSIGNMENT')).toBe(true);
     });
 });
