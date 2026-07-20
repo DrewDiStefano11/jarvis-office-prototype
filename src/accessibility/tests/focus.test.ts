@@ -54,11 +54,20 @@ describe("Focus Management", () => {
     expect(res).toEqual({ ok: true, targetId: "t4" });
   });
 
-  it("fails to wrap forward when wrap=false", () => {
+  it("fails to wrap forward when wrap=false and returns boundary reached", () => {
     const res = getNextFocusTarget(targets, "t4", "next", false);
     expect(res).toEqual({
       ok: false,
-      code: "NO_ENABLED_TARGETS",
+      code: "FOCUS_BOUNDARY_REACHED",
+      message: "Reached the end of the focus list without wrapping.",
+    });
+  });
+
+  it("fails to wrap backward when wrap=false and returns boundary reached", () => {
+    const res = getNextFocusTarget(targets, "t1", "previous", false);
+    expect(res).toEqual({
+      ok: false,
+      code: "FOCUS_BOUNDARY_REACHED",
       message: "Reached the end of the focus list without wrapping.",
     });
   });
@@ -75,6 +84,33 @@ describe("Focus Management", () => {
   it("returns first enabled when currentId is null and direction is next", () => {
     const res = getNextFocusTarget(targets, null, "next");
     expect(res).toEqual({ ok: true, targetId: "t1" });
+  });
+
+  it("returns EMPTY_TARGET_ID for empty current ID", () => {
+    const res = getNextFocusTarget(targets, "   ", "next");
+    expect(res).toEqual({
+      ok: false,
+      code: "EMPTY_TARGET_ID",
+      message: "The provided current ID is empty or whitespace-only.",
+    });
+  });
+
+  it("returns EMPTY_TARGET_ID if any target in the list has an empty ID", () => {
+    const res = getNextFocusTarget([{ id: "  " }], "t1", "next");
+    expect(res).toEqual({
+      ok: false,
+      code: "EMPTY_TARGET_ID",
+      message: "A target in the collection has an empty or whitespace-only ID.",
+    });
+  });
+
+  it("returns DUPLICATE_TARGET_ID if any target in the list has a duplicate ID", () => {
+    const res = getNextFocusTarget([{ id: "t1" }, { id: "t1" }], "t1", "next");
+    expect(res).toEqual({
+      ok: false,
+      code: "DUPLICATE_TARGET_ID",
+      message: 'Duplicate target ID found: "t1".',
+    });
   });
 
   it("roving tab index gets 0 for active valid target", () => {

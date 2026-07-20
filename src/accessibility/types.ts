@@ -15,7 +15,9 @@ export type FocusResolution =
       readonly code:
         | "CURRENT_TARGET_UNKNOWN"
         | "NO_ENABLED_TARGETS"
-        | "EMPTY_TARGET_ID";
+        | "EMPTY_TARGET_ID"
+        | "DUPLICATE_TARGET_ID"
+        | "FOCUS_BOUNDARY_REACHED";
       readonly message: string;
     };
 
@@ -34,7 +36,13 @@ export type AccessibilityValidationCode =
   | "DISABLED_ACTIVE_TARGET"
   | "MISSING_NON_VISUAL_ALTERNATIVE"
   | "MISSING_NON_MOTION_ALTERNATIVE"
-  | "INVALID_ANNOUNCEMENT_PRIORITY";
+  | "INVALID_ANNOUNCEMENT_PRIORITY"
+  | "MISSING_ANNOUNCEMENT_ID"
+  | "DUPLICATE_ANNOUNCEMENT_ID"
+  | "MISSING_DEDUPLICATION_KEY"
+  | "DUPLICATE_REQUIRED_PARAMETER"
+  | "MISSING_TEMPLATE_PARAMETER"
+  | "UNKNOWN_TEMPLATE_PARAMETER";
 
 export interface AccessibilityValidationIssue {
   readonly code: AccessibilityValidationCode;
@@ -42,6 +50,7 @@ export interface AccessibilityValidationIssue {
   readonly message: string;
   readonly commandId?: string;
   readonly targetId?: string;
+  readonly announcementId?: string;
   readonly field?: string;
 }
 
@@ -86,8 +95,18 @@ export interface MotionRequest {
     | "none";
 }
 
+export type ReducedMotionReason =
+  | "FULL_MOTION_ALLOWED"
+  | "DECORATIVE_MOTION_DISABLED"
+  | "CONTINUOUS_MOTION_REPLACED"
+  | "FLASHING_DISABLED"
+  | "PARALLAX_DISABLED"
+  | "TRANSITION_SIMPLIFIED"
+  | "ESSENTIAL_FEEDBACK_PRESERVED";
+
 export interface ResolvedMotionPresentation {
-  readonly motionAllowed: boolean;
+  readonly originalMotionAllowed: boolean;
+  readonly replacementAllowed: boolean;
   readonly durationMs: number;
   readonly continuous: boolean;
   readonly flashing: boolean;
@@ -98,14 +117,7 @@ export interface ResolvedMotionPresentation {
     | "static-indicator"
     | "text-update"
     | "none";
-  readonly reason:
-    | "FULL_MOTION_ALLOWED"
-    | "DECORATIVE_MOTION_DISABLED"
-    | "CONTINUOUS_MOTION_REPLACED"
-    | "FLASHING_DISABLED"
-    | "PARALLAX_DISABLED"
-    | "TRANSITION_SIMPLIFIED"
-    | "ESSENTIAL_FEEDBACK_PRESERVED";
+  readonly appliedReasons: readonly ReducedMotionReason[];
 }
 
 export interface AccessibilityPreferences {

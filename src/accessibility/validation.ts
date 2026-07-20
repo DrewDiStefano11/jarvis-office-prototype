@@ -5,6 +5,9 @@ import type {
   FocusTarget,
   AnnouncementDescriptor,
 } from "./types";
+import { normalizeShortcut } from "./shortcut";
+
+import type { MotionRequest } from "./types";
 
 export function validateKeyboardCommands(
   commands: readonly KeyboardCommand[]
@@ -44,17 +47,37 @@ export function validateKeyboardCommands(
       });
     }
 
+    if (command.essential && !command.label?.trim() && !command.description?.trim()) {
+      issues.push({
+        code: "MISSING_NON_VISUAL_ALTERNATIVE",
+        severity: "error",
+        message: `Essential command "${command.id}" is missing a readable non-visual alternative (label or description).`,
+        commandId: command.id,
+      });
+    }
+
     if (command.defaultShortcut) {
-      if (shortcutSet.has(command.defaultShortcut)) {
-        issues.push({
-          code: "SHORTCUT_CONFLICT",
+      const normRes = normalizeShortcut(command.defaultShortcut);
+      if (!normRes.isValid || !normRes.normalized) {
+         issues.push({
+          code: "INVALID_SHORTCUT",
           severity: "error",
-          message: `Shortcut conflict detected for "${command.defaultShortcut}".`,
+          message: `Invalid shortcut "${command.defaultShortcut}": ${normRes.error}`,
           commandId: command.id,
           field: "defaultShortcut",
         });
+      } else {
+        if (shortcutSet.has(normRes.normalized)) {
+          issues.push({
+            code: "SHORTCUT_CONFLICT",
+            severity: "error",
+            message: `Shortcut conflict detected for normalized shortcut "${normRes.normalized}" (original: "${command.defaultShortcut}").`,
+            commandId: command.id,
+            field: "defaultShortcut",
+          });
+        }
+        shortcutSet.add(normRes.normalized);
       }
-      shortcutSet.add(command.defaultShortcut);
     }
   }
 
@@ -127,22 +150,39 @@ export function validateAnnouncements(
   const idSet = new Set<string>();
 
   for (const ann of announcements) {
-    if (idSet.has(ann.id)) {
+    if (!ann.id || ann.id.trim() === "") {
       issues.push({
-        code: "DUPLICATE_COMMAND_ID",
+        code: "MISSING_ANNOUNCEMENT_ID",
         severity: "error",
-        message: `Duplicate announcement ID found: ${ann.id}.`,
-        commandId: ann.id,
+        message: "Announcement is missing a valid ID.",
       });
+    } else {
+      if (idSet.has(ann.id)) {
+        issues.push({
+          code: "DUPLICATE_ANNOUNCEMENT_ID",
+          severity: "error",
+          message: `Duplicate announcement ID found: ${ann.id}.`,
+          announcementId: ann.id,
+        });
+      }
+      idSet.add(ann.id);
     }
-    idSet.add(ann.id);
 
     if (!["off", "polite", "assertive"].includes(ann.politeness)) {
       issues.push({
         code: "INVALID_ANNOUNCEMENT_PRIORITY",
         severity: "error",
         message: `Announcement "${ann.id}" has invalid politeness level: ${ann.politeness}.`,
-        commandId: ann.id,
+        announcementId: ann.id,
+      });
+    }
+
+    if (!ann.deduplicationKey || ann.deduplicationKey.trim() === "") {
+      issues.push({
+        code: "MISSING_DEDUPLICATION_KEY",
+        severity: "error",
+        message: `Announcement "${ann.id}" is missing a deduplication key.`,
+        announcementId: ann.id,
       });
     }
 
@@ -151,7 +191,103 @@ export function validateAnnouncements(
         code: "MISSING_ACCESSIBLE_DESCRIPTION",
         severity: "error",
         message: `Announcement "${ann.id}" is missing a message template.`,
-        commandId: ann.id,
+        announcementId: ann.id,
+      });
+    } else {
+      // Validate template parameters
+      const templateParams = new Set<string>();
+      let malformed = false;
+      const regex = /\{([^}]+)\}/g;
+      let match;
+
+      while ((match = regex.exec(ann.messageTemplate)) !== null) {
+        templateParams.add(match[1]);
+      }
+
+      const openBraces = (ann.messageTemplate.match(/\{/g) || []).length;
+      const closeBraces = (ann.messageTemplate.match(/\}/g) || []).length;
+      if (openBraces !== closeBraces) {
+        malformed = true;
+      }
+
+      // Also validate deduplication key for braces if it uses templates
+      const dedupOpen = (ann.deduplicationKey?.match(/\{/g) || []).length;
+      const dedupClose = (ann.deduplicationKey?.match(/\}/g) || []).length;
+      if (dedupOpen !== dedupClose) {
+        malformed = true;
+      }
+
+      if (malformed) {
+         issues.push({
+            code: "MISSING_ACCESSIBLE_DESCRIPTION",
+            severity: "error",
+            message: `Announcement "${ann.id}" has malformed template braces.`,
+            announcementId: ann.id,
+         });
+      }
+
+      const reqSet = new Set<string>();
+      for (const req of ann.requiredParameters) {
+        if (!req || req.trim() === "") {
+          issues.push({
+             code: "MISSING_TEMPLATE_PARAMETER",
+             severity: "error",
+             message: `Announcement "${ann.id}" has an empty required parameter name.`,
+             announcementId: ann.id,
+          });
+        } else if (reqSet.has(req)) {
+          issues.push({
+            code: "DUPLICATE_REQUIRED_PARAMETER",
+            severity: "error",
+            message: `Announcement "${ann.id}" has duplicate required parameter: ${req}.`,
+            announcementId: ann.id,
+          });
+        }
+        reqSet.add(req);
+      }
+
+      for (const tParam of templateParams) {
+        if (!reqSet.has(tParam)) {
+           issues.push({
+            code: "UNKNOWN_TEMPLATE_PARAMETER",
+            severity: "error",
+            message: `Announcement "${ann.id}" uses unknown placeholder {${tParam}} in its template.`,
+            announcementId: ann.id,
+          });
+        }
+      }
+
+      for (const rParam of reqSet) {
+        if (!templateParams.has(rParam)) {
+          issues.push({
+            code: "MISSING_TEMPLATE_PARAMETER",
+            severity: "error",
+            message: `Announcement "${ann.id}" declares required parameter "${rParam}" but does not use it in the template.`,
+            announcementId: ann.id,
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+  };
+}
+
+export function validateMotionRequests(
+  requests: readonly MotionRequest[]
+): AccessibilityValidationResult {
+  const issues: AccessibilityValidationIssue[] = [];
+
+  for (const req of requests) {
+    if (req.essential && (!req.fallbackPresentation || req.fallbackPresentation === "none")) {
+      issues.push({
+        code: "MISSING_NON_MOTION_ALTERNATIVE",
+        severity: "error",
+        message: `Essential motion request "${req.id}" is missing a safe non-motion fallback presentation.`,
+        field: "fallbackPresentation",
       });
     }
   }

@@ -28,14 +28,23 @@ describe("Accessibility Validation", () => {
     expect(duplicateIdIssue).toBeDefined();
   });
 
-  it("detects shortcut conflicts", () => {
+  it("detects shortcut conflicts and normalizes", () => {
     const commands: KeyboardCommand[] = [
-      { id: "CMD_1", label: "Command 1", defaultShortcut: "Space", essential: true },
-      { id: "CMD_2", label: "Command 2", defaultShortcut: "Space", essential: true },
+      { id: "CMD_1", label: "Command 1", defaultShortcut: "Ctrl+Shift+P", essential: true },
+      { id: "CMD_2", label: "Command 2", defaultShortcut: "shift + ctrl + p", essential: true },
     ];
     const res = validateKeyboardCommands(commands);
     expect(res.isValid).toBe(false);
     expect(res.issues.some(i => i.code === "SHORTCUT_CONFLICT")).toBe(true);
+  });
+
+  it("detects invalid shortcuts", () => {
+    const commands: KeyboardCommand[] = [
+      { id: "CMD_1", label: "Command 1", defaultShortcut: "Ctrl+Ctrl+P", essential: true },
+    ];
+    const res = validateKeyboardCommands(commands);
+    expect(res.isValid).toBe(false);
+    expect(res.issues.some(i => i.code === "INVALID_SHORTCUT")).toBe(true);
   });
 
   it("validates valid focus targets", () => {
@@ -82,6 +91,30 @@ describe("Accessibility Validation", () => {
     expect(res.isValid).toBe(false);
     expect(res.issues.some(i => i.code === "INVALID_ANNOUNCEMENT_PRIORITY")).toBe(true);
     expect(res.issues.some(i => i.code === "MISSING_ACCESSIBLE_DESCRIPTION")).toBe(true);
+  });
+
+  it("detects missing/duplicate announcement IDs and dedup keys", () => {
+    const announcements: AnnouncementDescriptor[] = [
+      { id: "", politeness: "polite", deduplicationKey: "dk", messageTemplate: "T", requiredParameters: [] },
+      { id: "A2", politeness: "polite", deduplicationKey: "", messageTemplate: "T", requiredParameters: [] },
+      { id: "A2", politeness: "polite", deduplicationKey: "dk2", messageTemplate: "T2", requiredParameters: [] }
+    ];
+    const res = validateAnnouncements(announcements);
+    expect(res.isValid).toBe(false);
+    expect(res.issues.some(i => i.code === "MISSING_ANNOUNCEMENT_ID")).toBe(true);
+    expect(res.issues.some(i => i.code === "MISSING_DEDUPLICATION_KEY")).toBe(true);
+    expect(res.issues.some(i => i.code === "DUPLICATE_ANNOUNCEMENT_ID")).toBe(true);
+  });
+
+  it("detects template parameter issues", () => {
+    const announcements: AnnouncementDescriptor[] = [
+      { id: "A1", politeness: "polite", deduplicationKey: "dk", messageTemplate: "Hello {name} {missing}", requiredParameters: ["name", "extra", "name"] }
+    ];
+    const res = validateAnnouncements(announcements);
+    expect(res.isValid).toBe(false);
+    expect(res.issues.some(i => i.code === "DUPLICATE_REQUIRED_PARAMETER")).toBe(true);
+    expect(res.issues.some(i => i.code === "UNKNOWN_TEMPLATE_PARAMETER")).toBe(true);
+    expect(res.issues.some(i => i.code === "MISSING_TEMPLATE_PARAMETER")).toBe(true); // 'extra' is missing in template
   });
 
   it("requireValidAccessibilityConfiguration throws on error", () => {
