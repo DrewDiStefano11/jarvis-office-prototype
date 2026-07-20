@@ -18,11 +18,21 @@ export function requireAgentProfileByAgentId(
   return profile;
 }
 
+export class DuplicateAgentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DuplicateAgentError';
+  }
+}
+
 export function createAgentProfileMap(
   profiles: readonly AgentProfile[]
 ): ReadonlyMap<StableAgentId, AgentProfile> {
   const map = new Map<StableAgentId, AgentProfile>();
   for (const profile of profiles) {
+    if (map.has(profile.stableAgentId)) {
+      throw new DuplicateAgentError(`Duplicate stable agent ID found during map creation: ${profile.stableAgentId}`);
+    }
     map.set(profile.stableAgentId, profile);
   }
   return map;

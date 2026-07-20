@@ -5,14 +5,17 @@ export type WorkspaceId = string;
 export type SpriteId = string;
 export type IconId = string;
 
-export type AgentActivityId =
-  | "monitoring"
-  | "researching"
-  | "planning"
-  | "organizing"
-  | "reviewing"
-  | "communicating"
-  | "idle";
+export const ALLOWED_ACTIVITY_IDS = [
+  "monitoring",
+  "researching",
+  "planning",
+  "organizing",
+  "reviewing",
+  "communicating",
+  "idle"
+] as const;
+
+export type AgentActivityId = typeof ALLOWED_ACTIVITY_IDS[number];
 
 export interface AgentActivityLabel {
   readonly id: AgentActivityId;

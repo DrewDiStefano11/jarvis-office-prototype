@@ -17,8 +17,8 @@ Future UI components should fetch the static visual profile using the provided a
 - **Agent IDs (`StableAgentId`):** Lowercase unique identifiers corresponding to the permanent agents (e.g., `jarvis`, `atlas`). These act as the primary foreign keys.
 - **Profile IDs (`AgentProfileId`):** Prefixed with `profile_` (e.g., `profile_jarvis`).
 - **Theme IDs (`ThemeId`):** Prefixed with `theme_` (e.g., `theme_jarvis`).
-- **Workspace IDs (`WorkspaceId`):** Represent the unique identifier of an office location where the agent works (e.g., `jarvis_desk`).
-- **Sprite IDs (`SpriteId`):** Key references for Phaser asset keys (e.g., `agent_jarvis`).
+- **Workspace IDs (`WorkspaceId`):** Represent the canonical identifier of an office location where the agent works (e.g., `jarvis_desk`, `atlas_desk`).
+- **Sprite IDs (`SpriteId`):** Canonical references for Phaser asset keys (e.g., `sprite-agent-jarvis`, `sprite-agent-atlas`).
 
 ## Profile Fields
 Each `AgentProfile` contains:
@@ -28,8 +28,8 @@ Each `AgentProfile` contains:
 - `roleTitle`: The title describing the agent's overall job.
 - `shortDescription`: A one-line summary of what the agent does.
 - `detailedResponsibilities`: A detailed explanation of the agent's tasks.
-- `spriteId`: Reference to the Phaser sprite.
-- `workspaceId`: Reference to the primary location/desk in the office layout.
+- `spriteId`: Reference to the Phaser sprite (`sprite-agent-*`).
+- `workspaceId`: Reference to the primary location/desk in the office layout (`*_desk`).
 - `themeId`: Reference to the `VisualTheme`.
 - `iconId`: Reference to a generic icon.
 - `accessibleDescription`: Text specifically formatted for screen readers.

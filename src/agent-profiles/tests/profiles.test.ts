@@ -8,6 +8,10 @@ describe('Agent Profiles Foundation', () => {
     'jarvis_desk', 'atlas_desk', 'scout_desk', 'archive_desk', 'sentinel_desk'
   ];
 
+  const knownSpriteIds = [
+    'sprite-agent-jarvis', 'sprite-agent-atlas', 'sprite-agent-scout', 'sprite-agent-archive', 'sprite-agent-sentinel'
+  ];
+
   it('exactly one profile exists for each permanent agent', () => {
     expect(agentProfiles.length).toBe(5);
     const stableIds = agentProfiles.map(p => p.stableAgentId);
@@ -46,7 +50,8 @@ describe('Agent Profiles Foundation', () => {
     const result = validateAgentProfiles({
       profiles: agentProfiles,
       themes: agentThemes,
-      knownWorkspaceIds
+      knownWorkspaceIds,
+      knownSpriteIds
     });
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);
@@ -56,18 +61,21 @@ describe('Agent Profiles Foundation', () => {
     const invalidProfile = {
       ...agentProfiles[0],
       themeId: 'unknown_theme',
-      workspaceId: 'unknown_workspace'
+      workspaceId: 'unknown_workspace',
+      spriteId: 'unknown_sprite'
     };
 
     const result = validateAgentProfiles({
       profiles: [invalidProfile],
       themes: agentThemes,
-      knownWorkspaceIds
+      knownWorkspaceIds,
+      knownSpriteIds
     });
 
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain(`Unknown theme reference: unknown_theme in profile ${invalidProfile.profileId}`);
     expect(result.errors).toContain(`Unknown workspace reference: unknown_workspace in profile ${invalidProfile.profileId}`);
+    expect(result.errors).toContain(`Unknown sprite reference: unknown_sprite in profile ${invalidProfile.profileId}`);
   });
 
   it('duplicate profiles are rejected', () => {
@@ -117,6 +125,24 @@ describe('Agent Profiles Foundation', () => {
     });
   });
 
+  it('rejects unknown activity IDs at runtime', () => {
+    const invalidProfile = {
+      ...agentProfiles[0],
+      supportedActivities: [
+        { id: 'jumping' as unknown as import('./../types').AgentActivityId, label: 'Jumping around' }
+      ]
+    };
+
+    const result = validateAgentProfiles({
+      profiles: [invalidProfile],
+      themes: agentThemes,
+      knownWorkspaceIds
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(`Unknown activity ID found: jumping in profile ${invalidProfile.profileId}`);
+  });
+
   describe('Adapters', () => {
     it('getAgentProfileByAgentId returns correct profile or undefined', () => {
       const jarvisProfile = getAgentProfileByAgentId(agentProfiles, 'jarvis');
@@ -140,6 +166,11 @@ describe('Agent Profiles Foundation', () => {
       expect(map.size).toBe(5);
       expect(map.get('scout')?.stableAgentId).toBe('scout');
       expect(map.get('unknown')).toBeUndefined();
+    });
+
+    it('createAgentProfileMap does not silently overwrite duplicates', () => {
+      const duplicateProfiles = [agentProfiles[0], { ...agentProfiles[0], profileId: 'another_id' }];
+      expect(() => createAgentProfileMap(duplicateProfiles)).toThrow(/Duplicate stable agent ID found during map creation: /);
     });
   });
 });

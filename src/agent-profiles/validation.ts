@@ -1,4 +1,4 @@
-import { AgentProfile, VisualTheme, WorkspaceId, SpriteId } from './types';
+import { AgentProfile, VisualTheme, WorkspaceId, SpriteId, ALLOWED_ACTIVITY_IDS } from './types';
 
 export interface ValidationResult {
   readonly isValid: boolean;
@@ -26,8 +26,13 @@ export function validateAgentProfiles(options: ValidationOptions): ValidationRes
     if (seenThemeIds.has(theme.id)) {
       errors.push(`Duplicate theme ID found: ${theme.id}`);
     }
+    if (!theme.accessibleThemeLabel?.trim()) {
+      errors.push(`Missing accessible theme label in theme ${theme.id}`);
+    }
     seenThemeIds.add(theme.id);
   }
+
+  let permanentAgentCount = 0;
 
   for (const profile of profiles) {
     // Check duplicates
@@ -40,6 +45,11 @@ export function validateAgentProfiles(options: ValidationOptions): ValidationRes
       errors.push(`Duplicate stable agent ID found: ${profile.stableAgentId} in profile ${profile.profileId}`);
     }
     stableAgentIds.add(profile.stableAgentId);
+
+    // Check permanent agents for exact match
+    if (['jarvis', 'atlas', 'scout', 'archive', 'sentinel'].includes(profile.stableAgentId)) {
+      permanentAgentCount++;
+    }
 
     // Check required text fields
     if (!profile.displayName?.trim()) {
@@ -56,6 +66,14 @@ export function validateAgentProfiles(options: ValidationOptions): ValidationRes
     }
     if (!profile.accessibleDescription?.trim()) {
       errors.push(`Missing accessible description in profile ${profile.profileId}`);
+    }
+
+    if (!profile.iconId?.trim()) {
+      errors.push(`Missing icon reference in profile ${profile.profileId}`);
+    }
+
+    if (profile.visualState !== 'placeholder' && profile.visualState !== 'production-ready') {
+      errors.push(`Invalid visual-state value in profile ${profile.profileId}`);
     }
 
     // Check references
@@ -92,6 +110,10 @@ export function validateAgentProfiles(options: ValidationOptions): ValidationRes
            errors.push(`Unsupported activity-label format (ID must be lowercase without spaces): ${activity.id} in profile ${profile.profileId}`);
         }
 
+        if (!ALLOWED_ACTIVITY_IDS.includes(activity.id as (typeof ALLOWED_ACTIVITY_IDS)[number])) {
+          errors.push(`Unknown activity ID found: ${activity.id} in profile ${profile.profileId}`);
+        }
+
         if (!activity.label?.trim()) {
            errors.push(`Empty or whitespace-only activity label found for ID ${activity.id} in profile ${profile.profileId}`);
         } else if (activity.label.length > 50) {
@@ -105,6 +127,12 @@ export function validateAgentProfiles(options: ValidationOptions): ValidationRes
         }
       }
     }
+  }
+
+  // If using default profiles size, check if we have exactly one profile per permanent agent.
+  // We only run this specific assert if exactly 5 profiles are provided (which usually corresponds to testing default set).
+  if (profiles.length === 5 && permanentAgentCount !== 5) {
+     errors.push(`Expected exactly one profile for each permanent agent, but found ${permanentAgentCount}.`);
   }
 
   return {
