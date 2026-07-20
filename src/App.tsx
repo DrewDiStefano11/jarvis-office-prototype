@@ -1,104 +1,138 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
-import { MainMenu } from './game/scenes/MainMenu';
+import { ControlPanel } from './components/ControlPanel';
+import { INITIAL_AGENTS } from './domain/seed';
+import { Agent } from './types';
+import { EventBus } from './game/EventBus';
+import { validateMovementCommand } from './domain/navigation';
+import { handleMovementCommand, handleMovementCompleted, handleResetAll as handleResetAllDomain } from './domain/state';
 
-function App()
-{
-    // The sprite can only be moved in the MainMenu Scene
-    const [canMoveSprite, setCanMoveSprite] = useState(true);
-
-    //  References to the PhaserGame component (game and scene are exposed)
+function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
-    const [spritePosition, setSpritePosition] = useState({ x: 0, y: 0 });
 
-    const changeScene = () => {
+    // React is authoritative for agent state
+    const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-        if(phaserRef.current)
-        {     
-            const scene = phaserRef.current.scene as MainMenu;
-            
-            if (scene)
-            {
-                scene.changeScene();
-            }
+    // commandId generation to handle strict cancellation and state tracking
+    const commandIdCounter = useRef(0);
+    // Track active commands per agent to prevent stale state updates
+    const activeCommands = useRef<{ [agentId: string]: number }>({});
+
+    useEffect(() => {
+        const handleAgentSelected = (agentId: string) => {
+            setSelectedAgentId(agentId);
+        };
+
+        const handleMovementCompletedEvent = (data: { agentId: string, locationId: string, commandId: number }) => {
+            setAgents(prev => handleMovementCompleted(data.agentId, data.locationId, data.commandId, prev, activeCommands.current));
+        };
+
+        EventBus.on('agent-selected', handleAgentSelected);
+        EventBus.on('movement-completed', handleMovementCompletedEvent);
+
+        return () => {
+            EventBus.removeListener('agent-selected', handleAgentSelected);
+            EventBus.removeListener('movement-completed', handleMovementCompletedEvent);
+        };
+    }, []);
+
+    const selectedAgent = agents.find(a => a.id === selectedAgentId) || null;
+
+    const handleSelectAgent = (agentId: string) => {
+        setSelectedAgentId(agentId);
+        EventBus.emit('react-select-agent', agentId);
+    };
+
+    const handleSendToLocation = (agentId: string, locationId: string) => {
+        setErrorMsg(null);
+
+        const validation = validateMovementCommand(agentId, locationId);
+        if (!validation.valid) {
+            setErrorMsg(validation.error || 'Invalid command');
+            return;
         }
-    }
 
-    const moveSprite = () => {
+        setAgents(prev => {
+            const result = handleMovementCommand(agentId, locationId, commandIdCounter.current, prev, activeCommands.current);
+            commandIdCounter.current = result.nextCommandId;
+            activeCommands.current = result.newActiveCommands;
 
-        if(phaserRef.current)
-        {
+            EventBus.emit('react-move-agent', { agentId, locationId, commandId: result.nextCommandId });
+            return result.newAgents;
+        });
+    };
 
-            const scene = phaserRef.current.scene as MainMenu;
+    const handleResetAll = () => {
+        setErrorMsg(null);
 
-            if (scene && scene.scene.key === 'MainMenu')
-            {
-                // Get the update logo position
-                scene.moveLogo(({ x, y }) => {
+        setAgents(prev => {
+            const result = handleResetAllDomain(prev);
+            activeCommands.current = result.newActiveCommands;
+            return result.newAgents;
+        });
 
-                    setSpritePosition({ x, y });
-
-                });
-            }
-        }
-
-    }
-
-    const addSprite = () => {
-
-        if (phaserRef.current)
-        {
-            const scene = phaserRef.current.scene;
-
-            if (scene)
-            {
-                // Add more stars
-                const x = Phaser.Math.Between(64, scene.scale.width - 64);
-                const y = Phaser.Math.Between(64, scene.scale.height - 64);
-    
-                //  `add.sprite` is a Phaser GameObjectFactory method and it returns a Sprite Game Object instance
-                const star = scene.add.sprite(x, y, 'star');
-    
-                //  ... which you can then act upon. Here we create a Phaser Tween to fade the star sprite in and out.
-                //  You could, of course, do this from within the Phaser Scene code, but this is just an example
-                //  showing that Phaser objects and systems can be acted upon from outside of Phaser itself.
-                scene.add.tween({
-                    targets: star,
-                    duration: 500 + Math.random() * 1000,
-                    alpha: 0,
-                    yoyo: true,
-                    repeat: -1
-                });
-            }
-        }
-    }
-
-    // Event emitted from the PhaserGame component
-    const currentScene = (scene: Phaser.Scene) => {
-
-        setCanMoveSprite(scene.scene.key !== 'MainMenu');
-        
-    }
+        EventBus.emit('react-reset-all');
+    };
 
     return (
-        <div id="app">
-            <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
-            <div>
-                <div>
-                    <button className="button" onClick={changeScene}>Change Scene</button>
-                </div>
-                <div>
-                    <button disabled={canMoveSprite} className="button" onClick={moveSprite}>Toggle Movement</button>
-                </div>
-                <div className="spritePosition">Sprite Position:
-                    <pre>{`{\n  x: ${spritePosition.x}\n  y: ${spritePosition.y}\n}`}</pre>
-                </div>
-                <div>
-                    <button className="button" onClick={addSprite}>Add New Sprite</button>
-                </div>
+        <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            width: '100vw',
+            height: '100vh',
+            overflow: 'hidden',
+            backgroundColor: '#111'
+        }} id="app-root">
+
+            <div className="office-canvas-pane" style={{
+                flex: '3',
+                minWidth: '300px',
+                height: '100%',
+                position: 'relative'
+            }}>
+                <PhaserGame ref={phaserRef} />
             </div>
+
+            <div className="office-control-pane" style={{
+                flex: '1',
+                minWidth: '300px',
+                maxWidth: '400px',
+                height: '100%',
+                borderLeft: '1px solid #333'
+            }}>
+                <ControlPanel
+                    selectedAgent={selectedAgent}
+                    agents={agents}
+                    onSelectAgent={handleSelectAgent}
+                    onSendToLocation={handleSendToLocation}
+                    onResetAll={handleResetAll}
+                    errorMsg={errorMsg}
+                />
+            </div>
+
+            <style>{`
+                @media (max-width: 768px) {
+                    #app-root {
+                        flex-direction: column !important;
+                        overflow-y: auto !important;
+                    }
+                    .office-canvas-pane {
+                        height: 50vh !important;
+                        flex: none !important;
+                    }
+                    .office-control-pane {
+                        max-width: none !important;
+                        width: 100% !important;
+                        border-left: none !important;
+                        border-top: 1px solid #333;
+                    }
+                }
+                body, html { margin: 0; padding: 0; overflow-x: hidden; }
+            `}</style>
         </div>
-    )
+    );
 }
 
-export default App
+export default App;
