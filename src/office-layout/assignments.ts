@@ -1,16 +1,24 @@
 import { WorkspaceAssignment } from './types';
 
-// The stable IDs matching the current permanent agents in the domain
-export const AGENT_JARVIS_ID = 'agent-jarvis';
-export const AGENT_ATLAS_ID = 'agent-atlas';
-export const AGENT_SCOUT_ID = 'agent-scout';
-export const AGENT_ARCHIVE_ID = 'agent-archive';
-export const AGENT_SENTINEL_ID = 'agent-sentinel';
+// The stable IDs matching the exact runtime permanent agents in the domain
+export const AGENT_JARVIS_ID = 'jarvis';
+export const AGENT_ATLAS_ID = 'atlas';
+export const AGENT_SCOUT_ID = 'scout';
+export const AGENT_ARCHIVE_ID = 'archive';
+export const AGENT_SENTINEL_ID = 'sentinel';
+
+export const PERMANENT_AGENT_IDS = [
+    AGENT_JARVIS_ID,
+    AGENT_ATLAS_ID,
+    AGENT_SCOUT_ID,
+    AGENT_ARCHIVE_ID,
+    AGENT_SENTINEL_ID
+] as const;
 
 export const workspaceAssignments: readonly WorkspaceAssignment[] = [
     {
         agentId: AGENT_JARVIS_ID,
-        workstationId: 'desk-executive-jarvis',
+        workstationId: 'jarvis_desk',
         spawnPointId: 'spawn-jarvis',
         primaryDestinationId: 'dest-main-center',
         secondaryDestinationIds: ['dest-meeting-table', 'dest-entrance-lobby'],
@@ -18,7 +26,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
     },
     {
         agentId: AGENT_ATLAS_ID,
-        workstationId: 'desk-operations-atlas',
+        workstationId: 'atlas_desk',
         spawnPointId: 'spawn-atlas',
         primaryDestinationId: 'dest-collab-board',
         secondaryDestinationIds: ['dest-main-center'],
@@ -26,7 +34,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
     },
     {
         agentId: AGENT_SCOUT_ID,
-        workstationId: 'desk-research-scout',
+        workstationId: 'scout_desk',
         spawnPointId: 'spawn-scout',
         primaryDestinationId: 'dest-break-room',
         secondaryDestinationIds: ['dest-main-center'],
@@ -34,7 +42,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
     },
     {
         agentId: AGENT_ARCHIVE_ID,
-        workstationId: 'desk-records-archive',
+        workstationId: 'archive_desk',
         spawnPointId: 'spawn-archive',
         primaryDestinationId: 'dest-meeting-table',
         secondaryDestinationIds: ['dest-collab-board'],
@@ -42,7 +50,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
     },
     {
         agentId: AGENT_SENTINEL_ID,
-        workstationId: 'desk-security-sentinel',
+        workstationId: 'sentinel_desk',
         spawnPointId: 'spawn-sentinel',
         primaryDestinationId: 'dest-entrance-lobby',
         secondaryDestinationIds: ['dest-main-center'],

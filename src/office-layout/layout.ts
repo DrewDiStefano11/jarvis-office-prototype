@@ -51,11 +51,11 @@ const blockedAreas: readonly BlockedArea[] = [
 ];
 
 const workstations: readonly Workstation[] = [
-    { id: 'desk-executive-jarvis', roomId: 'room-main-office', position: { x: 400, y: 100 }, label: 'Jarvis Desk' },
-    { id: 'desk-research-scout', roomId: 'room-research', position: { x: 100, y: 300 }, label: 'Scout Desk' },
-    { id: 'desk-security-sentinel', roomId: 'room-monitoring', position: { x: 500, y: 500 }, label: 'Sentinel Desk' },
-    { id: 'desk-operations-atlas', roomId: 'room-planning', position: { x: 300, y: 500 }, label: 'Atlas Desk' },
-    { id: 'desk-records-archive', roomId: 'room-file', position: { x: 700, y: 300 }, label: 'Archive Desk' },
+    { id: 'jarvis_desk', roomId: 'room-main-office', position: { x: 400, y: 100 }, label: 'Jarvis Desk' },
+    { id: 'scout_desk', roomId: 'room-research', position: { x: 100, y: 300 }, label: 'Scout Desk' },
+    { id: 'sentinel_desk', roomId: 'room-monitoring', position: { x: 500, y: 500 }, label: 'Sentinel Desk' },
+    { id: 'atlas_desk', roomId: 'room-planning', position: { x: 300, y: 500 }, label: 'Atlas Desk' },
+    { id: 'archive_desk', roomId: 'room-file', position: { x: 700, y: 300 }, label: 'Archive Desk' },
 ];
 
 const spawnPoints: readonly SpawnPoint[] = [

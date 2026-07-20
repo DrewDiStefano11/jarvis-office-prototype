@@ -1,15 +1,7 @@
 import { AssetManifest, AssetManifestEntry } from './types';
 
-const agentAnimations = [
-    { name: 'idle-down', frameRange: [0, 0] as readonly [number, number], frameRate: 1, repeat: -1 },
-    { name: 'walk-down', frameRange: [1, 2] as readonly [number, number], frameRate: 8, repeat: -1 },
-    { name: 'idle-up', frameRange: [3, 3] as readonly [number, number], frameRate: 1, repeat: -1 },
-    { name: 'walk-up', frameRange: [4, 5] as readonly [number, number], frameRate: 8, repeat: -1 },
-    { name: 'idle-left', frameRange: [6, 6] as readonly [number, number], frameRate: 1, repeat: -1 },
-    { name: 'walk-left', frameRange: [7, 8] as readonly [number, number], frameRate: 8, repeat: -1 },
-    { name: 'idle-right', frameRange: [9, 9] as readonly [number, number], frameRate: 1, repeat: -1 },
-    { name: 'walk-right', frameRange: [10, 11] as readonly [number, number], frameRate: 8, repeat: -1 }
-];
+// The requested changes require all static placeholder assets to have NO animation definitions.
+// The manifest now just registers them as static placeholders mapping to the generated PNGs.
 
 export const assetEntries: readonly AssetManifestEntry[] = [
     {
@@ -21,7 +13,7 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         scale: 1,
         defaultFacingDirection: 'down',
         isPlaceholder: true,
-        animations: agentAnimations
+        animations: []
     },
     {
         id: 'sprite-agent-atlas',
@@ -32,7 +24,7 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         scale: 1,
         defaultFacingDirection: 'down',
         isPlaceholder: true,
-        animations: agentAnimations
+        animations: []
     },
     {
         id: 'sprite-agent-scout',
@@ -43,7 +35,7 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         scale: 1,
         defaultFacingDirection: 'down',
         isPlaceholder: true,
-        animations: agentAnimations
+        animations: []
     },
     {
         id: 'sprite-agent-archive',
@@ -54,7 +46,7 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         scale: 1,
         defaultFacingDirection: 'down',
         isPlaceholder: true,
-        animations: agentAnimations
+        animations: []
     },
     {
         id: 'sprite-agent-sentinel',
@@ -65,7 +57,7 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         scale: 1,
         defaultFacingDirection: 'down',
         isPlaceholder: true,
-        animations: agentAnimations
+        animations: []
     },
     {
         id: 'sprite-desk',
@@ -101,6 +93,28 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         animations: []
     },
     {
+        id: 'sprite-chair',
+        filePath: 'assets/office/furniture/chair-placeholder.png',
+        category: 'chair',
+        frameWidth: 32,
+        frameHeight: 32,
+        scale: 1,
+        defaultFacingDirection: 'down',
+        isPlaceholder: true,
+        animations: []
+    },
+    {
+        id: 'sprite-computer',
+        filePath: 'assets/office/furniture/computer-placeholder.png',
+        category: 'computer',
+        frameWidth: 32,
+        frameHeight: 32,
+        scale: 1,
+        defaultFacingDirection: 'down',
+        isPlaceholder: true,
+        animations: []
+    },
+    {
         id: 'sprite-door',
         filePath: 'assets/office/environment/door-placeholder.png',
         category: 'door',
@@ -109,10 +123,18 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         scale: 1,
         defaultFacingDirection: 'down',
         isPlaceholder: true,
-        animations: [
-            { name: 'open', frameRange: [0, 2], frameRate: 5, repeat: 0 },
-            { name: 'close', frameRange: [2, 0], frameRate: 5, repeat: 0 }
-        ]
+        animations: []
+    },
+    {
+        id: 'sprite-wall-tile',
+        filePath: 'assets/office/environment/wall-tile-placeholder.png',
+        category: 'tile',
+        frameWidth: 32,
+        frameHeight: 32,
+        scale: 1,
+        defaultFacingDirection: 'down',
+        isPlaceholder: true,
+        animations: []
     },
     {
         id: 'sprite-plant',
@@ -134,9 +156,7 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         scale: 1,
         defaultFacingDirection: 'down',
         isPlaceholder: true,
-        animations: [
-            { name: 'pulse', frameRange: [0, 3], frameRate: 4, repeat: -1 }
-        ]
+        animations: []
     },
     {
         id: 'sprite-floor-tile',

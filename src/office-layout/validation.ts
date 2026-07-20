@@ -4,8 +4,12 @@ import {
     WorkspaceAssignment,
     Point,
     Bounds,
-    RoomId
+    RoomId,
+    SpriteCategory
 } from './types';
+
+// Used in assignments validation
+import { PERMANENT_AGENT_IDS } from './assignments';
 
 export interface ValidationResult {
     readonly isValid: boolean;
@@ -33,10 +37,16 @@ export function validateLayout(layout: OfficeLayout): ValidationResult {
     layout.rooms.forEach(r => {
         checkId(r.id, 'Room');
         roomIds.add(r.id);
+        if (r.bounds.width <= 0 || r.bounds.height <= 0) {
+            errors.push(`Room ${r.id} has invalid dimensions`);
+        }
     });
 
     layout.doorways.forEach(d => {
         checkId(d.id, 'Doorway');
+        if (d.connectsRooms[0] === d.connectsRooms[1]) {
+            errors.push(`Doorway ${d.id} references duplicate rooms: ${d.connectsRooms[0]}`);
+        }
         if (!roomIds.has(d.connectsRooms[0]) || !roomIds.has(d.connectsRooms[1])) {
             errors.push(`Doorway ${d.id} references missing room: ${d.connectsRooms.join(', ')}`);
         }
@@ -61,6 +71,11 @@ export function validateLayout(layout: OfficeLayout): ValidationResult {
                 errors.push(`Workstation ${w.id} is outside room ${room.id} bounds`);
             }
         }
+        layout.blockedAreas.forEach(b => {
+            if (pointInBounds(w.position, b.bounds)) {
+                errors.push(`Workstation ${w.id} occupies a blocked area`);
+            }
+        });
     });
 
     layout.spawnPoints.forEach(s => {
@@ -71,6 +86,11 @@ export function validateLayout(layout: OfficeLayout): ValidationResult {
                 errors.push(`SpawnPoint ${s.id} is outside room ${room.id} bounds`);
             }
         }
+        layout.blockedAreas.forEach(b => {
+            if (pointInBounds(s.position, b.bounds)) {
+                errors.push(`SpawnPoint ${s.id} occupies a blocked area`);
+            }
+        });
     });
 
     layout.destinations.forEach(d => {
@@ -85,7 +105,13 @@ export function validateLayout(layout: OfficeLayout): ValidationResult {
 
     layout.furniture.forEach(f => {
         checkId(f.id, 'Furniture');
-        checkRoomRef(f.roomId, f.id, 'Furniture');
+        if (checkRoomRef(f.roomId, f.id, 'Furniture')) {
+            const room = layout.rooms.find(r => r.id === f.roomId)!;
+            // Optional: ensuring furniture is generally inside room
+            if (!pointInBounds(f.position, room.bounds)) {
+                errors.push(`Furniture ${f.id} position is outside room ${room.id} bounds`);
+            }
+        }
     });
 
     return { isValid: errors.length === 0, errors };
@@ -94,6 +120,8 @@ export function validateLayout(layout: OfficeLayout): ValidationResult {
 export function validateAssetManifest(manifest: AssetManifest): ValidationResult {
     const errors: string[] = [];
     const spriteIds = new Set<string>();
+
+    const validCategories: SpriteCategory[] = ['agent', 'furniture', 'decoration', 'door', 'indicator', 'effect', 'tile', 'computer', 'chair'];
 
     manifest.entries.forEach(e => {
         if (spriteIds.has(e.id)) {
@@ -106,9 +134,24 @@ export function validateAssetManifest(manifest: AssetManifest): ValidationResult
             errors.push(`Sprite ${e.id} has invalid dimensions (${e.frameWidth}x${e.frameHeight})`);
         }
 
+        if (!e.filePath || e.filePath.trim() === '') {
+            errors.push(`Sprite ${e.id} has empty file path`);
+        }
+
+        if (!validCategories.includes(e.category)) {
+            errors.push(`Sprite ${e.id} has unsupported category: ${e.category}`);
+        }
+
+        if (e.isPlaceholder && e.animations.length > 0) {
+            errors.push(`Sprite ${e.id} is a static placeholder but claims animations`);
+        }
+
         e.animations.forEach(anim => {
-            if (anim.frameRange[0] < 0 || anim.frameRange[1] < 0) {
+            if (anim.frameRange[0] < 0 || anim.frameRange[1] < anim.frameRange[0]) {
                 errors.push(`Sprite ${e.id} has invalid animation range for '${anim.name}'`);
+            }
+            if (anim.frameRate < 0) {
+                errors.push(`Sprite ${e.id} has invalid frameRate for '${anim.name}'`);
             }
         });
     });
@@ -134,6 +177,10 @@ export function validateAssignments(
             errors.push(`Duplicate Assignment for agent: ${a.agentId}`);
         } else {
             agentIds.add(a.agentId);
+        }
+
+        if (!(PERMANENT_AGENT_IDS as readonly string[]).includes(a.agentId)) {
+            errors.push(`Unknown or invalid agent ID: ${a.agentId}`);
         }
 
         if (!workstationIds.has(a.workstationId)) {
