@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useId } from 'react';
 import styles from './FormFieldWrapper.module.css';
 
 export interface FormFieldWrapperProps {
-    id: string;
+    id?: string;
     label: string;
     description?: string;
     error?: string;
@@ -16,14 +16,23 @@ export const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
     error,
     children
 }) => {
-    const descriptionId = description ? `${id}-description` : undefined;
-    const errorId = error ? `${id}-error` : undefined;
-    const ariaDescribedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
+    const generatedId = useId();
+    const actualId = id || `field-${generatedId}`;
 
-    // We clone the child to inject necessary accessibility props
-    const clonedChild = React.isValidElement(children)
-        ? React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
-            id,
+    const descriptionId = description ? `${actualId}-description` : undefined;
+    const errorId = error ? `${actualId}-error` : undefined;
+
+    let ariaDescribedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
+
+    const child = React.isValidElement(children) ? children as React.ReactElement<any> : null;
+
+    if (child && child.props['aria-describedby']) {
+        ariaDescribedBy = ariaDescribedBy ? `${child.props['aria-describedby']} ${ariaDescribedBy}` : child.props['aria-describedby'];
+    }
+
+    const clonedChild = child
+        ? React.cloneElement(child, {
+            id: actualId,
             'aria-describedby': ariaDescribedBy,
             'aria-invalid': !!error
         })
@@ -31,7 +40,7 @@ export const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
 
     return (
         <div className={styles.wrapper}>
-            <label htmlFor={id} className={styles.label}>
+            <label htmlFor={actualId} className={styles.label}>
                 {label}
             </label>
             {description && (
