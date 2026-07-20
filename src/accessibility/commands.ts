@@ -1,0 +1,81 @@
+import type { KeyboardCommand } from "./types";
+
+export const KEYBOARD_COMMANDS: readonly KeyboardCommand[] = [
+  {
+    id: "FOCUS_NEXT_AGENT",
+    label: "Move focus to next agent",
+    description: "Moves keyboard focus to the next available agent.",
+    defaultShortcut: "ArrowRight",
+    essential: true,
+  },
+  {
+    id: "FOCUS_PREVIOUS_AGENT",
+    label: "Move focus to previous agent",
+    description: "Moves keyboard focus to the previous available agent.",
+    defaultShortcut: "ArrowLeft",
+    essential: true,
+  },
+  {
+    id: "SELECT_FOCUSED_AGENT",
+    label: "Select focused agent",
+    description: "Selects the agent currently focused.",
+    defaultShortcut: "Enter",
+    essential: true,
+  },
+  {
+    id: "OPEN_AGENT_DETAILS",
+    label: "Open agent details",
+    description: "Opens the detailed view for the selected agent.",
+    defaultShortcut: "Space",
+    essential: true,
+  },
+  {
+    id: "CLOSE_PANEL",
+    label: "Close panel",
+    description: "Closes the currently active panel or modal.",
+    defaultShortcut: "Escape",
+    essential: true,
+  },
+  {
+    id: "START_SELECTED_TASK",
+    label: "Start selected task",
+    description: "Starts the task currently selected for an agent.",
+    defaultShortcut: "s",
+    essential: true,
+  },
+  {
+    id: "PAUSE_SELECTED_TASK",
+    label: "Pause selected task",
+    description: "Pauses the currently running task.",
+    defaultShortcut: "p",
+    essential: true,
+  },
+  {
+    id: "RESUME_SELECTED_TASK",
+    label: "Resume selected task",
+    description: "Resumes a paused task.",
+    defaultShortcut: "r",
+    essential: true,
+  },
+  {
+    id: "CANCEL_SELECTED_TASK",
+    label: "Cancel selected task",
+    description: "Cancels the active task.",
+    defaultShortcut: "c",
+    essential: true,
+  },
+  {
+    id: "OPEN_NOTIFICATIONS",
+    label: "Open notifications",
+    description: "Opens the notifications panel.",
+    defaultShortcut: "n",
+    essential: true,
+  },
+  {
+    id: "ACTIVATE_EMERGENCY_STOP",
+    label: "Activate emergency stop",
+    description: "Immediately halts all agents and active tasks.",
+    defaultShortcut: "Delete",
+    essential: true,
+  },
+];
