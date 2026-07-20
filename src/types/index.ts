@@ -57,7 +57,7 @@ export interface WaypointNode {
     connections: string[]; // IDs of connected nodes
 }
 
-export type TaskStatus = 'queued' | 'active' | 'paused' | 'completed' | 'blocked';
+export type TaskStatus = 'queued' | 'active' | 'paused' | 'completed' | 'blocked' | 'failed' | 'cancelled';
 export type TaskPriority = 'low' | 'normal' | 'high';
 
 export interface TaskStep {
@@ -77,6 +77,8 @@ export interface Task {
     currentStepIndex: number;
     steps: TaskStep[];
     blocker: string | null;
-    createdAt: number;
-    completedAt: number | null;
 }
+
+export type TaskTransitionResult =
+    | { success: true; newAgents: Agent[]; newTasks: Task[] }
+    | { success: false; error: string };

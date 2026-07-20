@@ -16,6 +16,9 @@ interface ControlPanelProps {
     onBlockTask: (agentId: string) => void;
     onClearBlocker: (agentId: string) => void;
     onCompleteTask: (agentId: string) => void;
+    onFailTask: (agentId: string) => void;
+    onRetryTask: (agentId: string) => void;
+    onCancelTask: (taskId: string) => void;
     errorMsg: string | null;
 }
 
@@ -33,6 +36,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     onBlockTask,
     onClearBlocker,
     onCompleteTask,
+    onFailTask,
+    onRetryTask,
+    onCancelTask,
     errorMsg
 }) => {
     const occupiableLocations = OFFICE_LOCATIONS.filter(loc => loc.canOccupy);
@@ -235,6 +241,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                 <button onClick={() => onAdvanceTask(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Advance Task</button>
                                 <button onClick={() => onPauseTask(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Pause Task</button>
                                 <button onClick={() => onBlockTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#d32f2f', border: 'none' }}>Mark Blocked</button>
+                                <button onClick={() => onFailTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#d32f2f', border: 'none' }}>Fail Task</button>
                                 <button onClick={() => onCompleteTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#388e3c', border: 'none' }}>Complete Task</button>
                             </>
                         )}
@@ -243,13 +250,25 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             <>
                                 <button onClick={() => onResumeTask(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Resume Task</button>
                                 <button onClick={() => onBlockTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#d32f2f', border: 'none' }}>Mark Blocked</button>
+                                <button onClick={() => onFailTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#d32f2f', border: 'none' }}>Fail Task</button>
                             </>
                         )}
 
                         {activeTask && activeTask.status === 'blocked' && (
                             <>
                                 <button onClick={() => onClearBlocker(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Clear Blocker</button>
+                                <button onClick={() => onFailTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#d32f2f', border: 'none' }}>Fail Task</button>
                             </>
+                        )}
+
+                        {activeTask && activeTask.status === 'failed' && (
+                            <>
+                                <button onClick={() => onRetryTask(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Retry Task</button>
+                            </>
+                        )}
+
+                        {activeTask && (
+                             <button onClick={() => onCancelTask(activeTask.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#e53935', border: 'none', marginTop: '10px' }}>Cancel Task</button>
                         )}
                     </div>
                 </div>
@@ -293,6 +312,8 @@ function getTaskStatusColor(status: string) {
         case 'paused': return '#9e9e9e';
         case 'completed': return '#aeea00';
         case 'blocked': return '#ef5350';
+        case 'failed': return '#d32f2f';
+        case 'cancelled': return '#b0bec5';
         default: return '#fff';
     }
 }

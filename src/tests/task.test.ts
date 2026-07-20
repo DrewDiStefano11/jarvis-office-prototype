@@ -7,19 +7,23 @@ import {
     blockTask,
     clearBlocker,
     completeTask,
-    resetSimulation
+    resetSimulation,
+    failTask,
+    retryTask,
+    cancelTask
 } from '../domain/task';
 import { INITIAL_AGENTS, INITIAL_TASKS } from '../domain/seed';
 import { handleMovementCompleted } from '../domain/state';
 
 describe('Task Simulation Domain Logic', () => {
     it('starts a queued task and updates agent status', () => {
-        const { newAgents, newTasks, error } = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        const result = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
 
-        expect(error).toBeUndefined();
+        expect(result.success).toBe(true);
+        if (!result.success) return;
 
-        const jarvis = newAgents.find(a => a.id === 'jarvis')!;
-        const task = newTasks.find(t => t.assignedAgentId === 'jarvis')!;
+        const jarvis = result.newAgents.find(a => a.id === 'jarvis')!;
+        const task = result.newTasks.find(t => t.assignedAgentId === 'jarvis')!;
 
         expect(jarvis.currentStatus).toBe('working');
         expect(jarvis.currentTaskId).toBe(task.id);
@@ -30,60 +34,73 @@ describe('Task Simulation Domain Logic', () => {
 
     it('prevents starting a task when none are queued', () => {
         // First start and complete a task to empty the queue
-        let res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
-        res = completeTask('jarvis', res.newAgents, res.newTasks);
+        const res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!res.success) throw new Error('Start failed');
+        const compRes = completeTask('jarvis', res.newAgents, res.newTasks);
+        if (!compRes.success) throw new Error('Complete failed');
 
         // Try starting again
-        const { error } = startNextTask('jarvis', res.newAgents, res.newTasks);
-        expect(error).toBeDefined();
-        expect(error).toContain('No queued tasks');
+        const failRes = startNextTask('jarvis', compRes.newAgents, compRes.newTasks);
+        expect(failRes.success).toBe(false);
+        if (!failRes.success) {
+            expect(failRes.error).toContain('No queued tasks');
+        }
     });
 
     it('advances progress deterministically based on steps', () => {
-        let res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
 
-        res = advanceTask('jarvis', res.newAgents, res.newTasks);
+        const advRes = advanceTask('jarvis', startRes.newAgents, startRes.newTasks);
+        if (!advRes.success) throw new Error('Advance failed');
 
-        let task = res.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        let task = advRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
         expect(task.currentStepIndex).toBe(1);
         expect(task.progress).toBe(50); // 1 / 2 steps * 100
 
         // Advance again to complete
-        res = advanceTask('jarvis', res.newAgents, res.newTasks);
-        task = res.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        const advRes2 = advanceTask('jarvis', advRes.newAgents, advRes.newTasks);
+        if (!advRes2.success) throw new Error('Advance 2 failed');
+
+        task = advRes2.newTasks.find(t => t.id === 'task_jarvis_1')!;
         expect(task.currentStepIndex).toBe(1); // The step index shouldn't matter now that it's completed, but the function completes the task
         expect(task.progress).toBe(100);
         expect(task.status).toBe('completed');
     });
 
     it('pauses and resumes a task', () => {
-        let res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
 
-        res = pauseTask('jarvis', res.newAgents, res.newTasks);
+        const pauseRes = pauseTask('jarvis', startRes.newAgents, startRes.newTasks);
+        if (!pauseRes.success) throw new Error('Pause failed');
 
-        let jarvis = res.newAgents.find(a => a.id === 'jarvis')!;
-        let task = res.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        let jarvis = pauseRes.newAgents.find(a => a.id === 'jarvis')!;
+        let task = pauseRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
 
         expect(jarvis.currentStatus).toBe('paused');
         expect(task.status).toBe('paused');
 
         // Resume
-        res = resumeTask('jarvis', res.newAgents, res.newTasks);
+        const resumeRes = resumeTask('jarvis', pauseRes.newAgents, pauseRes.newTasks);
+        if (!resumeRes.success) throw new Error('Resume failed');
 
-        jarvis = res.newAgents.find(a => a.id === 'jarvis')!;
-        task = res.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        jarvis = resumeRes.newAgents.find(a => a.id === 'jarvis')!;
+        task = resumeRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
 
         expect(jarvis.currentStatus).toBe('working');
         expect(task.status).toBe('active');
     });
 
     it('blocks and clears blockers from a task', () => {
-        let res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
 
-        res = blockTask('jarvis', 'Network Error', res.newAgents, res.newTasks);
+        const blockRes = blockTask('jarvis', 'Network Error', startRes.newAgents, startRes.newTasks);
+        if (!blockRes.success) throw new Error('Block failed');
 
-        let jarvis = res.newAgents.find(a => a.id === 'jarvis')!;
-        let task = res.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        let jarvis = blockRes.newAgents.find(a => a.id === 'jarvis')!;
+        let task = blockRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
 
         expect(jarvis.currentStatus).toBe('error');
         expect(jarvis.currentBlocker).toBe('Network Error');
@@ -91,10 +108,11 @@ describe('Task Simulation Domain Logic', () => {
         expect(task.blocker).toBe('Network Error');
 
         // Clear blocker
-        res = clearBlocker('jarvis', res.newAgents, res.newTasks);
+        const clearRes = clearBlocker('jarvis', blockRes.newAgents, blockRes.newTasks);
+        if (!clearRes.success) throw new Error('Clear failed');
 
-        jarvis = res.newAgents.find(a => a.id === 'jarvis')!;
-        task = res.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        jarvis = clearRes.newAgents.find(a => a.id === 'jarvis')!;
+        task = clearRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
 
         expect(jarvis.currentStatus).toBe('working');
         expect(jarvis.currentBlocker).toBeNull();
@@ -103,39 +121,113 @@ describe('Task Simulation Domain Logic', () => {
     });
 
     it('completes a task explicitly', () => {
-        let res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
 
-        res = completeTask('jarvis', res.newAgents, res.newTasks);
+        const compRes = completeTask('jarvis', startRes.newAgents, startRes.newTasks);
+        if (!compRes.success) throw new Error('Complete failed');
 
-        const jarvis = res.newAgents.find(a => a.id === 'jarvis')!;
-        const task = res.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        const jarvis = compRes.newAgents.find(a => a.id === 'jarvis')!;
+        const task = compRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
 
         expect(jarvis.currentStatus).toBe('idle');
         expect(jarvis.currentTaskId).toBeNull();
 
         expect(task.status).toBe('completed');
         expect(task.progress).toBe(100);
-        expect(task.completedAt).toBeDefined();
+    });
+
+    it('fails and retries a task', () => {
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
+
+        const failRes = failTask('jarvis', 'Fatal error', startRes.newAgents, startRes.newTasks);
+        if (!failRes.success) throw new Error('Fail failed');
+
+        let jarvis = failRes.newAgents.find(a => a.id === 'jarvis')!;
+        let task = failRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        expect(jarvis.currentStatus).toBe('error');
+        expect(task.status).toBe('failed');
+        expect(task.blocker).toBe('Fatal error');
+
+        const retryRes = retryTask('jarvis', failRes.newAgents, failRes.newTasks);
+        if (!retryRes.success) throw new Error('Retry failed');
+
+        jarvis = retryRes.newAgents.find(a => a.id === 'jarvis')!;
+        task = retryRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
+        expect(jarvis.currentStatus).toBe('idle');
+        expect(jarvis.currentTaskId).toBeNull();
+        expect(task.status).toBe('queued');
+        expect(task.progress).toBe(0);
+        expect(task.currentStepIndex).toBe(0);
+        expect(task.blocker).toBeNull();
+    });
+
+    it('cancels a task', () => {
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
+
+        const cancelRes = cancelTask('task_jarvis_1', startRes.newAgents, startRes.newTasks);
+        if (!cancelRes.success) throw new Error('Cancel failed');
+
+        const jarvis = cancelRes.newAgents.find(a => a.id === 'jarvis')!;
+        const task = cancelRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
+
+        expect(jarvis.currentStatus).toBe('idle');
+        expect(jarvis.currentTaskId).toBeNull();
+        expect(task.status).toBe('cancelled');
+    });
+
+    it('validates invalid destination rejections', () => {
+        // We modify INITIAL_TASKS in an isolated way for the test to point to an invalid dest
+        const testTasks = [...INITIAL_TASKS];
+        testTasks[0] = { ...testTasks[0], steps: [{ id: 'test_step', description: 'test', destinationId: 'agent_builder_lab' }] };
+
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, testTasks);
+        if (!startRes.success) throw new Error('Start failed');
+
+        const advRes = advanceTask('jarvis', startRes.newAgents, startRes.newTasks);
+        expect(advRes.success).toBe(false);
+        if (!advRes.success) {
+            expect(advRes.error).toContain('Invalid destination');
+        }
+    });
+
+    it('prevents multiple active tasks for one agent', () => {
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
+
+        // Force a second queued task into the queue for Jarvis
+        const testTasks = [...startRes.newTasks];
+        testTasks.push({ ...testTasks[0], id: 'task_jarvis_duplicate', status: 'queued' });
+
+        const startRes2 = startNextTask('jarvis', startRes.newAgents, testTasks);
+        expect(startRes2.success).toBe(false);
+        if (!startRes2.success) {
+            expect(startRes2.error).toContain('Agent already has an active task');
+        }
     });
 
     it('rejects invalid lifecycle transitions', () => {
         // Cannot advance a queued task
         const advanceRes = advanceTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
-        expect(advanceRes.error).toBeDefined();
+        expect(advanceRes.success).toBe(false);
 
         // Cannot pause a queued task
         const pauseRes = pauseTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
-        expect(pauseRes.error).toBeDefined();
+        expect(pauseRes.success).toBe(false);
 
         // Cannot resume an active task
-        const res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
-        const resumeRes = resumeTask('jarvis', res.newAgents, res.newTasks);
-        expect(resumeRes.error).toBeDefined();
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
+        const resumeRes = resumeTask('jarvis', startRes.newAgents, startRes.newTasks);
+        expect(resumeRes.success).toBe(false);
     });
 
     it('stale movement completion should not overwrite active task status', () => {
         // Start task for Jarvis
         const res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!res.success) throw new Error('Start failed');
         let agents = res.newAgents;
 
         // Simulate a stale movement command completing for Jarvis
@@ -154,13 +246,15 @@ describe('Task Simulation Domain Logic', () => {
     });
 
     it('resets simulation cleanly to seed state', () => {
-        let res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
-        res = advanceTask('jarvis', res.newAgents, res.newTasks);
+        const startRes = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!startRes.success) throw new Error('Start failed');
+        const advRes = advanceTask('jarvis', startRes.newAgents, startRes.newTasks);
+        if (!advRes.success) throw new Error('Advance failed');
 
         // Mutate agent position to simulate movement
-        res.newAgents = res.newAgents.map(a => a.id === 'jarvis' ? { ...a, currentLocation: 'meeting_room' } : a);
+        advRes.newAgents = advRes.newAgents.map(a => a.id === 'jarvis' ? { ...a, currentLocation: 'meeting_room' } : a);
 
-        const resetRes = resetSimulation(res.newAgents);
+        const resetRes = resetSimulation(advRes.newAgents);
 
         const jarvis = resetRes.newAgents.find(a => a.id === 'jarvis')!;
         const task = resetRes.newTasks.find(t => t.id === 'task_jarvis_1')!;
@@ -185,10 +279,11 @@ describe('Task Simulation Domain Logic', () => {
     });
 
     it('ensures one agents task changes do not alter another agent', () => {
-        const { newAgents, newTasks } = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        const res = startNextTask('jarvis', INITIAL_AGENTS, INITIAL_TASKS);
+        if (!res.success) throw new Error('Start failed');
 
-        const atlas = newAgents.find(a => a.id === 'atlas')!;
-        const atlasTask = newTasks.find(t => t.assignedAgentId === 'atlas')!;
+        const atlas = res.newAgents.find(a => a.id === 'atlas')!;
+        const atlasTask = res.newTasks.find(t => t.assignedAgentId === 'atlas')!;
 
         expect(atlas.currentStatus).toBe('idle');
         expect(atlasTask.status).toBe('queued');

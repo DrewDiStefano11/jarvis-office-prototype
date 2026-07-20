@@ -6,7 +6,7 @@ import { Agent, Task } from './types';
 import { EventBus } from './game/EventBus';
 import { validateMovementCommand } from './domain/navigation';
 import { handleMovementCommand, handleMovementCompleted, handleResetAll as handleResetAllDomain } from './domain/state';
-import { advanceTask, blockTask, clearBlocker, completeTask, pauseTask, resetSimulation, resumeTask, startNextTask } from './domain/task';
+import { advanceTask, blockTask, clearBlocker, completeTask, pauseTask, resetSimulation, resumeTask, startNextTask, failTask, retryTask, cancelTask } from './domain/task';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
@@ -74,16 +74,15 @@ function App() {
     const handleResetAll = () => {
         setErrorMsg(null);
 
-        setAgents(prevAgents => {
-            const domainResult = handleResetAllDomain(prevAgents);
-            activeCommands.current = domainResult.newActiveCommands;
+        // First apply movement reset (which handles positioning and command invalidation)
+        const domainResult = handleResetAllDomain(agents);
+        activeCommands.current = domainResult.newActiveCommands;
 
-            // Also reset task simulation
-            const { newAgents, newTasks } = resetSimulation(domainResult.newAgents);
-            setTasks(newTasks);
+        // Then apply task reset completely pure of previous setAgents
+        const resetResult = resetSimulation(domainResult.newAgents);
 
-            return newAgents;
-        });
+        setAgents(resetResult.newAgents);
+        setTasks(resetResult.newTasks);
 
         EventBus.emit('react-reset-all');
     };
@@ -92,21 +91,43 @@ function App() {
     const handleStartNextTask = (agentId: string) => {
         setErrorMsg(null);
         const result = startNextTask(agentId, agents, tasks);
-        if (result.error) {
+        if (!result.success) {
             setErrorMsg(result.error);
             return;
         }
-        setAgents(result.newAgents);
+
+        let newAgents = result.newAgents;
+
+        // If the step has a destination, issue a movement command immediately.
+        const task = tasks.find(t => t.assignedAgentId === agentId && t.status === 'active');
+        if (task) {
+             const nextStepIndex = task.currentStepIndex + 1;
+             const step = task.steps[nextStepIndex];
+             if (step && step.destinationId) {
+                  const moveResult = handleMovementCommand(agentId, step.destinationId, commandIdCounter.current, newAgents, activeCommands.current);
+                  commandIdCounter.current = moveResult.nextCommandId;
+                  activeCommands.current = moveResult.newActiveCommands;
+                  newAgents = moveResult.newAgents;
+                  EventBus.emit('react-move-agent', { agentId, locationId: step.destinationId, commandId: moveResult.nextCommandId });
+             }
+        }
+
+        setAgents(newAgents);
         setTasks(result.newTasks);
     };
 
     const handleAdvanceTask = (agentId: string) => {
         setErrorMsg(null);
         const result = advanceTask(agentId, agents, tasks);
-        if (result.error) {
+        if (!result.success) {
             setErrorMsg(result.error);
             return;
         }
+
+        // Invalidate current movement command upon failing
+        activeCommands.current = { ...activeCommands.current, [agentId]: commandIdCounter.current + 1 };
+        commandIdCounter.current++;
+
         setAgents(result.newAgents);
         setTasks(result.newTasks);
     };
@@ -114,10 +135,15 @@ function App() {
     const handlePauseTask = (agentId: string) => {
         setErrorMsg(null);
         const result = pauseTask(agentId, agents, tasks);
-        if (result.error) {
+        if (!result.success) {
             setErrorMsg(result.error);
             return;
         }
+
+        // Find assigned agent to invalidate their movement commands
+        activeCommands.current = { ...activeCommands.current, [agentId]: commandIdCounter.current + 1 };
+        commandIdCounter.current++;
+
         setAgents(result.newAgents);
         setTasks(result.newTasks);
     };
@@ -125,10 +151,15 @@ function App() {
     const handleResumeTask = (agentId: string) => {
         setErrorMsg(null);
         const result = resumeTask(agentId, agents, tasks);
-        if (result.error) {
+        if (!result.success) {
             setErrorMsg(result.error);
             return;
         }
+
+        // Find assigned agent to invalidate their movement commands
+        activeCommands.current = { ...activeCommands.current, [agentId]: commandIdCounter.current + 1 };
+        commandIdCounter.current++;
+
         setAgents(result.newAgents);
         setTasks(result.newTasks);
     };
@@ -136,7 +167,7 @@ function App() {
     const handleBlockTask = (agentId: string) => {
         setErrorMsg(null);
         const result = blockTask(agentId, "Blocked by user", agents, tasks);
-        if (result.error) {
+        if (!result.success) {
             setErrorMsg(result.error);
             return;
         }
@@ -147,7 +178,7 @@ function App() {
     const handleClearBlocker = (agentId: string) => {
         setErrorMsg(null);
         const result = clearBlocker(agentId, agents, tasks);
-        if (result.error) {
+        if (!result.success) {
             setErrorMsg(result.error);
             return;
         }
@@ -158,7 +189,40 @@ function App() {
     const handleCompleteTask = (agentId: string) => {
         setErrorMsg(null);
         const result = completeTask(agentId, agents, tasks);
-        if (result.error) {
+        if (!result.success) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleFailTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = failTask(agentId, "Failed by user", agents, tasks);
+        if (!result.success) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleRetryTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = retryTask(agentId, agents, tasks);
+        if (!result.success) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleCancelTask = (taskId: string) => {
+        setErrorMsg(null);
+        const result = cancelTask(taskId, agents, tasks);
+        if (!result.success) {
             setErrorMsg(result.error);
             return;
         }
@@ -206,6 +270,9 @@ function App() {
                     onBlockTask={handleBlockTask}
                     onClearBlocker={handleClearBlocker}
                     onCompleteTask={handleCompleteTask}
+                    onFailTask={handleFailTask}
+                    onRetryTask={handleRetryTask}
+                    onCancelTask={handleCancelTask}
                     errorMsg={errorMsg}
                 />
             </div>

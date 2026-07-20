@@ -193,9 +193,7 @@ export const INITIAL_TASKS: Task[] = [
             { id: 'step_j1_1', description: 'Read summary document', destinationId: 'jarvis_desk' },
             { id: 'step_j1_2', description: 'Sign approval', destinationId: 'delivery_point' }
         ],
-        blocker: null,
-        createdAt: 1000,
-        completedAt: null
+        blocker: null
     },
     {
         id: 'task_atlas_1',
@@ -211,9 +209,7 @@ export const INITIAL_TASKS: Task[] = [
             { id: 'step_a1_2', description: 'Compile findings', destinationId: 'atlas_desk' },
             { id: 'step_a1_3', description: 'Present findings', destinationId: 'meeting_room' }
         ],
-        blocker: null,
-        createdAt: 1001,
-        completedAt: null
+        blocker: null
     },
     {
         id: 'task_scout_1',
@@ -228,9 +224,7 @@ export const INITIAL_TASKS: Task[] = [
             { id: 'step_s1_1', description: 'Check server logs', destinationId: 'scout_desk' },
             { id: 'step_s1_2', description: 'Verify network stability', destinationId: 'scout_desk' }
         ],
-        blocker: null,
-        createdAt: 1002,
-        completedAt: null
+        blocker: null
     },
     {
         id: 'task_archive_1',
@@ -246,9 +240,7 @@ export const INITIAL_TASKS: Task[] = [
             { id: 'step_ar1_2', description: 'Sort files at desk', destinationId: 'archive_desk' },
             { id: 'step_ar1_3', description: 'Return to storage', destinationId: 'archive_storage' }
         ],
-        blocker: null,
-        createdAt: 1003,
-        completedAt: null
+        blocker: null
     },
     {
         id: 'task_sentinel_1',
@@ -264,8 +256,6 @@ export const INITIAL_TASKS: Task[] = [
             { id: 'step_se1_2', description: 'Approve findings', destinationId: 'approval_terminal' },
             { id: 'step_se1_3', description: 'Finalize report', destinationId: 'sentinel_desk' }
         ],
-        blocker: null,
-        createdAt: 1004,
-        completedAt: null
+        blocker: null
     }
 ];
