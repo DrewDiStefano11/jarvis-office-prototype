@@ -28,14 +28,19 @@ export function createNotificationDeduplicationKey(
 
 /**
  * Deduplicates a list of notifications, keeping only the latest of each deduplication key.
- * Preserves the order of appearance of the newest items.
+ * Ordering contract: Retained descriptors are ordered by their latest occurrence in the input array.
+ * If a deduplication key appears multiple times, its position is moved to the end of the list.
+ * Does not mutate the input array.
  */
 export function deduplicateNotifications(
   notifications: NotificationDescriptor[]
 ): NotificationDescriptor[] {
   const map = new Map<string, NotificationDescriptor>();
-  // Processing in order means later occurrences of the same key will overwrite earlier ones.
   for (const notification of notifications) {
+    // Delete existing to ensure the new insertion moves it to the end of the Map's iteration order
+    if (map.has(notification.deduplicationKey)) {
+      map.delete(notification.deduplicationKey);
+    }
     map.set(notification.deduplicationKey, notification);
   }
   return Array.from(map.values());
@@ -50,39 +55,40 @@ export function shouldPlaySound(
   soundManifest: Record<string, SoundDefinition>,
   windowIsFocused: boolean
 ): boolean {
+  // 1. If visualOnlyFeedbackMode is enabled, play no sound.
+  if (preferences.visualOnlyFeedbackMode) {
+    return false;
+  }
+
+  // 2. If masterSoundEnabled is false, play no sound.
+  if (!preferences.masterSoundEnabled) {
+    return false;
+  }
+
+  // 3. If the notification has no valid sound, play no sound.
   if (!notification.soundId) return false;
 
   const soundDef = soundManifest[notification.soundId];
   if (!soundDef) return false;
 
-  // Critical alerts behavior
-  if (soundDef.priority === 'critical') {
+  // 4 & 5. Evaluate lower precedence rules (unfocused and reduced audio)
+  let wouldPlay = true;
+
+  if (preferences.muteWhileUnfocused && !windowIsFocused) {
+    wouldPlay = false;
+  } else if (preferences.reducedAudioMode && (soundDef.priority === 'low' || soundDef.priority === 'normal')) {
+    wouldPlay = false;
+  }
+
+  // 6. Apply critical-alert behavior only within the remaining permitted audio policy.
+  // This means it can bypass unfocused or reduced audio, but NOT visualOnly or master mute (which were returned early)
+  if (!wouldPlay && soundDef.priority === 'critical') {
     if (preferences.criticalAlertBehavior === 'always_play') {
       return true;
     }
   }
 
-  // Visual only mode overrides general sounds
-  if (preferences.visualOnlyFeedbackMode) {
-    return false;
-  }
-
-  // Master sound disabled
-  if (!preferences.masterSoundEnabled) {
-    return false;
-  }
-
-  // Mute while unfocused check
-  if (preferences.muteWhileUnfocused && !windowIsFocused) {
-    return false;
-  }
-
-  // Reduced audio mode check - filter out non-essential sounds
-  if (preferences.reducedAudioMode && (soundDef.priority === 'low' || soundDef.priority === 'normal')) {
-    return false;
-  }
-
-  return true;
+  return wouldPlay;
 }
 
 /**

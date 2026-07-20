@@ -3,7 +3,7 @@ import { SoundDefinition } from './soundTypes';
 export const soundManifest: Record<string, SoundDefinition> = {
   task_started_01: {
     id: 'task_started_01',
-    filePath: 'public/assets/office/sounds/task_started.wav',
+    filePath: 'assets/office/sounds/task_started.wav',
     category: 'task_started',
     defaultVolume: 0.8,
     loop: false,
@@ -16,7 +16,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   task_completed_01: {
     id: 'task_completed_01',
-    filePath: 'public/assets/office/sounds/task_completed.wav',
+    filePath: 'assets/office/sounds/task_completed.wav',
     category: 'task_completed',
     defaultVolume: 0.8,
     loop: false,
@@ -29,7 +29,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   task_paused_01: {
     id: 'task_paused_01',
-    filePath: 'public/assets/office/sounds/task_paused.wav',
+    filePath: 'assets/office/sounds/task_paused.wav',
     category: 'task_paused',
     defaultVolume: 0.6,
     loop: false,
@@ -42,7 +42,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   task_blocked_01: {
     id: 'task_blocked_01',
-    filePath: 'public/assets/office/sounds/task_blocked.wav',
+    filePath: 'assets/office/sounds/task_blocked.wav',
     category: 'task_blocked',
     defaultVolume: 0.8,
     loop: false,
@@ -55,7 +55,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   task_failed_01: {
     id: 'task_failed_01',
-    filePath: 'public/assets/office/sounds/task_failed.wav',
+    filePath: 'assets/office/sounds/task_failed.wav',
     category: 'task_failed',
     defaultVolume: 0.9,
     loop: false,
@@ -68,7 +68,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   approval_requested_01: {
     id: 'approval_requested_01',
-    filePath: 'public/assets/office/sounds/approval_requested.wav',
+    filePath: 'assets/office/sounds/approval_requested.wav',
     category: 'approval_requested',
     defaultVolume: 0.8,
     loop: false,
@@ -81,7 +81,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   notification_received_01: {
     id: 'notification_received_01',
-    filePath: 'public/assets/office/sounds/notification_received.wav',
+    filePath: 'assets/office/sounds/notification_received.wav',
     category: 'notification_received',
     defaultVolume: 0.5,
     loop: false,
@@ -94,7 +94,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   agent_selected_01: {
     id: 'agent_selected_01',
-    filePath: 'public/assets/office/sounds/agent_selected.wav',
+    filePath: 'assets/office/sounds/agent_selected.wav',
     category: 'agent_selected',
     defaultVolume: 0.6,
     loop: false,
@@ -107,7 +107,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   room_transition_01: {
     id: 'room_transition_01',
-    filePath: 'public/assets/office/sounds/room_transition.wav',
+    filePath: 'assets/office/sounds/room_transition.wav',
     category: 'room_transition',
     defaultVolume: 0.4,
     loop: false,
@@ -120,7 +120,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   system_warning_01: {
     id: 'system_warning_01',
-    filePath: 'public/assets/office/sounds/system_warning.wav',
+    filePath: 'assets/office/sounds/system_warning.wav',
     category: 'system_warning',
     defaultVolume: 0.9,
     loop: false,
@@ -133,7 +133,7 @@ export const soundManifest: Record<string, SoundDefinition> = {
   },
   emergency_stop_01: {
     id: 'emergency_stop_01',
-    filePath: 'public/assets/office/sounds/emergency_stop.wav',
+    filePath: 'assets/office/sounds/emergency_stop.wav',
     category: 'emergency_stop',
     defaultVolume: 1.0,
     loop: false,

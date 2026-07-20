@@ -18,21 +18,28 @@ describe('Sound Manifest and Validation', () => {
     expect(errors).toHaveLength(0);
   });
 
-  it('should detect invalid volume levels in validation', () => {
+  it('should detect invalid properties in validation (volume, duration, cooldown, path)', () => {
     const invalidManifest = {
       test_sound: {
         id: 'test_sound',
-        filePath: 'path/to/sound.wav',
+        filePath: 'public/path/to/sound.wav', // invalid prefix
         category: 'system_warning' as const,
         defaultVolume: 1.5, // Invalid, > 1
         loop: false,
         priority: 'normal' as const,
         accessibilityAlternative: 'Test',
-        placeholder: true
+        placeholder: true,
+        durationMs: -10, // Invalid
+        cooldownPolicyMs: 0, // Invalid
+        maxSimultaneous: -1 // Invalid
       }
     };
     const issues = validateSoundManifest(invalidManifest);
     expect(issues.some(i => i.message.includes('Invalid defaultVolume'))).toBe(true);
+    expect(issues.some(i => i.message.includes("must not contain the 'public/'"))).toBe(true);
+    expect(issues.some(i => i.message.includes('durationMs must be positive'))).toBe(true);
+    expect(issues.some(i => i.message.includes('cooldownPolicyMs must be positive'))).toBe(true);
+    expect(issues.some(i => i.message.includes('maxSimultaneous must be positive'))).toBe(true);
   });
 
   it('should fail if sound ID is missing in manifest for notification', () => {
@@ -52,10 +59,10 @@ describe('Sound Manifest and Validation', () => {
     expect(issues.some(i => i.message.includes("missing sound ID: 'non_existent_sound'"))).toBe(true);
   });
 
-  it('should require message on critical notifications', () => {
+  it('should require message on critical and recovery-required notifications', () => {
     const notifications: NotificationDescriptor[] = [{
-      type: 'blocking_alert',
-      severity: 'critical',
+      type: 'recovery_required',
+      severity: 'warning',
       title: 'Critical Failure',
       message: '', // Invalid, missing detailed message
       dismissible: false,
@@ -65,7 +72,7 @@ describe('Sound Manifest and Validation', () => {
     }];
 
     const issues = validateNotificationDescriptors(notifications, soundManifest);
-    expect(issues.some(i => i.message.includes("missing a detailed message alternative"))).toBe(true);
+    expect(issues.some(i => i.message.includes("must provide non-audio readable text alternatives"))).toBe(true);
   });
 });
 
@@ -107,7 +114,7 @@ describe('Notification Rules (Pure Helpers)', () => {
     expect(shouldPlaySound(notification, { ...defaultPrefs, visualOnlyFeedbackMode: true }, soundManifest, true)).toBe(false);
   });
 
-  it('should always play critical sounds if preference dictates, even if muted or unfocused', () => {
+  it('should respect critical alerts over unfocused, but NOT over visual-only or master mute', () => {
     const notification: NotificationDescriptor = {
       type: 'blocking_alert',
       severity: 'critical',
@@ -120,10 +127,17 @@ describe('Notification Rules (Pure Helpers)', () => {
       deduplicationKey: 'key'
     };
 
-    const mutedPrefs = { ...defaultPrefs, masterSoundEnabled: false };
+    // 1. Critical bypasses unfocused
+    expect(shouldPlaySound(notification, { ...defaultPrefs, muteWhileUnfocused: true }, soundManifest, false)).toBe(true);
 
-    // Even if master disabled and unfocused, always play critical
-    expect(shouldPlaySound(notification, mutedPrefs, soundManifest, false)).toBe(true);
+    // 2. Critical bypasses reduced audio mode
+    expect(shouldPlaySound(notification, { ...defaultPrefs, reducedAudioMode: true }, soundManifest, true)).toBe(true);
+
+    // 3. Visual only suppresses critical
+    expect(shouldPlaySound(notification, { ...defaultPrefs, visualOnlyFeedbackMode: true }, soundManifest, true)).toBe(false);
+
+    // 4. Master mute suppresses critical
+    expect(shouldPlaySound(notification, { ...defaultPrefs, masterSoundEnabled: false }, soundManifest, true)).toBe(false);
   });
 
   it('should suppress noncritical sounds in reduced audio mode', () => {
@@ -143,20 +157,23 @@ describe('Notification Rules (Pure Helpers)', () => {
     expect(shouldPlaySound(notification, reducedAudioPrefs, soundManifest, true)).toBe(false);
   });
 
-  it('should deduplicate notifications using their key', () => {
+  it('should deduplicate notifications using their key, maintaining latest-occurrence order', () => {
     const key1 = createNotificationDeduplicationKey('task_failed', 'task-1');
     const key2 = createNotificationDeduplicationKey('task_started', 'task-2');
 
     const notifs: NotificationDescriptor[] = [
-      { type: 'error', severity: 'error', title: 'A', message: 'A', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 },
+      { type: 'error', severity: 'error', title: 'A1', message: 'A1', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 },
       { type: 'informational', severity: 'info', title: 'B', message: 'B', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key2 },
-      { type: 'error', severity: 'error', title: 'C', message: 'C', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 }
+      { type: 'error', severity: 'error', title: 'A2', message: 'A2', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 }
     ];
 
+    // Original order: A1, B, A2
+    // Newest-occurrence order should be: B, A2
     const deduped = deduplicateNotifications(notifs);
     expect(deduped).toHaveLength(2);
-    // Last occurrence should overwrite the first
-    expect(deduped.find(n => n.deduplicationKey === key1)?.title).toBe('C');
+
+    expect(deduped[0].title).toBe('B');
+    expect(deduped[1].title).toBe('A2'); // The latest A has overwritten the first, and moved to the end
   });
 
   it('should resolve presentation correctly without mutation', () => {
