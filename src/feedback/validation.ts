@@ -97,6 +97,50 @@ export function validateNotificationDescriptors(
       });
     }
 
+    if (!notification.title || notification.title.trim() === '') {
+      issues.push({
+        id: contextId,
+        type: 'error',
+        message: `Notification is missing a title.`
+      });
+    }
+
+    if (!notification.message || notification.message.trim() === '') {
+      issues.push({
+        id: contextId,
+        type: 'error',
+        message: `Notification is missing a message.`
+      });
+    }
+
+    const validTypes = ['informational', 'success', 'warning', 'error', 'blocking_alert', 'approval_request', 'recovery_required'];
+    if (!validTypes.includes(notification.type)) {
+      issues.push({
+        id: contextId,
+        type: 'error',
+        message: `Invalid notification type: '${notification.type}'.`
+      });
+    }
+
+    const validSeverities = ['info', 'success', 'warning', 'error', 'critical'];
+    if (!validSeverities.includes(notification.severity)) {
+      issues.push({
+        id: contextId,
+        type: 'error',
+        message: `Invalid notification severity: '${notification.severity}'.`
+      });
+    }
+
+    const validPersistence = ['ephemeral', 'persistent_until_dismissed', 'persistent_until_resolved'];
+    if (!validPersistence.includes(notification.persistenceExpectation)) {
+      issues.push({
+        id: contextId,
+        type: 'error',
+        message: `Invalid notification persistenceExpectation: '${notification.persistenceExpectation}'.`
+      });
+    }
+
+    // Relying only on sound/color logic constraint check via textual alternative fields existing
     if ((notification.severity === 'critical' || notification.type === 'recovery_required') && (!notification.message || notification.message.trim() === '')) {
       issues.push({
         id: contextId,
@@ -105,11 +149,36 @@ export function validateNotificationDescriptors(
       });
     }
 
-    if (notification.type === 'recovery_required' && notification.severity !== 'warning' && notification.severity !== 'error') {
+    if (notification.type === 'recovery_required') {
+      if (notification.severity !== 'warning' && notification.severity !== 'error') {
+         issues.push({
+          id: contextId,
+          type: 'error',
+          message: `Recovery required notifications must use 'warning' or 'error' severity. Found: '${notification.severity}'`
+        });
+      }
+      if (!notification.deduplicationKey.includes('incident:') && !notification.deduplicationKey.includes('workflow:')) {
+        issues.push({
+          id: contextId,
+          type: 'warning',
+          message: `Recovery required notifications should typically use a stable incident or workflow identity in their deduplication key.`
+        });
+      }
+    }
+
+    if (notification.type !== 'recovery_required' && notification.severity === 'critical' && notification.persistenceExpectation !== 'persistent_until_resolved') {
+      issues.push({
+        id: contextId,
+        type: 'warning',
+        message: `Emergency-stop / critical notifications typically should persist until resolved.`
+      });
+    }
+
+    if (notification.type !== 'recovery_required' && notification.deduplicationKey.includes('recovery-')) {
        issues.push({
         id: contextId,
-        type: 'error',
-        message: `Recovery required notifications must use 'warning' or 'error' severity. Found: '${notification.severity}'`
+        type: 'warning',
+        message: `Emergency-stop incorrectly sharing recovery deduplication behavior.`
       });
     }
   }

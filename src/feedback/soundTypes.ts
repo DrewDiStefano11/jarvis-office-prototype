@@ -39,7 +39,7 @@ export interface SoundDefinition {
 }
 
 export interface SoundPreferences {
-  /** Master toggle for all non-critical sounds. */
+  /** Master toggle for all sounds, including critical alerts. */
   masterSoundEnabled: boolean;
   /** Volume multiplier for general effects (0.0 to 1.0). */
   effectsVolume: number;
@@ -54,8 +54,11 @@ export interface SoundPreferences {
    * (e.g., 'polite' vs 'assertive' overrides).
    */
   screenReaderAnnouncement: 'polite' | 'assertive' | 'off';
-  /** Defines if critical alerts override mute settings. */
+  /**
+   * Allows critical alerts to bypass reduced-audio and unfocused-window
+   * suppression, but never visual-only mode or explicit master mute.
+   */
   criticalAlertBehavior: 'always_play' | 'respect_mute';
-  /** If true, prefer visual indicators heavily; disable general audio. */
+  /** Disables all audio and relies on visual/text alternatives. */
   visualOnlyFeedbackMode: boolean;
 }

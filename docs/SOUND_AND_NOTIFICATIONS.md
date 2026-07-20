@@ -29,18 +29,25 @@ The specification categorizes sounds and notifications by semantic meaning rathe
 ## Stable ID Conventions
 Sound definitions and notification descriptors rely on stable identifiers (e.g., `task_started_01`). These IDs link declarative notification policies to actual audio files. The notification types themselves are also deterministically tied to deduplication keys to ensure robust tracking and updates across multiple snapshots of application state without generating redundant UI elements.
 
-## Preference Model
-To accommodate accessibility, environment rules, and user focus, the sound model is strictly governed by a declarative user preference structure (`SoundPreferences`). This includes:
-- Master mute controls.
-- Distinct effect and notification volume bounds.
-- Window focus detection (muting when unfocused).
-- A reduced audio mode (suppressing low/normal priority sounds).
-- Visual-only feedback overrides.
+## Preference Model & Sound Precedence
+To accommodate accessibility, environment rules, and user focus, the sound model is strictly governed by a declarative user preference structure (`SoundPreferences`).
+Precedence is strictly enforced in this order:
+1. `visualOnlyFeedbackMode`: When enabled, absolute suppression of all sound occurs.
+2. `masterSoundEnabled`: When disabled, absolute suppression of all sound occurs.
+3. If no valid sound exists on the notification, no sound plays.
+4. Window focus (`muteWhileUnfocused`) and reduced audio (`reducedAudioMode`) policies are then evaluated.
+5. Finally, `criticalAlertBehavior` may override **only** the unfocused or reduced audio suppression. Critical alerts can **never** bypass visual-only mode or the master mute toggle.
 
-## Accessibility Requirements
+## Accessibility Requirements & Announcements
 - All non-ephemeral or non-visual data conveyed through sound must have a robust text-based alternative (e.g., screen reader announcements, detailed descriptions).
 - Visual-only modes guarantee that relying solely on UI indicators continues to meet operation constraints.
-- Screen reader policies default to polite, but escalate to assertive dynamically for warnings, errors, and critical stops.
+
+### Announcement Resolution & Material Equivalence
+The `resolveNotificationPresentation` helper strictly controls screen reader announcements and relies on a `NotificationPresentationContext` API (containing `hasBeenPresented` and `previousDescriptor`) to remain deterministic and stateless:
+- **Unchanged Duplicates:** If an incident (tracked via `deduplicationKey`) has been presented and is materially identical to the last snapshot, announcements are explicitly set to `"off"`.
+- **Material Changes:** If an incident has been presented but changes in a material way (title, message, severity, available actions), it is politely re-announced, escalating to `"assertive"` only if the severity is error or critical.
+- **New Incidents:** Completely new deduplication keys trigger standard announcement flows, with `recovery_required` and `critical` alerts asserting themselves.
+This ensures repeated React snapshots of the same ongoing task or recovery state don't flood the user with redundant assertive announcements.
 
 ## Original-Placeholder Policy
 The current implementation utilizes **silent placeholder entries**. Actual audio files (`.wav` or `.ogg`) will be stored under `public/assets/office/sounds/`.

@@ -48,3 +48,20 @@ export interface NotificationDescriptor {
   /** Optional policy: automatically expire/dismiss after N milliseconds. */
   expirationPolicyMs?: number;
 }
+
+export interface NotificationPresentationContext {
+  /** The previously presented descriptor matching this deduplication key, if any. */
+  readonly previousDescriptor?: NotificationDescriptor;
+  /** Whether a descriptor for this deduplication key has been presented before. */
+  readonly hasBeenPresented: boolean;
+}
+
+export interface ResolvedNotificationPresentation {
+  readonly shouldPlaySound: boolean;
+  readonly shouldAnnounce: boolean;
+  readonly announcementPriority: 'polite' | 'assertive' | 'off';
+  readonly announcementText: string | null;
+  readonly persistenceExpectation: PersistenceExpectation;
+  readonly visualSeverity: NotificationSeverity;
+  readonly requiresExplicitDismissal: boolean;
+}

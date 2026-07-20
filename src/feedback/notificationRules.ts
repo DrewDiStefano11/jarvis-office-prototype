@@ -1,6 +1,8 @@
 import {
   NotificationDescriptor,
+  NotificationPresentationContext,
   NotificationSeverity,
+  ResolvedNotificationPresentation,
 } from './notificationTypes';
 import { SoundDefinition, SoundPreferences } from './soundTypes';
 
@@ -32,6 +34,27 @@ export function createNotificationDeduplicationKey(
  * If a deduplication key appears multiple times, its position is moved to the end of the list.
  * Does not mutate the input array.
  */
+/**
+ * Determines whether two notifications are materially equivalent.
+ * Material equivalence ignores timestamps, exact identity references if irrelevant,
+ * and ephemeral changes that don't constitute a meaningful state update.
+ * Differences in title, message, severity, or actions are material.
+ */
+export function areNotificationsMateriallyEquivalent(
+  a: NotificationDescriptor,
+  b: NotificationDescriptor
+): boolean {
+  if (a.deduplicationKey !== b.deduplicationKey) return false;
+  if (a.type !== b.type) return false;
+  if (a.severity !== b.severity) return false;
+  if (a.title !== b.title) return false;
+  if (a.message !== b.message) return false;
+  if (a.persistenceExpectation !== b.persistenceExpectation) return false;
+  if (a.dismissible !== b.dismissible) return false;
+  // If there are ever interactive action descriptors, we would deep compare them here.
+  return true;
+}
+
 export function deduplicateNotifications(
   notifications: NotificationDescriptor[]
 ): NotificationDescriptor[] {
@@ -97,27 +120,53 @@ export function shouldPlaySound(
  */
 export function resolveNotificationPresentation(
   notification: NotificationDescriptor,
-  preferences: SoundPreferences
-): {
-  showVisualIndicator: boolean;
-  announcementText: string | null;
-  announcementPriority: 'polite' | 'assertive' | 'off';
-  requiresExplicitDismissal: boolean;
-} {
+  preferences: SoundPreferences,
+  context: NotificationPresentationContext,
+  soundManifest: Record<string, SoundDefinition>,
+  windowIsFocused: boolean
+): ResolvedNotificationPresentation {
   const isCriticalOrError = notification.severity === 'critical' || notification.severity === 'error';
   const isRecoveryRequired = notification.type === 'recovery_required';
 
+  // Determine material change status compared to previous descriptor
+  const isMateriallyChanged = context.previousDescriptor
+    ? !areNotificationsMateriallyEquivalent(notification, context.previousDescriptor)
+    : true; // New incident
+
   let announcementPriority: 'polite' | 'assertive' | 'off' = notification.screenReaderAnnouncementPriority;
+  let shouldAnnounce = true;
+
+  if (context.hasBeenPresented && !isMateriallyChanged) {
+    // Unchanged duplicate: do not announce
+    shouldAnnounce = false;
+    announcementPriority = 'off';
+  } else if (context.hasBeenPresented && isMateriallyChanged) {
+    // Materially changed same incident: announce politely by default, escalate if error/critical
+    if (isCriticalOrError) {
+      announcementPriority = 'assertive';
+    } else {
+      announcementPriority = 'polite';
+    }
+  } else if (!context.hasBeenPresented && isRecoveryRequired) {
+    // New incident for recovery is assertive
+    announcementPriority = 'assertive';
+  }
+
+  // User preferences override everything else
   if (preferences.screenReaderAnnouncement === 'off') {
     announcementPriority = 'off';
-  } else if (preferences.screenReaderAnnouncement === 'assertive') {
+    shouldAnnounce = false;
+  } else if (preferences.screenReaderAnnouncement === 'assertive' && shouldAnnounce) {
     announcementPriority = 'assertive';
   }
 
   return {
-    showVisualIndicator: true,
-    announcementText: `${notification.title}: ${notification.message}`,
+    shouldPlaySound: shouldPlaySound(notification, preferences, soundManifest, windowIsFocused),
+    shouldAnnounce,
     announcementPriority,
+    announcementText: shouldAnnounce ? `${notification.title}: ${notification.message}` : null,
+    persistenceExpectation: notification.persistenceExpectation,
+    visualSeverity: notification.severity,
     requiresExplicitDismissal: !notification.dismissible ||
                                notification.persistenceExpectation === 'persistent_until_dismissed' ||
                                notification.persistenceExpectation === 'persistent_until_resolved' ||

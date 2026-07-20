@@ -160,20 +160,29 @@ describe('Notification Rules (Pure Helpers)', () => {
   it('should deduplicate notifications using their key, maintaining latest-occurrence order', () => {
     const key1 = createNotificationDeduplicationKey('task_failed', 'task-1');
     const key2 = createNotificationDeduplicationKey('task_started', 'task-2');
+    const key3 = createNotificationDeduplicationKey('system_warning', 'sys-1');
 
     const notifs: NotificationDescriptor[] = [
       { type: 'error', severity: 'error', title: 'A1', message: 'A1', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 },
-      { type: 'informational', severity: 'info', title: 'B', message: 'B', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key2 },
-      { type: 'error', severity: 'error', title: 'A2', message: 'A2', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 }
+      { type: 'informational', severity: 'info', title: 'B1', message: 'B1', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key2 },
+      { type: 'error', severity: 'error', title: 'A2', message: 'A2', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 },
+      { type: 'warning', severity: 'warning', title: 'C1', message: 'C1', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key3 },
+      { type: 'informational', severity: 'info', title: 'B2', message: 'B2', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key2 }
     ];
 
-    // Original order: A1, B, A2
-    // Newest-occurrence order should be: B, A2
-    const deduped = deduplicateNotifications(notifs);
-    expect(deduped).toHaveLength(2);
+    const original = [...notifs];
 
-    expect(deduped[0].title).toBe('B');
-    expect(deduped[1].title).toBe('A2'); // The latest A has overwritten the first, and moved to the end
+    // Original order: A1, B1, A2, C1, B2
+    // Newest-occurrence order should be: A2, C1, B2
+    const deduped = deduplicateNotifications(notifs);
+    expect(deduped).toHaveLength(3);
+
+    expect(deduped[0].title).toBe('A2');
+    expect(deduped[1].title).toBe('C1');
+    expect(deduped[2].title).toBe('B2');
+
+    // Ensure inputs are not mutated
+    expect(notifs).toEqual(original);
   });
 
   it('should resolve presentation correctly without mutation', () => {
@@ -188,11 +197,122 @@ describe('Notification Rules (Pure Helpers)', () => {
       deduplicationKey: 'recovery-1'
     };
 
+    const context = { hasBeenPresented: false };
     const original = { ...notification };
-    const presentation = resolveNotificationPresentation(notification, defaultPrefs);
+    const presentation = resolveNotificationPresentation(notification, defaultPrefs, context, soundManifest, true);
 
     expect(presentation.requiresExplicitDismissal).toBe(true); // Due to recovery required or persistence logic
     expect(presentation.announcementPriority).toBe('assertive');
     expect(notification).toEqual(original); // Ensure input not mutated
+  });
+
+  describe('Announcement resolution and material equivalence', () => {
+    it('should politely announce ordinary informational duplicates if materially changed', () => {
+       const previous: NotificationDescriptor = {
+        type: 'informational', severity: 'info', title: 'Info', message: 'Something happened',
+        dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: 'info-1'
+      };
+      const notification = { ...previous, message: 'Something else happened' }; // Material change
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: previous }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('polite');
+    });
+
+    it('should suppress announcement for unchanged duplicates', () => {
+      const notification: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1'
+      };
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: notification }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(false);
+      expect(presentation.announcementPriority).toBe('off');
+    });
+
+    it('should politely announce material changes for the same incident (unless escalated)', () => {
+      const previous: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1'
+      };
+      const notification = { ...previous, message: 'Agent really stuck' }; // Material change
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: previous }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('polite'); // Because severity is warning, not error/critical
+    });
+
+    it('should assertively announce material changes if severity is error or critical', () => {
+       const previous: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1'
+      };
+      const notification = { ...previous, message: 'Agent fatally stuck', severity: 'error' as const }; // Material change & escalated
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: previous }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('assertive');
+    });
+
+    it('should assertively announce entirely new incidents even if text is similar', () => {
+       const previous: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1'
+      };
+      const notification = { ...previous, deduplicationKey: 'recovery-2' }; // New incident
+
+      // Context implies new incident (hasBeenPresented = false)
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { hasBeenPresented: false }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('assertive');
+    });
+  });
+
+  describe('Deduplication edge cases', () => {
+    it('should handle empty lists correctly', () => {
+      expect(deduplicateNotifications([])).toHaveLength(0);
+    });
+
+    it('should handle single items correctly', () => {
+      const key1 = createNotificationDeduplicationKey('task_failed', 'task-1');
+      const notif: NotificationDescriptor = { type: 'error', severity: 'error', title: 'A1', message: 'A1', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 };
+
+      const deduped = deduplicateNotifications([notif]);
+      expect(deduped).toHaveLength(1);
+      expect(deduped[0]).toEqual(notif);
+    });
+
+    it('should handle multiple duplicate groups correctly', () => {
+      const key1 = createNotificationDeduplicationKey('error', '1');
+      const key2 = createNotificationDeduplicationKey('info', '2');
+
+      const notifs: NotificationDescriptor[] = [
+        { type: 'error', severity: 'error', title: 'A1', message: 'A1', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 },
+        { type: 'informational', severity: 'info', title: 'B1', message: 'B1', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key2 },
+        { type: 'error', severity: 'error', title: 'A2', message: 'A2', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 },
+        { type: 'informational', severity: 'info', title: 'B2', message: 'B2', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key2 },
+        { type: 'error', severity: 'error', title: 'A3', message: 'A3', dismissible: true, persistenceExpectation: 'ephemeral', screenReaderAnnouncementPriority: 'polite', deduplicationKey: key1 }
+      ];
+
+      const deduped = deduplicateNotifications(notifs);
+      expect(deduped).toHaveLength(2);
+      expect(deduped[0].title).toBe('B2');
+      expect(deduped[1].title).toBe('A3');
+    });
   });
 });
