@@ -197,7 +197,7 @@ describe('Notification Rules (Pure Helpers)', () => {
       deduplicationKey: 'recovery-1'
     };
 
-    const context = { hasBeenPresented: false };
+    const context = {}; // No previous descriptor
     const original = { ...notification };
     const presentation = resolveNotificationPresentation(notification, defaultPrefs, context, soundManifest, true);
 
@@ -215,7 +215,7 @@ describe('Notification Rules (Pure Helpers)', () => {
       const notification = { ...previous, message: 'Something else happened' }; // Material change
 
       const presentation = resolveNotificationPresentation(
-        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: previous }, soundManifest, true
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
       );
 
       expect(presentation.shouldAnnounce).toBe(true);
@@ -229,7 +229,7 @@ describe('Notification Rules (Pure Helpers)', () => {
       };
 
       const presentation = resolveNotificationPresentation(
-        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: notification }, soundManifest, true
+        notification, defaultPrefs, { previousDescriptor: notification }, soundManifest, true
       );
 
       expect(presentation.shouldAnnounce).toBe(false);
@@ -244,7 +244,7 @@ describe('Notification Rules (Pure Helpers)', () => {
       const notification = { ...previous, message: 'Agent really stuck' }; // Material change
 
       const presentation = resolveNotificationPresentation(
-        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: previous }, soundManifest, true
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
       );
 
       expect(presentation.shouldAnnounce).toBe(true);
@@ -259,27 +259,88 @@ describe('Notification Rules (Pure Helpers)', () => {
       const notification = { ...previous, message: 'Agent fatally stuck', severity: 'error' as const }; // Material change & escalated
 
       const presentation = resolveNotificationPresentation(
-        notification, defaultPrefs, { hasBeenPresented: true, previousDescriptor: previous }, soundManifest, true
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
       );
 
       expect(presentation.shouldAnnounce).toBe(true);
       expect(presentation.announcementPriority).toBe('assertive');
     });
 
-    it('should assertively announce entirely new incidents even if text is similar', () => {
+    it('should assertively announce entirely new incidents even if text is similar (no previous descriptor)', () => {
+      const notification: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1'
+      };
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, {}, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('assertive');
+    });
+
+    it('should assertively announce entirely new incidents (different deduplication key)', () => {
        const previous: NotificationDescriptor = {
         type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
         dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1'
       };
       const notification = { ...previous, deduplicationKey: 'recovery-2' }; // New incident
 
-      // Context implies new incident (hasBeenPresented = false)
       const presentation = resolveNotificationPresentation(
-        notification, defaultPrefs, { hasBeenPresented: false }, soundManifest, true
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
       );
 
       expect(presentation.shouldAnnounce).toBe(true);
       expect(presentation.announcementPriority).toBe('assertive');
+    });
+
+    it('should assertively announce entirely new incidents (different workflow or incident ID)', () => {
+       const previous: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1',
+        workflowOrIncidentId: 'inc-1'
+      };
+      const notification = { ...previous, workflowOrIncidentId: 'inc-2' }; // New incident
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('assertive');
+    });
+
+    it('should evaluate materially changed if task ID changes', () => {
+       const previous: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1',
+        taskId: 'task-1'
+      };
+      const notification = { ...previous, taskId: 'task-2' }; // Materially changed (but same dedup key, theoretically)
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('polite');
+    });
+
+    it('should evaluate materially changed if agent ID changes', () => {
+       const previous: NotificationDescriptor = {
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1',
+        agentId: 'agent-1'
+      };
+      const notification = { ...previous, agentId: 'agent-2' }; // Materially changed
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('polite');
     });
   });
 

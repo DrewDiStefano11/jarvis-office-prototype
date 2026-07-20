@@ -28,6 +28,8 @@ export interface NotificationDescriptor {
   agentId?: string;
   /** Optional ID of a task relevant to this notification. */
   taskId?: string;
+  /** Stable identity of an incident or workflow, required for recovery notices. */
+  workflowOrIncidentId?: string;
 
   /** Whether the user is allowed to manually dismiss the notification. */
   dismissible: boolean;
@@ -52,8 +54,6 @@ export interface NotificationDescriptor {
 export interface NotificationPresentationContext {
   /** The previously presented descriptor matching this deduplication key, if any. */
   readonly previousDescriptor?: NotificationDescriptor;
-  /** Whether a descriptor for this deduplication key has been presented before. */
-  readonly hasBeenPresented: boolean;
 }
 
 export interface ResolvedNotificationPresentation {

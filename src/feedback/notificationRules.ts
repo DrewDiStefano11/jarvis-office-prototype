@@ -51,6 +51,14 @@ export function areNotificationsMateriallyEquivalent(
   if (a.message !== b.message) return false;
   if (a.persistenceExpectation !== b.persistenceExpectation) return false;
   if (a.dismissible !== b.dismissible) return false;
+
+  if (a.taskId !== b.taskId) return false;
+  if (a.agentId !== b.agentId) return false;
+  if (a.workflowOrIncidentId !== b.workflowOrIncidentId) return false;
+
+  if (a.soundId !== b.soundId) return false;
+  if (a.visualIndicatorId !== b.visualIndicatorId) return false;
+
   // If there are ever interactive action descriptors, we would deep compare them here.
   return true;
 }
@@ -128,28 +136,33 @@ export function resolveNotificationPresentation(
   const isCriticalOrError = notification.severity === 'critical' || notification.severity === 'error';
   const isRecoveryRequired = notification.type === 'recovery_required';
 
-  // Determine material change status compared to previous descriptor
-  const isMateriallyChanged = context.previousDescriptor
-    ? !areNotificationsMateriallyEquivalent(notification, context.previousDescriptor)
-    : true; // New incident
+  // A completely new incident exists if there is no previous descriptor, or if the deduplication keys mismatch,
+  // or if the workflow/incident IDs fundamentally mismatch.
+  const isNewIncident = !context.previousDescriptor ||
+                        context.previousDescriptor.deduplicationKey !== notification.deduplicationKey ||
+                        context.previousDescriptor.workflowOrIncidentId !== notification.workflowOrIncidentId;
+
+  // If not a new incident, determine material change status compared to previous descriptor
+  const isMateriallyChanged = !isNewIncident && !areNotificationsMateriallyEquivalent(notification, context.previousDescriptor!);
 
   let announcementPriority: 'polite' | 'assertive' | 'off' = notification.screenReaderAnnouncementPriority;
   let shouldAnnounce = true;
 
-  if (context.hasBeenPresented && !isMateriallyChanged) {
-    // Unchanged duplicate: do not announce
-    shouldAnnounce = false;
-    announcementPriority = 'off';
-  } else if (context.hasBeenPresented && isMateriallyChanged) {
+  if (isNewIncident) {
+    if (isRecoveryRequired || isCriticalOrError) {
+      announcementPriority = 'assertive';
+    }
+  } else if (isMateriallyChanged) {
     // Materially changed same incident: announce politely by default, escalate if error/critical
     if (isCriticalOrError) {
       announcementPriority = 'assertive';
     } else {
       announcementPriority = 'polite';
     }
-  } else if (!context.hasBeenPresented && isRecoveryRequired) {
-    // New incident for recovery is assertive
-    announcementPriority = 'assertive';
+  } else {
+    // Unchanged duplicate: do not announce
+    shouldAnnounce = false;
+    announcementPriority = 'off';
   }
 
   // User preferences override everything else

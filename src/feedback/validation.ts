@@ -157,6 +157,20 @@ export function validateNotificationDescriptors(
           message: `Recovery required notifications must use 'warning' or 'error' severity. Found: '${notification.severity}'`
         });
       }
+      if (!notification.workflowOrIncidentId || notification.workflowOrIncidentId.trim() === '') {
+        issues.push({
+          id: contextId,
+          type: 'error',
+          message: `Recovery required notifications must provide a valid workflowOrIncidentId.`
+        });
+      }
+      if (notification.persistenceExpectation === 'ephemeral') {
+        issues.push({
+          id: contextId,
+          type: 'error',
+          message: `Recovery required notifications cannot be ephemeral.`
+        });
+      }
       if (!notification.deduplicationKey.includes('incident:') && !notification.deduplicationKey.includes('workflow:')) {
         issues.push({
           id: contextId,
