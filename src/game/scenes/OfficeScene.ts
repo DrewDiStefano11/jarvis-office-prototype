@@ -2,6 +2,7 @@ import { Scene, GameObjects, Math as PhaserMath, Input } from 'phaser';
 import { EventBus } from '../EventBus';
 import { INITIAL_AGENTS, OFFICE_LOCATIONS, WAYPOINTS } from '../../domain/seed';
 import { getPath } from '../../domain/navigation';
+import { Agent, Task } from '../../types';
 
 export class OfficeScene extends Scene {
     private agentSprites: Map<string, GameObjects.Container> = new Map();
@@ -11,6 +12,7 @@ export class OfficeScene extends Scene {
     private handleSelectAgentBound = this.handleSelectAgent.bind(this);
     private handleMoveAgentBound = this.handleMoveAgent.bind(this);
     private handleResetAllBound = this.handleResetAll.bind(this);
+    private handleSyncStateBound = this.handleSyncState.bind(this);
 
     constructor() {
         super('OfficeScene');
@@ -127,7 +129,31 @@ export class OfficeScene extends Scene {
             }).setOrigin(0.5);
             nameText.setName('nameText');
 
-            container.add([ring, shape, initialText, nameText]);
+            // Task indicators
+            const taskContainer = this.add.container(0, -45);
+            taskContainer.setName('taskContainer');
+            taskContainer.setVisible(false);
+
+            const taskBg = this.add.rectangle(0, 0, 80, 24, 0x000000, 0.8);
+
+            const taskText = this.add.text(0, -6, '', {
+                fontSize: '10px',
+                color: '#fff'
+            }).setOrigin(0.5);
+            taskText.setName('taskText');
+
+            const progressBarBg = this.add.rectangle(0, 6, 70, 4, 0x333333);
+            const progressBar = this.add.rectangle(-35, 6, 0, 4, 0x4caf50);
+            progressBar.setOrigin(0, 0.5);
+            progressBar.setName('progressBar');
+
+            const blockerIndicator = this.add.circle(35, -6, 4, 0xef5350);
+            blockerIndicator.setName('blockerIndicator');
+            blockerIndicator.setVisible(false);
+
+            taskContainer.add([taskBg, taskText, progressBarBg, progressBar, blockerIndicator]);
+
+            container.add([ring, shape, initialText, nameText, taskContainer]);
 
             container.on('pointerdown', () => {
                 this.selectAgent(agent.id);
@@ -141,6 +167,7 @@ export class OfficeScene extends Scene {
         EventBus.on('react-select-agent', this.handleSelectAgentBound);
         EventBus.on('react-move-agent', this.handleMoveAgentBound);
         EventBus.on('react-reset-all', this.handleResetAllBound);
+        EventBus.on('sync-state', this.handleSyncStateBound);
 
         this.events.on('shutdown', this.cleanupListeners, this);
         this.events.on('destroy', this.cleanupListeners, this);
@@ -150,6 +177,7 @@ export class OfficeScene extends Scene {
         EventBus.removeListener('react-select-agent', this.handleSelectAgentBound);
         EventBus.removeListener('react-move-agent', this.handleMoveAgentBound);
         EventBus.removeListener('react-reset-all', this.handleResetAllBound);
+        EventBus.removeListener('sync-state', this.handleSyncStateBound);
         this.input.off('pointermove');
         this.input.off('wheel');
     }
@@ -164,6 +192,60 @@ export class OfficeScene extends Scene {
 
     private handleResetAll() {
         this.resetAllAgents();
+    }
+
+    private handleSyncState(data: { agents: Agent[], tasks: Task[] }) {
+        this.updateTaskVisuals(data.agents, data.tasks);
+    }
+
+    private updateTaskVisuals(agents: Agent[], tasks: Task[]) {
+        agents.forEach(agent => {
+            const container = this.agentSprites.get(agent.id);
+            if (!container) return;
+
+            const taskContainer = container.getByName('taskContainer') as GameObjects.Container;
+            if (!taskContainer) return;
+
+            const activeTask = agent.currentTaskId ? tasks.find(t => t.id === agent.currentTaskId) : null;
+
+            if (activeTask && (activeTask.status === 'active' || activeTask.status === 'paused' || activeTask.status === 'blocked')) {
+                taskContainer.setVisible(true);
+
+                const taskText = taskContainer.getByName('taskText') as GameObjects.Text;
+                const progressBar = taskContainer.getByName('progressBar') as GameObjects.Rectangle;
+                const blockerIndicator = taskContainer.getByName('blockerIndicator') as GameObjects.Arc;
+
+                // Set short text
+                let label = activeTask.title;
+                if (label.length > 12) label = label.substring(0, 10) + '...';
+
+                if (activeTask.status === 'paused') {
+                    taskText.setColor('#9e9e9e');
+                    label = '[P] ' + label;
+                } else if (activeTask.status === 'blocked') {
+                    taskText.setColor('#ef5350');
+                } else {
+                    taskText.setColor('#fff');
+                }
+                taskText.setText(label);
+
+                // Progress bar
+                progressBar.width = (activeTask.progress / 100) * 70;
+
+                if (activeTask.status === 'blocked') {
+                    progressBar.fillColor = 0xef5350;
+                    blockerIndicator.setVisible(true);
+                } else if (activeTask.status === 'paused') {
+                    progressBar.fillColor = 0x9e9e9e;
+                    blockerIndicator.setVisible(false);
+                } else {
+                    progressBar.fillColor = 0x4caf50;
+                    blockerIndicator.setVisible(false);
+                }
+            } else {
+                taskContainer.setVisible(false);
+            }
+        });
     }
 
     private selectAgent(agentId: string, emitToReact: boolean = true) {

@@ -8,7 +8,7 @@ export type Department =
     | 'Audit and Notification'
     | 'Agent Builder Laboratory';
 
-export type AgentStatus = 'idle' | 'moving' | 'working' | 'meeting' | 'reviewing' | 'error';
+export type AgentStatus = 'idle' | 'moving' | 'working' | 'meeting' | 'reviewing' | 'error' | 'paused';
 
 export interface Agent {
     id: string;
@@ -55,4 +55,28 @@ export interface WaypointNode {
     x: number;
     y: number;
     connections: string[]; // IDs of connected nodes
+}
+
+export type TaskStatus = 'queued' | 'active' | 'paused' | 'completed' | 'blocked';
+export type TaskPriority = 'low' | 'normal' | 'high';
+
+export interface TaskStep {
+    id: string;
+    description: string;
+    destinationId?: string; // Optional location ID to move the agent to
+}
+
+export interface Task {
+    id: string;
+    title: string;
+    description: string;
+    assignedAgentId: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+    progress: number; // 0 - 100
+    currentStepIndex: number;
+    steps: TaskStep[];
+    blocker: string | null;
+    createdAt: number;
+    completedAt: number | null;
 }

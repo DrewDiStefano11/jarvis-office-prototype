@@ -1,17 +1,19 @@
 import { useRef, useState, useEffect } from 'react';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import { ControlPanel } from './components/ControlPanel';
-import { INITIAL_AGENTS } from './domain/seed';
-import { Agent } from './types';
+import { INITIAL_AGENTS, INITIAL_TASKS } from './domain/seed';
+import { Agent, Task } from './types';
 import { EventBus } from './game/EventBus';
 import { validateMovementCommand } from './domain/navigation';
 import { handleMovementCommand, handleMovementCompleted, handleResetAll as handleResetAllDomain } from './domain/state';
+import { advanceTask, blockTask, clearBlocker, completeTask, pauseTask, resetSimulation, resumeTask, startNextTask } from './domain/task';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
 
     // React is authoritative for agent state
     const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
+    const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -37,6 +39,11 @@ function App() {
             EventBus.removeListener('movement-completed', handleMovementCompletedEvent);
         };
     }, []);
+
+    // Sync state to Phaser whenever agents or tasks change
+    useEffect(() => {
+        EventBus.emit('sync-state', { agents, tasks });
+    }, [agents, tasks]);
 
     const selectedAgent = agents.find(a => a.id === selectedAgentId) || null;
 
@@ -67,13 +74,96 @@ function App() {
     const handleResetAll = () => {
         setErrorMsg(null);
 
-        setAgents(prev => {
-            const result = handleResetAllDomain(prev);
-            activeCommands.current = result.newActiveCommands;
-            return result.newAgents;
+        setAgents(prevAgents => {
+            const domainResult = handleResetAllDomain(prevAgents);
+            activeCommands.current = domainResult.newActiveCommands;
+
+            // Also reset task simulation
+            const { newAgents, newTasks } = resetSimulation(domainResult.newAgents);
+            setTasks(newTasks);
+
+            return newAgents;
         });
 
         EventBus.emit('react-reset-all');
+    };
+
+    // Task Controls
+    const handleStartNextTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = startNextTask(agentId, agents, tasks);
+        if (result.error) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleAdvanceTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = advanceTask(agentId, agents, tasks);
+        if (result.error) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handlePauseTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = pauseTask(agentId, agents, tasks);
+        if (result.error) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleResumeTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = resumeTask(agentId, agents, tasks);
+        if (result.error) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleBlockTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = blockTask(agentId, "Blocked by user", agents, tasks);
+        if (result.error) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleClearBlocker = (agentId: string) => {
+        setErrorMsg(null);
+        const result = clearBlocker(agentId, agents, tasks);
+        if (result.error) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
+    };
+
+    const handleCompleteTask = (agentId: string) => {
+        setErrorMsg(null);
+        const result = completeTask(agentId, agents, tasks);
+        if (result.error) {
+            setErrorMsg(result.error);
+            return;
+        }
+        setAgents(result.newAgents);
+        setTasks(result.newTasks);
     };
 
     return (
@@ -105,9 +195,17 @@ function App() {
                 <ControlPanel
                     selectedAgent={selectedAgent}
                     agents={agents}
+                    tasks={tasks}
                     onSelectAgent={handleSelectAgent}
                     onSendToLocation={handleSendToLocation}
                     onResetAll={handleResetAll}
+                    onStartNextTask={handleStartNextTask}
+                    onAdvanceTask={handleAdvanceTask}
+                    onPauseTask={handlePauseTask}
+                    onResumeTask={handleResumeTask}
+                    onBlockTask={handleBlockTask}
+                    onClearBlocker={handleClearBlocker}
+                    onCompleteTask={handleCompleteTask}
                     errorMsg={errorMsg}
                 />
             </div>

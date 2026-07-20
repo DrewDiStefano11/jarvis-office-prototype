@@ -1,4 +1,4 @@
-import { Agent, OfficeLocation, WaypointNode } from '../types';
+import { Agent, OfficeLocation, Task, WaypointNode } from '../types';
 
 export const INITIAL_AGENTS: Agent[] = [
     {
@@ -177,4 +177,95 @@ export const WAYPOINTS: WaypointNode[] = [
     { id: 'n_gov_desk', x: 768, y: 560, connections: ['n_c_e2'] },
     { id: 'n_audit', x: 512, y: 620, connections: ['n_c_6'] },
     { id: 'n_lab', x: 256, y: 560, connections: ['n_c_w2'] }
+];
+
+export const INITIAL_TASKS: Task[] = [
+    {
+        id: 'task_jarvis_1',
+        title: 'Review Executive Summary',
+        description: 'Read and approve the latest quarterly performance summary.',
+        assignedAgentId: 'jarvis',
+        status: 'queued',
+        priority: 'high',
+        progress: 0,
+        currentStepIndex: 0,
+        steps: [
+            { id: 'step_j1_1', description: 'Read summary document', destinationId: 'jarvis_desk' },
+            { id: 'step_j1_2', description: 'Sign approval', destinationId: 'delivery_point' }
+        ],
+        blocker: null,
+        createdAt: 1000,
+        completedAt: null
+    },
+    {
+        id: 'task_atlas_1',
+        title: 'Conduct Market Research',
+        description: 'Analyze competitor metrics and compile findings.',
+        assignedAgentId: 'atlas',
+        status: 'queued',
+        priority: 'normal',
+        progress: 0,
+        currentStepIndex: 0,
+        steps: [
+            { id: 'step_a1_1', description: 'Gather metrics', destinationId: 'research_terminal' },
+            { id: 'step_a1_2', description: 'Compile findings', destinationId: 'atlas_desk' },
+            { id: 'step_a1_3', description: 'Present findings', destinationId: 'meeting_room' }
+        ],
+        blocker: null,
+        createdAt: 1001,
+        completedAt: null
+    },
+    {
+        id: 'task_scout_1',
+        title: 'Monitor System Health',
+        description: 'Check active services for anomalies.',
+        assignedAgentId: 'scout',
+        status: 'queued',
+        priority: 'normal',
+        progress: 0,
+        currentStepIndex: 0,
+        steps: [
+            { id: 'step_s1_1', description: 'Check server logs', destinationId: 'scout_desk' },
+            { id: 'step_s1_2', description: 'Verify network stability', destinationId: 'scout_desk' }
+        ],
+        blocker: null,
+        createdAt: 1002,
+        completedAt: null
+    },
+    {
+        id: 'task_archive_1',
+        title: 'Organize Legacy Files',
+        description: 'Sort and archive older physical documents.',
+        assignedAgentId: 'archive',
+        status: 'queued',
+        priority: 'low',
+        progress: 0,
+        currentStepIndex: 0,
+        steps: [
+            { id: 'step_ar1_1', description: 'Retrieve files from storage', destinationId: 'archive_storage' },
+            { id: 'step_ar1_2', description: 'Sort files at desk', destinationId: 'archive_desk' },
+            { id: 'step_ar1_3', description: 'Return to storage', destinationId: 'archive_storage' }
+        ],
+        blocker: null,
+        createdAt: 1003,
+        completedAt: null
+    },
+    {
+        id: 'task_sentinel_1',
+        title: 'Security Audit',
+        description: 'Perform routine security review of access logs.',
+        assignedAgentId: 'sentinel',
+        status: 'queued',
+        priority: 'high',
+        progress: 0,
+        currentStepIndex: 0,
+        steps: [
+            { id: 'step_se1_1', description: 'Review logs at station', destinationId: 'security_review_station' },
+            { id: 'step_se1_2', description: 'Approve findings', destinationId: 'approval_terminal' },
+            { id: 'step_se1_3', description: 'Finalize report', destinationId: 'sentinel_desk' }
+        ],
+        blocker: null,
+        createdAt: 1004,
+        completedAt: null
+    }
 ];

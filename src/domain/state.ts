@@ -46,12 +46,28 @@ export function handleMovementCompleted(
 
     return agents.map(a => {
         if (a.id === agentId) {
+            // Restore previous correct status instead of blindly forcing idle if they have a task state
+            let nextStatus: AgentStatus = 'idle';
+            let nextMessage = 'Arrived';
+
+            if (a.currentBlocker) {
+                nextStatus = 'error';
+                nextMessage = `Blocked: ${a.currentBlocker}`;
+            } else if (a.currentTaskId) {
+                // If we don't have direct access to the Tasks array here, we can infer from currentBlocker and taskId
+                // If it was working/paused, we restore a logical default. App.tsx passes tasks down eventually,
+                // but for simple movement completion, let's look at the prior agent state.
+                // We'll preserve working or paused.
+                nextStatus = a.currentStatus === 'paused' ? 'paused' : 'working';
+                nextMessage = a.statusMessage.startsWith('Moving') ? 'Working on task' : a.statusMessage;
+            }
+
             return {
                 ...a,
-                currentStatus: 'idle' as AgentStatus,
+                currentStatus: nextStatus,
                 currentLocation: locationId,
                 targetLocation: null,
-                statusMessage: 'Arrived'
+                statusMessage: nextMessage
             };
         }
         return a;

@@ -1,26 +1,46 @@
 import React, { useState } from 'react';
-import { Agent } from '../types';
+import { Agent, Task } from '../types';
 import { OFFICE_LOCATIONS } from '../domain/seed';
 
 interface ControlPanelProps {
     selectedAgent: Agent | null;
     agents: Agent[];
+    tasks: Task[];
     onSelectAgent: (agentId: string) => void;
     onSendToLocation: (agentId: string, locationId: string) => void;
     onResetAll: () => void;
+    onStartNextTask: (agentId: string) => void;
+    onAdvanceTask: (agentId: string) => void;
+    onPauseTask: (agentId: string) => void;
+    onResumeTask: (agentId: string) => void;
+    onBlockTask: (agentId: string) => void;
+    onClearBlocker: (agentId: string) => void;
+    onCompleteTask: (agentId: string) => void;
     errorMsg: string | null;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
     selectedAgent,
     agents,
+    tasks,
     onSelectAgent,
     onSendToLocation,
     onResetAll,
+    onStartNextTask,
+    onAdvanceTask,
+    onPauseTask,
+    onResumeTask,
+    onBlockTask,
+    onClearBlocker,
+    onCompleteTask,
     errorMsg
 }) => {
     const occupiableLocations = OFFICE_LOCATIONS.filter(loc => loc.canOccupy);
     const [selectedDestination, setSelectedDestination] = useState<string>('');
+
+    // Find task information for the selected agent
+    const activeTask = selectedAgent?.currentTaskId ? tasks.find(t => t.id === selectedAgent.currentTaskId) : null;
+    const queuedCount = selectedAgent ? tasks.filter(t => t.assignedAgentId === selectedAgent.id && t.status === 'queued').length : 0;
 
     return (
         <div style={{
@@ -159,9 +179,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         <InfoRow label="Message" value={selectedAgent.statusMessage} />
                         <InfoRow label="Current Loc" value={OFFICE_LOCATIONS.find(l => l.id === selectedAgent.currentLocation)?.displayName || selectedAgent.currentLocation} />
                         <InfoRow label="Target Loc" value={selectedAgent.targetLocation ? (OFFICE_LOCATIONS.find(l => l.id === selectedAgent.targetLocation)?.displayName || selectedAgent.targetLocation) : 'None'} />
-                        <InfoRow label="Progress" value={`${selectedAgent.progress}%`} />
-                        <InfoRow label="Queue" value={selectedAgent.queueCount.toString()} />
-                        <InfoRow label="Blocker" value={selectedAgent.currentBlocker || 'None'} />
                         <InfoRow label="Type" value={selectedAgent.isTemporary ? 'Temporary' : 'Permanent'} />
                     </div>
                 ) : (
@@ -170,6 +187,73 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Task Information & Simulation Panel */}
+            {selectedAgent && (
+                <div style={{
+                    backgroundColor: '#282b30',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    border: '1px solid #424549',
+                    flex: 1
+                }}>
+                    <h3 style={{ margin: '0 0 15px 0', fontSize: '1.1rem', color: '#fff' }}>Task Simulation</h3>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.95rem', marginBottom: '15px' }}>
+                        {activeTask ? (
+                            <>
+                                <InfoRow label="Current Task" value={activeTask.title} valueColor="#ffa726" />
+                                <div style={{ color: '#ccc', fontSize: '0.85rem', marginBottom: '5px' }}>{activeTask.description}</div>
+                                <InfoRow label="Status" value={activeTask.status} valueColor={getTaskStatusColor(activeTask.status)} />
+                                <InfoRow label="Step" value={`${activeTask.currentStepIndex + 1} / ${activeTask.steps.length}`} />
+                                <InfoRow label="Progress" value={`${activeTask.progress}%`} />
+                                <InfoRow label="Priority" value={activeTask.priority} />
+                                <InfoRow label="Blocker" value={activeTask.blocker || 'None'} valueColor={activeTask.blocker ? '#ef5350' : '#fff'} />
+                            </>
+                        ) : (
+                            <div style={{ color: '#aeea00', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
+                                Agent is idle.
+                            </div>
+                        )}
+                        <InfoRow label="Queued Tasks" value={queuedCount.toString()} />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {!activeTask && (
+                            <button
+                                onClick={() => onStartNextTask(selectedAgent.id)}
+                                disabled={queuedCount === 0}
+                                className="accessible-button"
+                                style={{ ...buttonStyle, opacity: queuedCount === 0 ? 0.5 : 1 }}
+                            >
+                                Start Next Task
+                            </button>
+                        )}
+
+                        {activeTask && activeTask.status === 'active' && (
+                            <>
+                                <button onClick={() => onAdvanceTask(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Advance Task</button>
+                                <button onClick={() => onPauseTask(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Pause Task</button>
+                                <button onClick={() => onBlockTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#d32f2f', border: 'none' }}>Mark Blocked</button>
+                                <button onClick={() => onCompleteTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#388e3c', border: 'none' }}>Complete Task</button>
+                            </>
+                        )}
+
+                        {activeTask && activeTask.status === 'paused' && (
+                            <>
+                                <button onClick={() => onResumeTask(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Resume Task</button>
+                                <button onClick={() => onBlockTask(selectedAgent.id)} className="accessible-button" style={{ ...buttonStyle, backgroundColor: '#d32f2f', border: 'none' }}>Mark Blocked</button>
+                            </>
+                        )}
+
+                        {activeTask && activeTask.status === 'blocked' && (
+                            <>
+                                <button onClick={() => onClearBlocker(selectedAgent.id)} className="accessible-button" style={buttonStyle}>Clear Blocker</button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .accessible-button:focus-visible, .accessible-select:focus-visible {
@@ -197,6 +281,18 @@ function getStatusColor(status: string) {
         case 'moving': return '#29b6f6';
         case 'working': return '#ffa726';
         case 'error': return '#ef5350';
+        case 'paused': return '#9e9e9e';
+        default: return '#fff';
+    }
+}
+
+function getTaskStatusColor(status: string) {
+    switch (status) {
+        case 'queued': return '#fff';
+        case 'active': return '#ffa726';
+        case 'paused': return '#9e9e9e';
+        case 'completed': return '#aeea00';
+        case 'blocked': return '#ef5350';
         default: return '#fff';
     }
 }
