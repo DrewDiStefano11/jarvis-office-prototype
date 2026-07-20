@@ -311,13 +311,31 @@ export function validateAgentProfiles(options: ValidationOptions): AgentProfileV
   }
 
   if (requiredAgentIds) {
+    const requiredSet = new Set(requiredAgentIds);
+
+    // Check for missing required agents
     for (const requiredId of requiredAgentIds) {
       if (!stableAgentIds.has(requiredId)) {
         issues.push({
           code: 'MISSING_PERMANENT_AGENT',
           severity: 'error',
           message: `Expected permanent agent missing: ${requiredId}`,
-          stableAgentId: requiredId
+          stableAgentId: requiredId,
+          field: 'stableAgentId'
+        });
+      }
+    }
+
+    // Check for unexpected agents
+    for (const profile of profiles) {
+      if (!requiredSet.has(profile.stableAgentId)) {
+        issues.push({
+          code: 'UNEXPECTED_PERMANENT_AGENT',
+          severity: 'error',
+          message: `Unexpected permanent agent found: ${profile.stableAgentId}`,
+          profileId: profile.profileId,
+          stableAgentId: profile.stableAgentId,
+          field: 'stableAgentId'
         });
       }
     }

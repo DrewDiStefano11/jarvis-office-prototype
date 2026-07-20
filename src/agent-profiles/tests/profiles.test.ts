@@ -76,19 +76,56 @@ describe('Agent Profiles Foundation', () => {
     expect(result.isValid).toBe(true);
   });
 
-  it('default collection completeness triggers missing agent errors', () => {
-    const partialProfiles = [agentProfiles[1]]; // no jarvis
+  it('removing jarvis emits MISSING_PERMANENT_AGENT', () => {
+    const partialProfiles = agentProfiles.filter(p => p.stableAgentId !== 'jarvis');
     const result = validateAgentProfiles({
       profiles: partialProfiles,
       themes: agentThemes,
       knownWorkspaceIds,
       knownSpriteIds,
-      requiredAgentIds: ['jarvis', 'atlas']
+      requiredAgentIds: ['jarvis', 'atlas', 'scout', 'archive', 'sentinel']
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.issues.some(i => i.code === 'MISSING_PERMANENT_AGENT' && i.stableAgentId === 'jar')).toBe(false);
     expect(result.issues.some(i => i.code === 'MISSING_PERMANENT_AGENT' && i.stableAgentId === 'jarvis')).toBe(true);
+  });
+
+  it('adding an extra profile emits UNEXPECTED_PERMANENT_AGENT', () => {
+    const unexpectedProfile = {
+      ...agentProfiles[0],
+      profileId: 'profile_temporary',
+      stableAgentId: 'temporary-agent'
+    };
+
+    const result = validateAgentProfiles({
+      profiles: [...agentProfiles, unexpectedProfile],
+      themes: agentThemes,
+      knownWorkspaceIds,
+      knownSpriteIds,
+      requiredAgentIds: ['jarvis', 'atlas', 'scout', 'archive', 'sentinel']
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.issues.some(i => i.code === 'UNEXPECTED_PERMANENT_AGENT' && i.stableAgentId === 'temporary-agent')).toBe(true);
+  });
+
+  it('two unexpected profiles produce two separate issues', () => {
+    const unexpected1 = { ...agentProfiles[0], profileId: 'profile_temp1', stableAgentId: 'temp-1' };
+    const unexpected2 = { ...agentProfiles[0], profileId: 'profile_temp2', stableAgentId: 'temp-2' };
+
+    const result = validateAgentProfiles({
+      profiles: [...agentProfiles, unexpected1, unexpected2],
+      themes: agentThemes,
+      knownWorkspaceIds,
+      knownSpriteIds,
+      requiredAgentIds: ['jarvis', 'atlas', 'scout', 'archive', 'sentinel']
+    });
+
+    expect(result.isValid).toBe(false);
+    const unexpectedIssues = result.issues.filter(i => i.code === 'UNEXPECTED_PERMANENT_AGENT');
+    expect(unexpectedIssues.length).toBe(2);
+    expect(unexpectedIssues.some(i => i.stableAgentId === 'temp-1')).toBe(true);
+    expect(unexpectedIssues.some(i => i.stableAgentId === 'temp-2')).toBe(true);
   });
 
   it('invalid references are rejected', () => {

@@ -53,7 +53,7 @@ Every profile must include an `accessibleDescription`, detailing both the agent'
 ## Validation Contract
 Validation relies on structured, typed objects (`AgentProfileValidationResult`, `AgentProfileValidationIssue`) rather than throwing exceptions or returning raw strings.
 
-- `validateAgentProfiles`: Generically validates metadata constraints (e.g., references resolve, required fields are present). Pass `requiredAgentIds` to enforce the presence of explicit permanent agents.
+- `validateAgentProfiles`: Generically validates metadata constraints (e.g., references resolve, required fields are present). Pass `requiredAgentIds` to enforce the presence of explicit permanent agents. When provided, this activates strict exact-set validation to detect both missing and unexpected profiles within the collection.
 - Map adapters safely reject duplicates: `createAgentProfileMap` returns `{ ok: true, value: Map }` or `{ ok: false, issues: Issue[] }` without throwing. An explicit strict helper `createAgentProfileMapStrict` will throw if duplicate IDs exist.
 
 ## References and Integration
