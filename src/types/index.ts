@@ -1,0 +1,58 @@
+export type Department =
+    | 'Executive'
+    | 'Research and Knowledge'
+    | 'Personal Operations'
+    | 'Governance and Security'
+    | 'Meeting Room'
+    | 'Shared Project Area'
+    | 'Audit and Notification'
+    | 'Agent Builder Laboratory';
+
+export type AgentStatus = 'idle' | 'moving' | 'working' | 'meeting' | 'reviewing' | 'error';
+
+export interface Agent {
+    id: string;
+    name: string;
+    role: string;
+    department: Department;
+    managerId: string | null;
+    currentStatus: AgentStatus;
+    previousStatus: AgentStatus;
+    currentTaskId: string | null;
+    statusMessage: string;
+    progress: number;
+    currentLocation: string;
+    targetLocation: string | null;
+    homeDesk: string;
+    spriteKey: string;
+    movementSpeed: number;
+    queueCount: number;
+    currentBlocker: string | null;
+    isTemporary: boolean;
+    // Visual info for prototyping
+    visuals: {
+        color: number;
+        shape: 'rectangle' | 'circle' | 'triangle' | 'star';
+        initial: string;
+    };
+}
+
+export type LocationType = 'desk' | 'terminal' | 'storage' | 'station' | 'table' | 'delivery' | 'lab';
+
+export interface OfficeLocation {
+    id: string;
+    displayName: string;
+    x: number;
+    y: number;
+    type: LocationType;
+    department: Department;
+    canOccupy: boolean;
+    approachNodeId?: string; // Links to a waypoint node
+}
+
+export interface WaypointNode {
+    id: string;
+    x: number;
+    y: number;
+    connections: string[]; // IDs of connected nodes
+}

@@ -1,104 +1,122 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
-import { MainMenu } from './game/scenes/MainMenu';
+import { ControlPanel } from './components/ControlPanel';
+import { INITIAL_AGENTS } from './domain/seed';
+import { Agent } from './types';
+import { EventBus } from './game/EventBus';
 
-function App()
-{
-    // The sprite can only be moved in the MainMenu Scene
-    const [canMoveSprite, setCanMoveSprite] = useState(true);
-
-    //  References to the PhaserGame component (game and scene are exposed)
+function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
-    const [spritePosition, setSpritePosition] = useState({ x: 0, y: 0 });
 
-    const changeScene = () => {
+    // React state for agents
+    const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
-        if(phaserRef.current)
-        {     
-            const scene = phaserRef.current.scene as MainMenu;
-            
-            if (scene)
-            {
-                scene.changeScene();
+    // Listen to events from Phaser
+    useEffect(() => {
+        // When an agent is clicked in Phaser, update selection in React
+        EventBus.on('agent-selected', (agentId: string) => {
+            setSelectedAgentId(agentId);
+        });
+
+        // When an agent's state updates in Phaser (e.g. movement, status change)
+        EventBus.on('agent-updated', (updatedAgent: Agent) => {
+            setAgents(prev => prev.map(a => a.id === updatedAgent.id ? updatedAgent : a));
+        });
+
+        return () => {
+            EventBus.removeListener('agent-selected');
+            EventBus.removeListener('agent-updated');
+        };
+    }, []);
+
+    const selectedAgent = agents.find(a => a.id === selectedAgentId) || null;
+
+    const handleSelectAgent = (agentId: string) => {
+        setSelectedAgentId(agentId);
+        // Tell Phaser to select this agent visually
+        EventBus.emit('react-select-agent', agentId);
+    };
+
+    const handleSendToLocation = (agentId: string, locationId: string) => {
+        // Tell Phaser to initiate movement
+        EventBus.emit('react-move-agent', { agentId, locationId });
+
+        // Optimistically update React state (optional, Phaser will emit agent-updated anyway)
+        setAgents(prev => prev.map(a => {
+            if (a.id === agentId) {
+                return { ...a, currentStatus: 'moving', targetLocation: locationId, statusMessage: `Moving to ${locationId}` };
             }
-        }
-    }
+            return a;
+        }));
+    };
 
-    const moveSprite = () => {
-
-        if(phaserRef.current)
-        {
-
-            const scene = phaserRef.current.scene as MainMenu;
-
-            if (scene && scene.scene.key === 'MainMenu')
-            {
-                // Get the update logo position
-                scene.moveLogo(({ x, y }) => {
-
-                    setSpritePosition({ x, y });
-
-                });
-            }
-        }
-
-    }
-
-    const addSprite = () => {
-
-        if (phaserRef.current)
-        {
-            const scene = phaserRef.current.scene;
-
-            if (scene)
-            {
-                // Add more stars
-                const x = Phaser.Math.Between(64, scene.scale.width - 64);
-                const y = Phaser.Math.Between(64, scene.scale.height - 64);
-    
-                //  `add.sprite` is a Phaser GameObjectFactory method and it returns a Sprite Game Object instance
-                const star = scene.add.sprite(x, y, 'star');
-    
-                //  ... which you can then act upon. Here we create a Phaser Tween to fade the star sprite in and out.
-                //  You could, of course, do this from within the Phaser Scene code, but this is just an example
-                //  showing that Phaser objects and systems can be acted upon from outside of Phaser itself.
-                scene.add.tween({
-                    targets: star,
-                    duration: 500 + Math.random() * 1000,
-                    alpha: 0,
-                    yoyo: true,
-                    repeat: -1
-                });
-            }
-        }
-    }
-
-    // Event emitted from the PhaserGame component
-    const currentScene = (scene: Phaser.Scene) => {
-
-        setCanMoveSprite(scene.scene.key !== 'MainMenu');
-        
-    }
+    const handleResetAll = () => {
+        EventBus.emit('react-reset-all');
+        setSelectedAgentId(null);
+        // Phaser will handle resetting the logical state and emit updates
+    };
 
     return (
-        <div id="app">
-            <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
-            <div>
-                <div>
-                    <button className="button" onClick={changeScene}>Change Scene</button>
-                </div>
-                <div>
-                    <button disabled={canMoveSprite} className="button" onClick={moveSprite}>Toggle Movement</button>
-                </div>
-                <div className="spritePosition">Sprite Position:
-                    <pre>{`{\n  x: ${spritePosition.x}\n  y: ${spritePosition.y}\n}`}</pre>
-                </div>
-                <div>
-                    <button className="button" onClick={addSprite}>Add New Sprite</button>
-                </div>
+        <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            width: '100vw',
+            height: '100vh',
+            overflow: 'hidden',
+            backgroundColor: '#111'
+        }} id="app-root">
+
+            {/* Left side: Phaser Game (75% width on desktop) */}
+            <div style={{
+                flex: '3',
+                minWidth: '300px',
+                height: '100%',
+                position: 'relative'
+            }}>
+                <PhaserGame ref={phaserRef} />
             </div>
+
+            {/* Right side: React Controls (25% width on desktop) */}
+            <div style={{
+                flex: '1',
+                minWidth: '300px',
+                maxWidth: '400px',
+                height: '100%',
+                borderLeft: '1px solid #333'
+            }}>
+                <ControlPanel
+                    selectedAgent={selectedAgent}
+                    agents={agents}
+                    onSelectAgent={handleSelectAgent}
+                    onSendToLocation={handleSendToLocation}
+                    onResetAll={handleResetAll}
+                />
+            </div>
+
+            {/* Media query handling for mobile layout could be added via standard CSS if needed,
+                but flex-wrap or standard react responsive patterns would apply here.
+                For simplicity, using inline styles with fixed flex values. */}
+            <style>{`
+                @media (max-width: 768px) {
+                    #app-root {
+                        flex-direction: column !important;
+                        overflow-y: auto !important;
+                    }
+                    #app-root > div:first-child {
+                        height: 50vh !important;
+                        flex: none !important;
+                    }
+                    #app-root > div:last-child {
+                        max-width: none !important;
+                        border-left: none !important;
+                        border-top: 1px solid #333;
+                    }
+                }
+                body, html { margin: 0; padding: 0; }
+            `}</style>
         </div>
-    )
+    );
 }
 
-export default App
+export default App;
