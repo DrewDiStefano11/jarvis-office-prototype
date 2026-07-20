@@ -1,8 +1,3 @@
-/**
- * Stable IDs and types for the Office Layout and Sprite Asset Foundation.
- * All properties are readonly to ensure immutability in the domain.
- */
-
 export type EntityId = string;
 export type RoomId = string;
 export type WorkstationId = string;
@@ -10,7 +5,7 @@ export type SpawnPointId = string;
 export type DestinationId = string;
 export type FurnitureId = string;
 export type SpriteId = string;
-export type AgentId = string; // Stable ID mapping to existing domain agents
+export type AgentId = string;
 
 export interface Point {
     readonly x: number;
@@ -106,7 +101,7 @@ export interface AnimationDefinition {
     readonly name: string;
     readonly frameRange: readonly [number, number];
     readonly frameRate: number;
-    readonly repeat: number; // e.g. -1 for infinite loop
+    readonly repeat: number;
 }
 
 export interface AssetManifestEntry {

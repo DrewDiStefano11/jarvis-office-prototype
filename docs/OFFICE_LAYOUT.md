@@ -22,13 +22,32 @@ This document outlines the foundation for the upcoming deterministic office layo
 - Examples: `room-main-office`, `desk-research-scout`, `spawn-jarvis`, `dest-meeting-table`.
 - Ensure new entities conform to this format without relying on array indices.
 
-## Agent Workspace Assignments
-- Assignments map the existing permanent agents (using their stable IDs: `agent-jarvis`, `agent-atlas`, `agent-scout`, `agent-archive`, `agent-sentinel`) to:
-  - A workstation ID
-  - A default spawn point ID
-  - A primary destination ID
-  - Optional secondary destination IDs
-  - An associated sprite ID
+## Boundary-inclusion rules
+- When validating if an object is inside a room, a point exactly on the boundary (e.g. `x = bounds.x + bounds.width`) is considered **inside**.
+- When checking if an object overlaps with a blocked area, a point exactly on the edge is considered **outside**. Only strictly internal points overlap.
+
+## Canonical IDs
+
+### Agent IDs
+- `jarvis`
+- `atlas`
+- `scout`
+- `archive`
+- `sentinel`
+
+### Canonical Workspace IDs
+- `jarvis_desk`
+- `atlas_desk`
+- `scout_desk`
+- `archive_desk`
+- `sentinel_desk`
+
+### Canonical Sprite IDs
+- `sprite-agent-jarvis`
+- `sprite-agent-atlas`
+- `sprite-agent-scout`
+- `sprite-agent-archive`
+- `sprite-agent-sentinel`
 
 ## Asset Folder Structure
 - Placeholder assets are organized under `public/assets/office/` to maintain modularity:
@@ -39,18 +58,35 @@ This document outlines the foundation for the upcoming deterministic office layo
   - `tiles/`: Floor and background tiles
   - `decoration/`: Plants, non-interactive elements
 
-## Sprite Dimensions and Animation Conventions
-- Placeholder assets are small solid-color graphics.
-- The `assetManifest.ts` holds metadata outlining intended default bounds (e.g., 32x32 for agents, 64x32 for desks), scaling factors, and animation sequences (like `idle-down`, `walk-up`).
-- Replaced sprites should conform to the frame-rate and repetition metadata provided in the manifest.
+## Browser Asset Paths
+- In `assetManifest.ts`, browser paths must omit the leading `public/` folder, for example: `assets/office/agents/jarvis-placeholder.png`.
 
-## Validation Rules
-- `src/office-layout/validation.ts` provides pure helper methods to enforce structural integrity:
-  - Entities must have unique IDs.
-  - Workstations, spawn points, and destinations must exist inside bounds of the referenced room.
-  - Doorways must reference exactly two existing rooms.
-  - Assignments must point to valid workstations, spawn points, destinations, and sprite IDs.
-  - Sprite animation frame ranges must be valid.
+## Filesystem Path Resolution
+- When performing validation or generating files inside Node.js scripts (like tests and generation), paths are fully resolved absolute paths, combining the manifest `filePath` prefixed with `public/` using `path.resolve(process.cwd(), 'public')` safely.
+
+## Placeholder Dimensions
+- The generated deterministic placeholder files exactly match the manifest `frameWidth` and `frameHeight`.
+- No required asset uses 1x1 dimensions.
+
+## Static-placeholder animation rules
+- Static assets like simple placeholder PNGs must be marked as `isPlaceholder: true` and have **empty animations** `animations: []`. They should not attempt to define animation clips for frames that do not exist.
+
+## Validation Contracts
+- `src/office-layout/validation.ts` provides structured validations returning `ValidationIssue` objects pointing to specific problems (`code`, `message`, `severity`).
+- **Layout Validation:**
+  - Duplicate IDs (rooms, doorways, workstations).
+  - Out of bounds and blocked area geometry checks.
+  - Empty IDs.
+  - Negative/non-finite dimension rules.
+  - Doorway references invalid or duplicate rooms.
+- **Assignment Validation:**
+  - Exactly maps every canonical permanent agent.
+  - Verifies presence of workstations, spawn points, primary and secondary destinations, and sprites inside the active layout and manifest.
+- **Asset Manifest Validation:**
+  - Checks duplicate assets.
+  - Files exist on disk via filesystem validation.
+  - Tests verify valid actual file dimensions and PNG signatures.
+  - Invalid paths (`public/`, `../`, etc) are rejected.
 
 ## How to Expand the Layout
 1. **Rooms**: Add new bounds objects to `rooms` in `layout.ts`.

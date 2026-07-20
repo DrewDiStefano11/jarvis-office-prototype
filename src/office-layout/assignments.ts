@@ -1,16 +1,23 @@
 import { WorkspaceAssignment } from './types';
 
+// The stable IDs matching the exact runtime permanent agents in the domain
+export const AGENT_JARVIS_ID = 'jarvis';
+export const AGENT_ATLAS_ID = 'atlas';
+export const AGENT_SCOUT_ID = 'scout';
+export const AGENT_ARCHIVE_ID = 'archive';
+export const AGENT_SENTINEL_ID = 'sentinel';
+
 export const PERMANENT_AGENT_IDS = [
-    'jarvis',
-    'atlas',
-    'scout',
-    'archive',
-    'sentinel',
+    AGENT_JARVIS_ID,
+    AGENT_ATLAS_ID,
+    AGENT_SCOUT_ID,
+    AGENT_ARCHIVE_ID,
+    AGENT_SENTINEL_ID
 ] as const;
 
 export const workspaceAssignments: readonly WorkspaceAssignment[] = [
     {
-        agentId: 'jarvis',
+        agentId: AGENT_JARVIS_ID,
         workstationId: 'jarvis_desk',
         spawnPointId: 'spawn-jarvis',
         primaryDestinationId: 'dest-main-center',
@@ -18,7 +25,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
         spriteId: 'sprite-agent-jarvis'
     },
     {
-        agentId: 'atlas',
+        agentId: AGENT_ATLAS_ID,
         workstationId: 'atlas_desk',
         spawnPointId: 'spawn-atlas',
         primaryDestinationId: 'dest-collab-board',
@@ -26,7 +33,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
         spriteId: 'sprite-agent-atlas'
     },
     {
-        agentId: 'scout',
+        agentId: AGENT_SCOUT_ID,
         workstationId: 'scout_desk',
         spawnPointId: 'spawn-scout',
         primaryDestinationId: 'dest-break-room',
@@ -34,7 +41,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
         spriteId: 'sprite-agent-scout'
     },
     {
-        agentId: 'archive',
+        agentId: AGENT_ARCHIVE_ID,
         workstationId: 'archive_desk',
         spawnPointId: 'spawn-archive',
         primaryDestinationId: 'dest-meeting-table',
@@ -42,7 +49,7 @@ export const workspaceAssignments: readonly WorkspaceAssignment[] = [
         spriteId: 'sprite-agent-archive'
     },
     {
-        agentId: 'sentinel',
+        agentId: AGENT_SENTINEL_ID,
         workstationId: 'sentinel_desk',
         spawnPointId: 'spawn-sentinel',
         primaryDestinationId: 'dest-entrance-lobby',

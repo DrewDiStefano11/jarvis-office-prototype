@@ -1,5 +1,8 @@
 import { AssetManifest, AssetManifestEntry } from './types';
 
+// The requested changes require all static placeholder assets to have NO animation definitions.
+// The manifest now just registers them as static placeholders mapping to the generated PNGs.
+
 export const assetEntries: readonly AssetManifestEntry[] = [
     {
         id: 'sprite-agent-jarvis',
@@ -68,28 +71,6 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         animations: []
     },
     {
-        id: 'sprite-chair',
-        filePath: 'assets/office/furniture/chair-placeholder.png',
-        category: 'furniture',
-        frameWidth: 32,
-        frameHeight: 32,
-        scale: 1,
-        defaultFacingDirection: 'down',
-        isPlaceholder: true,
-        animations: []
-    },
-    {
-        id: 'sprite-computer',
-        filePath: 'assets/office/furniture/computer-placeholder.png',
-        category: 'furniture',
-        frameWidth: 32,
-        frameHeight: 32,
-        scale: 1,
-        defaultFacingDirection: 'down',
-        isPlaceholder: true,
-        animations: []
-    },
-    {
         id: 'sprite-meeting-table',
         filePath: 'assets/office/furniture/meeting-table-placeholder.png',
         category: 'furniture',
@@ -104,6 +85,28 @@ export const assetEntries: readonly AssetManifestEntry[] = [
         id: 'sprite-filing-cabinet',
         filePath: 'assets/office/furniture/filing-cabinet-placeholder.png',
         category: 'furniture',
+        frameWidth: 32,
+        frameHeight: 32,
+        scale: 1,
+        defaultFacingDirection: 'down',
+        isPlaceholder: true,
+        animations: []
+    },
+    {
+        id: 'sprite-chair',
+        filePath: 'assets/office/furniture/chair-placeholder.png',
+        category: 'chair',
+        frameWidth: 32,
+        frameHeight: 32,
+        scale: 1,
+        defaultFacingDirection: 'down',
+        isPlaceholder: true,
+        animations: []
+    },
+    {
+        id: 'sprite-computer',
+        filePath: 'assets/office/furniture/computer-placeholder.png',
+        category: 'computer',
         frameWidth: 32,
         frameHeight: 32,
         scale: 1,
