@@ -47,45 +47,54 @@ export function validateAssetFiles(manifest: AssetManifest, publicRoot: string):
         }
 
         try {
-            const fd = fs.openSync(fullPath, 'r');
-            const buffer = Buffer.alloc(24);
-            const bytesRead = fs.readSync(fd, buffer, 0, 24, 0);
-            fs.closeSync(fd);
+            const buffer = fs.readFileSync(fullPath);
 
-            if (bytesRead < 24) {
-                 // The prompt specifies "File shorter than PNG signature fails" and it emits INVALID_PNG_SIGNATURE.
-                 // However, we should also check if it's less than 24, which includes IHDR.
-                 // A valid signature but missing IHDR fails. So let's be careful.
-                 if (bytesRead < 8 || buffer.toString('hex', 0, 8) !== '89504e470d0a1a0a') {
-                     addIssue('INVALID_PNG_SIGNATURE', `Invalid PNG signature in file: ${entry.filePath}`, entry.id, entry.filePath);
-                     return;
-                 }
-                 // If we have a signature but not enough for IHDR:
-                 addIssue('PNG_IHDR_MISSING', `Missing or truncated IHDR chunk in PNG: ${entry.filePath}`, entry.id, entry.filePath);
-                 return;
-            }
+            const PNG_SIGNATURE_BYTES = 8;
+            const PNG_CHUNK_LENGTH_BYTES = 4;
+            const PNG_CHUNK_TYPE_BYTES = 4;
+            const PNG_IHDR_DATA_BYTES = 13;
+            const PNG_CHUNK_CRC_BYTES = 4;
 
-            // Verify PNG Signature
-            // 89 50 4E 47 0D 0A 1A 0A
-            if (buffer.toString('hex', 0, 8) !== '89504e470d0a1a0a') {
+            const COMPLETE_IHDR_CHUNK_BYTES =
+                PNG_SIGNATURE_BYTES +
+                PNG_CHUNK_LENGTH_BYTES +
+                PNG_CHUNK_TYPE_BYTES +
+                PNG_IHDR_DATA_BYTES +
+                PNG_CHUNK_CRC_BYTES; // = 33
+
+            // Step A: PNG signature
+            if (buffer.length < PNG_SIGNATURE_BYTES || buffer.toString('hex', 0, 8) !== '89504e470d0a1a0a') {
                 addIssue('INVALID_PNG_SIGNATURE', `Invalid PNG signature in file: ${entry.filePath}`, entry.id, entry.filePath);
                 return;
             }
 
-            // Validate IHDR chunk length is exactly 13
-            const ihdrLength = buffer.readUInt32BE(8);
-            if (ihdrLength !== 13) {
-                addIssue('PNG_IHDR_INVALID', `IHDR chunk length must be exactly 13: ${entry.filePath}`, entry.id, entry.filePath);
+            // Step B: first-chunk header
+            if (buffer.length < PNG_SIGNATURE_BYTES + PNG_CHUNK_LENGTH_BYTES + PNG_CHUNK_TYPE_BYTES) {
+                addIssue('PNG_IHDR_MISSING', `Missing or truncated IHDR chunk in PNG: ${entry.filePath}`, entry.id, entry.filePath);
                 return;
             }
 
-            // Read Chunk Type (4 bytes)
+            // Step C: first chunk must be IHDR
             const ihdrType = buffer.toString('ascii', 12, 16);
             if (ihdrType !== 'IHDR') {
                 addIssue('PNG_IHDR_MISSING', `Missing IHDR chunk in PNG: ${entry.filePath}`, entry.id, entry.filePath);
                 return;
             }
 
+            // Step D: IHDR declared length
+            const ihdrLength = buffer.readUInt32BE(8);
+            if (ihdrLength !== 13) {
+                addIssue('PNG_IHDR_INVALID', `IHDR chunk length must be exactly 13: ${entry.filePath}`, entry.id, entry.filePath);
+                return;
+            }
+
+            // Step E: complete IHDR data and CRC must exist
+            if (buffer.length < COMPLETE_IHDR_CHUNK_BYTES) {
+                addIssue('PNG_IHDR_INVALID', `IHDR chunk is truncated; expected at least 33 bytes in file: ${entry.filePath}`, entry.id, entry.filePath);
+                return;
+            }
+
+            // Step F: parse dimensions
             const width = buffer.readUInt32BE(16);
             const height = buffer.readUInt32BE(20);
 

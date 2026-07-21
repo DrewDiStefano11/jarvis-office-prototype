@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { defaultOfficeLayout } from '../layout';
 import { defaultAssetManifest } from '../assetManifest';
 import { workspaceAssignments, PERMANENT_AGENT_IDS } from '../assignments';
 import { validateLayout, validateAssetManifest, validateAssignments } from '../validation';
 import { validateAssetFiles } from '../nodeValidation';
 import { SpriteCategory } from '../types';
+import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Office Layout Validation', () => {
@@ -247,11 +248,140 @@ describe('Asset Manifest Validation', () => {
 });
 
 describe('Node File Validation', () => {
+    let tempFile = '';
+
+    afterEach(() => {
+        if (tempFile && fs.existsSync(tempFile)) {
+            try {
+                fs.unlinkSync(tempFile);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        tempFile = '';
+    });
+
+    const createTempManifest = (w: number, h: number) => {
+        return {
+            entries: [
+                {
+                    ...defaultAssetManifest.entries[0],
+                    id: 'sprite-temp',
+                    filePath: 'assets/temp.png',
+                    frameWidth: w,
+                    frameHeight: h
+                }
+            ]
+        };
+    };
+
+    const getTempPublicDir = () => {
+        const publicDir = path.resolve(process.cwd(), 'public');
+        tempFile = path.resolve(publicDir, 'assets/temp.png');
+        if (!fs.existsSync(path.dirname(tempFile))) {
+             fs.mkdirSync(path.dirname(tempFile), { recursive: true });
+        }
+        return publicDir;
+    };
+
     it('verifies placeholder asset paths exist, match dimensions, and are valid PNGs', () => {
         const publicDir = path.resolve(process.cwd(), 'public');
         const result = validateAssetFiles(defaultAssetManifest, publicDir);
         expect(result.isValid).toBe(true);
         expect(result.issues).toEqual([]);
+    });
+
+    it('Test A: exact 24-byte truncated PNG matching dimensions exactly but missing CRC bytes', () => {
+        const publicDir = getTempPublicDir();
+        const buffer = Buffer.alloc(24);
+        buffer.write('89504e470d0a1a0a', 0, 'hex'); // Signature
+        buffer.writeUInt32BE(13, 8);               // Length
+        buffer.write('IHDR', 12, 'ascii');         // Type
+        buffer.writeUInt32BE(32, 16);              // Width
+        buffer.writeUInt32BE(32, 20);              // Height
+
+        fs.writeFileSync(tempFile, buffer);
+
+        const result = validateAssetFiles(createTempManifest(32, 32), publicDir);
+        expect(result.isValid).toBe(false);
+        expect(result.issues[0].code).toBe('PNG_IHDR_INVALID');
+        expect(result.issues.some(i => i.code === 'PNG_WIDTH_MISMATCH' || i.code === 'PNG_HEIGHT_MISMATCH')).toBe(false);
+    });
+
+    it('Test B: 32-byte truncated IHDR', () => {
+        const publicDir = getTempPublicDir();
+        const buffer = Buffer.alloc(32);
+        buffer.write('89504e470d0a1a0a', 0, 'hex');
+        buffer.writeUInt32BE(13, 8);
+        buffer.write('IHDR', 12, 'ascii');
+        buffer.writeUInt32BE(32, 16);
+        buffer.writeUInt32BE(32, 20);
+
+        fs.writeFileSync(tempFile, buffer);
+
+        const result = validateAssetFiles(createTempManifest(32, 32), publicDir);
+        expect(result.isValid).toBe(false);
+        expect(result.issues[0].code).toBe('PNG_IHDR_INVALID');
+        expect(result.issues.some(i => i.code === 'PNG_WIDTH_MISMATCH' || i.code === 'PNG_HEIGHT_MISMATCH')).toBe(false);
+    });
+
+    it('Test C: complete 33-byte first chunk passes', () => {
+        const publicDir = getTempPublicDir();
+        const buffer = Buffer.alloc(33);
+        buffer.write('89504e470d0a1a0a', 0, 'hex');
+        buffer.writeUInt32BE(13, 8);
+        buffer.write('IHDR', 12, 'ascii');
+        buffer.writeUInt32BE(32, 16);
+        buffer.writeUInt32BE(32, 20);
+
+        fs.writeFileSync(tempFile, buffer);
+
+        const result = validateAssetFiles(createTempManifest(32, 32), publicDir);
+        expect(result.isValid).toBe(true);
+        expect(result.issues).toEqual([]);
+    });
+
+    it('Test D: complete 33-byte with mismatching dimensions', () => {
+        const publicDir = getTempPublicDir();
+        const buffer = Buffer.alloc(33);
+        buffer.write('89504e470d0a1a0a', 0, 'hex');
+        buffer.writeUInt32BE(13, 8);
+        buffer.write('IHDR', 12, 'ascii');
+        buffer.writeUInt32BE(99, 16); // Width 99
+        buffer.writeUInt32BE(99, 20); // Height 99
+
+        fs.writeFileSync(tempFile, buffer);
+
+        const result1 = validateAssetFiles(createTempManifest(32, 99), publicDir);
+        expect(result1.isValid).toBe(false);
+        expect(result1.issues[0].code).toBe('PNG_WIDTH_MISMATCH');
+
+        const result2 = validateAssetFiles(createTempManifest(99, 32), publicDir);
+        expect(result2.isValid).toBe(false);
+        expect(result2.issues[0].code).toBe('PNG_HEIGHT_MISMATCH');
+    });
+
+    it('Test E: incomplete first-chunk header (< 16 bytes)', () => {
+        const publicDir = getTempPublicDir();
+        const buffer = Buffer.alloc(12);
+        buffer.write('89504e470d0a1a0a', 0, 'hex'); // valid signature
+
+        fs.writeFileSync(tempFile, buffer);
+
+        const result = validateAssetFiles(createTempManifest(32, 32), publicDir);
+        expect(result.isValid).toBe(false);
+        expect(result.issues[0].code).toBe('PNG_IHDR_MISSING');
+    });
+
+    it('Test F: invalid signature (< 8 bytes)', () => {
+        const publicDir = getTempPublicDir();
+        const buffer = Buffer.alloc(6);
+
+        fs.writeFileSync(tempFile, buffer);
+
+        const result = validateAssetFiles(createTempManifest(32, 32), publicDir);
+        expect(result.isValid).toBe(false);
+        expect(result.issues[0].code).toBe('INVALID_PNG_SIGNATURE');
     });
 
     it('fails on missing file', () => {
