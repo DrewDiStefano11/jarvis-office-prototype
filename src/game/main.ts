@@ -4,11 +4,13 @@ import { OfficeScene } from './scenes/OfficeScene';
 
 const config: Types.Core.GameConfig = {
     type: AUTO,
-    width: 1024,
-    height: 768,
+    width: 1792,
+    height: 1024,
     parent: 'game-container',
     backgroundColor: '#2f3136',
     pixelArt: true,
+    antialias: false,
+    roundPixels: true,
     scale: {
         mode: Scale.FIT,
         autoCenter: Scale.CENTER_BOTH

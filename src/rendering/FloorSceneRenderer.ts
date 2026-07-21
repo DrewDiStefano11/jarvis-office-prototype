@@ -12,6 +12,18 @@ const paletteColor = (visual: VisualMetadata): number => {
     return 0xb99b79;
 };
 
+const variantTint = (variant: string): number | undefined => {
+    if (variant.includes('security') || variant.includes('audit') || variant.includes('red')) return 0xd97862;
+    if (variant.includes('operations') || variant.includes('cyan') || variant.includes('nexus')) return 0x72cbd6;
+    if (variant.includes('violet') || variant.includes('purple') || variant.includes('plum') || variant.includes('containment')) return 0xb38bd2;
+    if (variant.includes('quality')) return 0xaa8bd8;
+    if (variant.includes('knowledge') || variant.includes('green')) return 0x8fbd7a;
+    if (variant.includes('temporary') || variant.includes('amber') || variant.includes('yellow')) return 0xe2ba62;
+    if (variant.includes('project') || variant.includes('blue') || variant.includes('vacant')) return 0x7fa8d2;
+    if (variant.includes('executive') || variant.includes('gold')) return 0xd7ad6f;
+    return undefined;
+};
+
 const drawDiamond = (graphics: GameObjects.Graphics, points: readonly Point2D[], color: number): void => {
     graphics.fillStyle(color).beginPath().moveTo(points[0].x, points[0].y);
     points.slice(1).forEach((point) => graphics.lineTo(point.x, point.y));
@@ -27,6 +39,7 @@ export class FloorSceneRenderer {
     public render(): number {
         createPixelArtTextures(this.scene);
         this.drawSpaces();
+        this.drawDepartmentLabels();
         this.drawWalls();
         this.drawDoorsAndThresholds();
         this.drawFurniture();
@@ -47,11 +60,13 @@ export class FloorSceneRenderer {
             graphics.closePath().strokePath();
             this.renderedObjectCount += 1;
 
-            const center = worldToIsometric({ x: space.bounds.x + space.bounds.width / 2, y: space.bounds.y + space.bounds.height / 2 });
-            this.scene.add.text(Math.round(center.x), Math.round(center.y), space.visual.shortLabel ?? space.visual.label, {
-                fontFamily: 'monospace', fontSize: '10px', color: '#f5e5c9', backgroundColor: '#201a17cc', padding: { x: 4, y: 2 }, align: 'center',
-            }).setOrigin(0.5).setDepth(center.depth + 5000);
-            this.renderedObjectCount += 1;
+            if (space.visual.labelVisibility !== 'hidden') {
+                const center = worldToIsometric({ x: space.bounds.x + space.bounds.width / 2, y: space.bounds.y + 12 });
+                this.scene.add.text(Math.round(center.x), Math.round(center.y), space.visual.shortLabel ?? space.visual.label, {
+                    fontFamily: 'monospace', fontSize: '8px', color: '#f5e5c9', backgroundColor: '#201a17df', padding: { x: 3, y: 2 }, align: 'center', wordWrap: { width: 108 },
+                }).setOrigin(0.5).setDepth(center.depth + 5000);
+                this.renderedObjectCount += 1;
+            }
         });
     }
 
@@ -65,6 +80,18 @@ export class FloorSceneRenderer {
             graphics.fillStyle(color, alpha).beginPath().moveTo(from.x, from.y).lineTo(to.x, to.y).lineTo(to.x, to.y - wall.height).lineTo(from.x, from.y - wall.height).closePath().fillPath();
             graphics.lineStyle(2, wall.material === 'glass' ? 0xa8e8ed : 0x2a211c, alpha).strokePath();
             graphics.lineStyle(2, 0xd5b78f, alpha * 0.7).lineBetween(from.x, from.y - wall.height, to.x, to.y - wall.height);
+            this.renderedObjectCount += 1;
+        });
+    }
+
+    private drawDepartmentLabels(): void {
+        this.floor.departments.forEach((department) => {
+            const point = worldToIsometric(department.labelPosition);
+            const color = paletteColor(department.visual);
+            this.scene.add.text(Math.round(point.x), Math.round(point.y), department.visual.shortLabel ?? `${department.number}. ${department.name}`, {
+                fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold', color: '#fff3d6', backgroundColor: `#${color.toString(16).padStart(6, '0')}ee`,
+                padding: { x: 7, y: 3 }, align: 'center', wordWrap: { width: 190 },
+            }).setOrigin(0.5).setDepth(point.depth + 8000);
             this.renderedObjectCount += 1;
         });
     }
@@ -83,15 +110,17 @@ export class FloorSceneRenderer {
         });
     }
 
-    private addPixelImage(key: string, position: Point2D, scale = 1): GameObjects.Image {
+    private addPixelImage(key: string, position: Point2D, scale = 1.25, visualVariant = ''): GameObjects.Image {
         const point = worldToIsometric(position);
         const image = this.scene.add.image(Math.round(point.x), Math.round(point.y), key).setScale(scale).setOrigin(0.5, 0.8).setDepth(point.depth + 400);
+        const tint = variantTint(visualVariant);
+        if (tint !== undefined) image.setTint(tint);
         this.renderedObjectCount += 1;
         return image;
     }
 
     private drawFurniture(): void {
-        this.floor.furniture.forEach((entity) => this.addPixelImage(furnitureTextureKey(entity.furnitureType), entity.position));
+        this.floor.furniture.forEach((entity) => this.addPixelImage(furnitureTextureKey(entity.furnitureType), entity.position, 1.25, entity.visualVariant));
     }
 
     private drawWorkspaces(): void {
@@ -104,10 +133,10 @@ export class FloorSceneRenderer {
     }
 
     private drawArchitecture(): void {
-        this.floor.architecturalObjects.forEach((entity) => this.addPixelImage(architectureTextureKey(entity.architecturalType), entity.position));
+        this.floor.architecturalObjects.forEach((entity) => this.addPixelImage(architectureTextureKey(entity.architecturalType), entity.position, 1.25, entity.visualVariant));
     }
 
     private drawOccupants(): void {
-        this.floor.occupants.forEach((entity) => this.addPixelImage(occupantTextureKey(entity.category), entity.position));
+        this.floor.occupants.forEach((entity) => this.addPixelImage(occupantTextureKey(entity.category), entity.position, 1.25, entity.visualVariant));
     }
 }

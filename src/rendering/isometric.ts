@@ -11,9 +11,9 @@ export interface ScreenPoint extends Point2D {
 }
 
 export const DEFAULT_ISOMETRIC_PROJECTION: IsometricProjection = {
-    origin: { x: 896, y: 80 },
-    tileWidth: 1,
-    tileHeight: 0.5,
+    origin: { x: 760, y: 48 },
+    tileWidth: 1.15,
+    tileHeight: 0.58,
 };
 
 export function worldToIsometric(
