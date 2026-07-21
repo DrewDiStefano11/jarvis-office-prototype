@@ -109,6 +109,37 @@ describe("Reduced Motion Policy", () => {
     expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
   });
 
+  it("handles decorative motion marked essential with text fallback by preserving replacement", () => {
+    const req = createRequest({ purpose: "decorative", essential: true, fallbackPresentation: "text-update" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(true);
+    expect(res.fallbackPresentation).toBe("text-update");
+    expect(res.appliedReasons).toContain("DECORATIVE_MOTION_DISABLED");
+    expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+  });
+
+  it("handles decorative motion marked essential with static fallback by preserving replacement", () => {
+    const req = createRequest({ purpose: "decorative", essential: true, fallbackPresentation: "static-indicator" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(true);
+    expect(res.fallbackPresentation).toBe("static-indicator");
+    expect(res.appliedReasons).toContain("DECORATIVE_MOTION_DISABLED");
+    expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+  });
+
+  it("combines decorative, flashing, and essential restrictions", () => {
+    const req = createRequest({ purpose: "decorative", essential: true, flashing: true, fallbackPresentation: "text-update" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(true);
+    expect(res.flashing).toBe(false);
+    expect(res.appliedReasons).toContain("DECORATIVE_MOTION_DISABLED");
+    expect(res.appliedReasons).toContain("FLASHING_DISABLED");
+    expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+  });
+
   it("is deterministic", () => {
     const req = createRequest({ durationMs: 500 });
     const res1 = resolveMotionPresentation(basePolicy, req);

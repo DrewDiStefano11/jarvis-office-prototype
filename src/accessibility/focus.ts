@@ -1,4 +1,4 @@
-import type { FocusTarget, FocusResolution, FocusDirection } from "./types";
+import type { FocusTarget, FocusResolution, FocusDirection, RovingTabIndexResolution } from "./types";
 
 export function isFocusTargetEnabled(target: FocusTarget | undefined | null): boolean {
   if (!target) return false;
@@ -132,29 +132,65 @@ export function getRovingTabIndex(
   targets: readonly FocusTarget[],
   activeId: string | null | undefined,
   targetId: string
-): -1 | 0 {
-  const target = targets.find((t) => t.id === targetId);
-  if (!isFocusTargetEnabled(target)) {
-    return -1;
+): RovingTabIndexResolution {
+  const validationError = validateTargets(targets);
+  if (validationError) {
+    return validationError as RovingTabIndexResolution;
+  }
+
+  const activeIdTrimmed = activeId?.trim();
+  if (activeId !== undefined && activeId !== null && !activeIdTrimmed) {
+     return {
+        ok: false,
+        code: "EMPTY_TARGET_ID",
+        message: "The provided active ID is explicitly empty or whitespace-only.",
+     };
+  }
+
+  const targetIdTrimmed = targetId?.trim();
+  if (!targetIdTrimmed) {
+    return {
+      ok: false,
+      code: "EMPTY_TARGET_ID",
+      message: "The provided target ID argument is empty or whitespace-only.",
+    };
   }
 
   const enabledTargets = targets.filter(isFocusTargetEnabled);
   if (enabledTargets.length === 0) {
-    return -1;
+    return {
+      ok: false,
+      code: "NO_ENABLED_TARGETS",
+      message: "No enabled focus targets found.",
+    };
   }
 
-  // If activeId is valid and enabled, it gets 0.
-  if (activeId === targetId) {
-    return 0;
+  const target = targets.find((t) => t.id === targetIdTrimmed);
+  if (!target) {
+    return {
+      ok: false,
+      code: "CURRENT_TARGET_UNKNOWN",
+      message: `The target ID "${targetIdTrimmed}" was not found in the target list.`,
+    };
   }
 
-  // If activeId is invalid, not found, or disabled, the first enabled target gets 0.
-  const activeTarget = activeId ? targets.find((t) => t.id === activeId) : undefined;
-  if (!isFocusTargetEnabled(activeTarget)) {
-    if (enabledTargets[0].id === targetId) {
-      return 0;
+  if (!isFocusTargetEnabled(target)) {
+    return { ok: true, tabIndex: -1 };
+  }
+
+  // If activeId is valid and enabled, it alone gets 0.
+  if (activeIdTrimmed === targetIdTrimmed) {
+    return { ok: true, tabIndex: 0 };
+  }
+
+  // If active target is absent, null, unknown under a documented fallback, or disabled,
+  // the first enabled target receives tabIndex 0.
+  const activeTarget = activeIdTrimmed ? targets.find((t) => t.id === activeIdTrimmed) : undefined;
+  if (!activeTarget || !isFocusTargetEnabled(activeTarget)) {
+    if (enabledTargets[0].id === targetIdTrimmed) {
+      return { ok: true, tabIndex: 0 };
     }
   }
 
-  return -1;
+  return { ok: true, tabIndex: -1 };
 }

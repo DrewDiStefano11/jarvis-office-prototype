@@ -43,6 +43,20 @@ export function normalizeShortcut(shortcut: string): NormalizedShortcutResult {
 
   const key = keys[0];
 
+  const allowedSpecialKeys = new Set([
+    "arrowup", "arrowdown", "arrowleft", "arrowright",
+    "enter", "space", "escape", "tab", "home", "end",
+    "delete", "backspace", "pageup", "pagedown", "insert",
+    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12"
+  ]);
+
+  const isSingleLetter = /^[a-z]$/.test(key);
+  const isDigit = /^[0-9]$/.test(key);
+
+  if (!isSingleLetter && !isDigit && !allowedSpecialKeys.has(key)) {
+    return { isValid: false, error: `Shortcut contains an unsupported or unknown named key: "${key}".` };
+  }
+
   // Canonical modifier order: Ctrl, Alt, Shift, Meta
   const canonicalModifiers = [];
   if (modifiers.has("ctrl")) canonicalModifiers.push("Ctrl");
@@ -50,10 +64,19 @@ export function normalizeShortcut(shortcut: string): NormalizedShortcutResult {
   if (modifiers.has("shift")) canonicalModifiers.push("Shift");
   if (modifiers.has("meta")) canonicalModifiers.push("Meta");
 
-  // Key normalization: Capitalize single letters, otherwise title case (e.g., enter -> Enter)
+  // Key normalization
   let normalizedKey = key;
-  if (key.length === 1) {
+  if (isSingleLetter) {
     normalizedKey = key.toUpperCase();
+  } else if (/^f\d+$/.test(key)) {
+    normalizedKey = key.toUpperCase();
+  } else if (key.startsWith("arrow") || key.startsWith("page")) {
+    // ArrowUp, PageDown etc.
+    if (key.startsWith("arrow")) {
+       normalizedKey = "Arrow" + key.slice(5).charAt(0).toUpperCase() + key.slice(6);
+    } else {
+       normalizedKey = "Page" + key.slice(4).charAt(0).toUpperCase() + key.slice(5);
+    }
   } else {
     normalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
   }

@@ -193,79 +193,97 @@ export function validateAnnouncements(
         message: `Announcement "${ann.id}" is missing a message template.`,
         announcementId: ann.id,
       });
-    } else {
-      // Validate template parameters
-      const templateParams = new Set<string>();
-      let malformed = false;
-      const regex = /\{([^}]+)\}/g;
+    }
+
+    // Validate template parameters
+    const templateParams = new Set<string>();
+    let malformed = false;
+    const regex = /\{([^}]*)\}/g;
+    const placeholderNameGrammar = /^[a-z][a-zA-Z0-9]*$/;
+
+    // Extract placeholders from both messageTemplate and deduplicationKey
+    const extractPlaceholders = (template: string) => {
       let match;
-
-      while ((match = regex.exec(ann.messageTemplate)) !== null) {
-        templateParams.add(match[1]);
-      }
-
-      const openBraces = (ann.messageTemplate.match(/\{/g) || []).length;
-      const closeBraces = (ann.messageTemplate.match(/\}/g) || []).length;
-      if (openBraces !== closeBraces) {
-        malformed = true;
-      }
-
-      // Also validate deduplication key for braces if it uses templates
-      const dedupOpen = (ann.deduplicationKey?.match(/\{/g) || []).length;
-      const dedupClose = (ann.deduplicationKey?.match(/\}/g) || []).length;
-      if (dedupOpen !== dedupClose) {
-        malformed = true;
-      }
-
-      if (malformed) {
-         issues.push({
-            code: "MISSING_ACCESSIBLE_DESCRIPTION",
-            severity: "error",
-            message: `Announcement "${ann.id}" has malformed template braces.`,
-            announcementId: ann.id,
-         });
-      }
-
-      const reqSet = new Set<string>();
-      for (const req of ann.requiredParameters) {
-        if (!req || req.trim() === "") {
-          issues.push({
-             code: "MISSING_TEMPLATE_PARAMETER",
-             severity: "error",
-             message: `Announcement "${ann.id}" has an empty required parameter name.`,
-             announcementId: ann.id,
-          });
-        } else if (reqSet.has(req)) {
-          issues.push({
-            code: "DUPLICATE_REQUIRED_PARAMETER",
-            severity: "error",
-            message: `Announcement "${ann.id}" has duplicate required parameter: ${req}.`,
-            announcementId: ann.id,
-          });
-        }
-        reqSet.add(req);
-      }
-
-      for (const tParam of templateParams) {
-        if (!reqSet.has(tParam)) {
+      while ((match = regex.exec(template)) !== null) {
+        const paramName = match[1];
+        if (paramName === "") {
+          malformed = true; // empty placeholder {}
+        } else if (!placeholderNameGrammar.test(paramName)) {
            issues.push({
-            code: "UNKNOWN_TEMPLATE_PARAMETER",
+            code: "INVALID_TEMPLATE_PARAMETER",
             severity: "error",
-            message: `Announcement "${ann.id}" uses unknown placeholder {${tParam}} in its template.`,
+            message: `Announcement "${ann.id}" uses invalid placeholder format {${paramName}}.`,
             announcementId: ann.id,
           });
+        } else {
+          templateParams.add(paramName);
         }
       }
+    };
 
-      for (const rParam of reqSet) {
-        if (!templateParams.has(rParam)) {
-          issues.push({
-            code: "MISSING_TEMPLATE_PARAMETER",
-            severity: "error",
-            message: `Announcement "${ann.id}" declares required parameter "${rParam}" but does not use it in the template.`,
-            announcementId: ann.id,
-          });
-        }
+    if (ann.messageTemplate) extractPlaceholders(ann.messageTemplate);
+    if (ann.deduplicationKey) extractPlaceholders(ann.deduplicationKey);
+
+    const openBraces = (ann.messageTemplate?.match(/\{/g) || []).length;
+    const closeBraces = (ann.messageTemplate?.match(/\}/g) || []).length;
+    if (openBraces !== closeBraces) {
+      malformed = true;
+    }
+
+    const dedupOpen = (ann.deduplicationKey?.match(/\{/g) || []).length;
+    const dedupClose = (ann.deduplicationKey?.match(/\}/g) || []).length;
+    if (dedupOpen !== dedupClose) {
+      malformed = true;
+    }
+
+    if (malformed) {
+       issues.push({
+          code: "MALFORMED_TEMPLATE",
+          severity: "error",
+          message: `Announcement "${ann.id}" has malformed template braces.`,
+          announcementId: ann.id,
+       });
+    }
+
+    const reqSet = new Set<string>();
+    for (const req of ann.requiredParameters) {
+      if (!req || req.trim() === "") {
+        issues.push({
+           code: "MISSING_TEMPLATE_PARAMETER",
+           severity: "error",
+           message: `Announcement "${ann.id}" has an empty required parameter name.`,
+           announcementId: ann.id,
+        });
+      } else if (reqSet.has(req)) {
+        issues.push({
+          code: "DUPLICATE_REQUIRED_PARAMETER",
+          severity: "error",
+          message: `Announcement "${ann.id}" has duplicate required parameter: ${req}.`,
+          announcementId: ann.id,
+        });
+      }
+      reqSet.add(req);
+    }
+
+    for (const tParam of templateParams) {
+      if (!reqSet.has(tParam)) {
+         issues.push({
+          code: "UNKNOWN_TEMPLATE_PARAMETER",
+          severity: "error",
+          message: `Announcement "${ann.id}" uses unknown placeholder {${tParam}} in its templates.`,
+          announcementId: ann.id,
+        });
+      }
+    }
+
+    for (const rParam of reqSet) {
+      if (!templateParams.has(rParam)) {
+        issues.push({
+          code: "MISSING_TEMPLATE_PARAMETER",
+          severity: "error",
+          message: `Announcement "${ann.id}" declares required parameter "${rParam}" but does not use it in either template.`,
+          announcementId: ann.id,
+        });
       }
     }
   }
@@ -282,6 +300,14 @@ export function validateMotionRequests(
   const issues: AccessibilityValidationIssue[] = [];
 
   for (const req of requests) {
+    if (req.purpose === "decorative" && req.essential) {
+      issues.push({
+        code: "CONTRADICTORY_MOTION_PURPOSE",
+        severity: "error",
+        message: `Motion request "${req.id}" is marked as both decorative and essential.`,
+      });
+    }
+
     if (req.essential && (!req.fallbackPresentation || req.fallbackPresentation === "none")) {
       issues.push({
         code: "MISSING_NON_MOTION_ALTERNATIVE",

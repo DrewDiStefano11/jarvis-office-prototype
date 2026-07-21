@@ -26,6 +26,30 @@ describe("Shortcut Normalization", () => {
     expect(res.normalized).toBe("Enter");
   });
 
+  it("normalizes digits", () => {
+    const res = normalizeShortcut("ctrl+1");
+    expect(res.isValid).toBe(true);
+    expect(res.normalized).toBe("Ctrl+1");
+  });
+
+  it("normalizes arrow keys", () => {
+    const res = normalizeShortcut("arrowup");
+    expect(res.isValid).toBe(true);
+    expect(res.normalized).toBe("ArrowUp");
+  });
+
+  it("normalizes function keys", () => {
+    const res = normalizeShortcut("f12");
+    expect(res.isValid).toBe(true);
+    expect(res.normalized).toBe("F12");
+  });
+
+  it("rejects unknown named keys", () => {
+    const res = normalizeShortcut("Hyper");
+    expect(res.isValid).toBe(false);
+    expect(res.error).toContain("unsupported or unknown named key");
+  });
+
   it("rejects empty shortcuts", () => {
     const res = normalizeShortcut("   ");
     expect(res.isValid).toBe(false);

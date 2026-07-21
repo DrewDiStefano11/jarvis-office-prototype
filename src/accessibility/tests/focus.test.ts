@@ -114,17 +114,57 @@ describe("Focus Management", () => {
   });
 
   it("roving tab index gets 0 for active valid target", () => {
-    expect(getRovingTabIndex(targets, "t3", "t3")).toBe(0);
-    expect(getRovingTabIndex(targets, "t3", "t1")).toBe(-1);
+    expect(getRovingTabIndex(targets, "t3", "t3")).toEqual({ ok: true, tabIndex: 0 });
+    expect(getRovingTabIndex(targets, "t3", "t1")).toEqual({ ok: true, tabIndex: -1 });
   });
 
   it("roving tab index gets 0 for first valid target when activeId is unknown", () => {
-    expect(getRovingTabIndex(targets, "unknown", "t1")).toBe(0);
-    expect(getRovingTabIndex(targets, "unknown", "t3")).toBe(-1);
+    expect(getRovingTabIndex(targets, "unknown", "t1")).toEqual({ ok: true, tabIndex: 0 });
+    expect(getRovingTabIndex(targets, "unknown", "t3")).toEqual({ ok: true, tabIndex: -1 });
   });
 
   it("roving tab index gets -1 for disabled target", () => {
-    expect(getRovingTabIndex(targets, "t3", "t2")).toBe(-1);
+    expect(getRovingTabIndex(targets, "t3", "t2")).toEqual({ ok: true, tabIndex: -1 });
+  });
+
+  it("roving tab index returns error for empty targetId argument", () => {
+    expect(getRovingTabIndex(targets, "t3", "   ")).toEqual({
+      ok: false,
+      code: "EMPTY_TARGET_ID",
+      message: "The provided target ID argument is empty or whitespace-only.",
+    });
+  });
+
+  it("roving tab index returns error for explicitly empty activeId argument", () => {
+    expect(getRovingTabIndex(targets, "   ", "t3")).toEqual({
+      ok: false,
+      code: "EMPTY_TARGET_ID",
+      message: "The provided active ID is explicitly empty or whitespace-only.",
+    });
+  });
+
+  it("roving tab index returns error for unknown targetId", () => {
+    expect(getRovingTabIndex(targets, "t3", "unknown")).toEqual({
+      ok: false,
+      code: "CURRENT_TARGET_UNKNOWN",
+      message: 'The target ID "unknown" was not found in the target list.',
+    });
+  });
+
+  it("roving tab index returns error if list contains duplicate ID", () => {
+    expect(getRovingTabIndex([{ id: "t1" }, { id: "t1" }], "t1", "t1")).toEqual({
+      ok: false,
+      code: "DUPLICATE_TARGET_ID",
+      message: 'Duplicate target ID found: "t1".',
+    });
+  });
+
+  it("roving tab index returns error if no enabled targets", () => {
+    expect(getRovingTabIndex(allDisabled, "t1", "t1")).toEqual({
+      ok: false,
+      code: "NO_ENABLED_TARGETS",
+      message: "No enabled focus targets found.",
+    });
   });
 
   it("functions do not mutate inputs", () => {

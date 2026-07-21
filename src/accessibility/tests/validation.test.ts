@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateKeyboardCommands, validateFocusTargets, validateAnnouncements, requireValidAccessibilityConfiguration } from "../validation";
 import type { KeyboardCommand, FocusTarget, AnnouncementDescriptor } from "../types";
+import { ANNOUNCEMENTS } from "../announcements";
 
 describe("Accessibility Validation", () => {
   it("validates valid keyboard commands without issues", () => {
@@ -108,18 +109,50 @@ describe("Accessibility Validation", () => {
 
   it("detects template parameter issues", () => {
     const announcements: AnnouncementDescriptor[] = [
-      { id: "A1", politeness: "polite", deduplicationKey: "dk", messageTemplate: "Hello {name} {missing}", requiredParameters: ["name", "extra", "name"] }
+      { id: "A1", politeness: "polite", deduplicationKey: "dk", messageTemplate: "Hello {name} {missing}", requiredParameters: ["name", "extra", "name"] },
+      { id: "A2", politeness: "polite", deduplicationKey: "dk:{extra}", messageTemplate: "Hello {name}", requiredParameters: ["name", "extra"] }, // valid
+      { id: "A3", politeness: "polite", deduplicationKey: "dk:{}", messageTemplate: "Hello {name}", requiredParameters: ["name"] }, // malformed empty
+      { id: "A4", politeness: "polite", deduplicationKey: "dk:{A_invalid}", messageTemplate: "Hello {name}", requiredParameters: ["name", "A_invalid"] }, // invalid name
     ];
     const res = validateAnnouncements(announcements);
     expect(res.isValid).toBe(false);
-    expect(res.issues.some(i => i.code === "DUPLICATE_REQUIRED_PARAMETER")).toBe(true);
-    expect(res.issues.some(i => i.code === "UNKNOWN_TEMPLATE_PARAMETER")).toBe(true);
-    expect(res.issues.some(i => i.code === "MISSING_TEMPLATE_PARAMETER")).toBe(true); // 'extra' is missing in template
+
+    // A1 issues
+    expect(res.issues.some(i => i.announcementId === "A1" && i.code === "DUPLICATE_REQUIRED_PARAMETER")).toBe(true);
+    expect(res.issues.some(i => i.announcementId === "A1" && i.code === "UNKNOWN_TEMPLATE_PARAMETER")).toBe(true);
+    expect(res.issues.some(i => i.announcementId === "A1" && i.code === "MISSING_TEMPLATE_PARAMETER")).toBe(true);
+
+    // A2 should be valid for template params since it uses extra in dedup key
+    const a2Issues = res.issues.filter(i => i.announcementId === "A2");
+    expect(a2Issues).toHaveLength(0);
+
+    // A3 issues
+    expect(res.issues.some(i => i.announcementId === "A3" && i.code === "MALFORMED_TEMPLATE")).toBe(true);
+
+    // A4 issues
+    expect(res.issues.some(i => i.announcementId === "A4" && i.code === "INVALID_TEMPLATE_PARAMETER")).toBe(true);
+  });
+
+  it("validates built-in ANNOUNCEMENTS correctly", () => {
+    const res = validateAnnouncements(ANNOUNCEMENTS);
+    expect(res.isValid).toBe(true);
+    expect(res.issues).toHaveLength(0);
   });
 
   it("requireValidAccessibilityConfiguration throws on error", () => {
     const targets: FocusTarget[] = [{ id: "t1" }, { id: "t1" }];
     const res = validateFocusTargets(targets);
     expect(() => requireValidAccessibilityConfiguration(res)).toThrowError(/Accessibility validation failed:/);
+  });
+
+  it("detects decorative nonessential requests that are marked essential with no fallback", async () => {
+    // we use validateMotionRequests here
+    const { validateMotionRequests } = await import("../validation");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const req: any[] = [{ id: "req1", purpose: "decorative", essential: true, fallbackPresentation: "none", durationMs: 0, continuous: false, flashing: false, parallax: false }];
+    const res = validateMotionRequests(req);
+    expect(res.isValid).toBe(false);
+    expect(res.issues.some(i => i.code === "CONTRADICTORY_MOTION_PURPOSE")).toBe(true);
+    expect(res.issues.some(i => i.code === "MISSING_NON_MOTION_ALTERNATIVE")).toBe(true);
   });
 });

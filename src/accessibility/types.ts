@@ -21,6 +21,21 @@ export type FocusResolution =
       readonly message: string;
     };
 
+export type RovingTabIndexResolution =
+  | {
+      readonly ok: true;
+      readonly tabIndex: -1 | 0;
+    }
+  | {
+      readonly ok: false;
+      readonly code:
+        | "CURRENT_TARGET_UNKNOWN"
+        | "NO_ENABLED_TARGETS"
+        | "EMPTY_TARGET_ID"
+        | "DUPLICATE_TARGET_ID";
+      readonly message: string;
+    };
+
 export type AccessibilityValidationSeverity = "error" | "warning";
 
 export type AccessibilityValidationCode =
@@ -42,7 +57,10 @@ export type AccessibilityValidationCode =
   | "MISSING_DEDUPLICATION_KEY"
   | "DUPLICATE_REQUIRED_PARAMETER"
   | "MISSING_TEMPLATE_PARAMETER"
-  | "UNKNOWN_TEMPLATE_PARAMETER";
+  | "UNKNOWN_TEMPLATE_PARAMETER"
+  | "MALFORMED_TEMPLATE"
+  | "INVALID_TEMPLATE_PARAMETER"
+  | "CONTRADICTORY_MOTION_PURPOSE";
 
 export interface AccessibilityValidationIssue {
   readonly code: AccessibilityValidationCode;
