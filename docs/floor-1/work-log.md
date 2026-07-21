@@ -35,3 +35,23 @@
 ### Pixel-art method
 
 The renderer creates original 16–40 px internal textures for occupants, desks, consoles, plants, shelves, doors, stairs, elevators, gates, and equipment. Textures use nearest-neighbor filtering and integer placement. Layered hard-edged shapes, stepped geometry, highlights, shadows, and a limited warm palette create sprite-like assets without external copyrighted material. Floor placement remains data-driven; renderer strategies branch only on generic object categories.
+
+## Goal 2 — complete static office
+
+- Goal 2 start HEAD: `7ed85bc1c88a37f8ff108823a89915cd9fb3a86f`
+- Goal 2 completion HEAD: `55edf09ea1ae920281c3056c6254c6391691d6e7`
+- Base SHA (`main`): `23ff763f1afeb5b3394e40de077a272cacb4c518`
+- Population: 38 visible occupants
+- Validation: 10 test files / 153 tests passed
+- Movement/pathfinding: deferred; no movement implementation added
+- Visual checkpoints: geometry, furniture, population, and final styling inspected in the running app
+
+## Goal 3 — visual QA and evidence
+
+- Goal 3 start HEAD: `55edf09ea1ae920281c3056c6254c6391691d6e7`
+- Final rendering source SHA: `322a4ec885f57439d498829b1e69f596b646f8ac`
+- Overview viewport: 1920×1080
+- Responsive viewport: 1366×768
+- Browser/page errors during evidence capture: 0
+- Source-backed render commands: 766
+- PR #8 at Goal 3 start: open and unmerged at `38a8452fae3846f70c955e2ea097bd575874b7d4`

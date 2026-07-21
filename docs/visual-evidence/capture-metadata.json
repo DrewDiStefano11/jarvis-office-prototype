@@ -1,0 +1,87 @@
+{
+  "branch": "feature/floor-1-visual-foundation-v2",
+  "commit": "322a4ec885f57439d498829b1e69f596b646f8ac",
+  "capturedAt": "2026-07-21T18:07:06.284Z",
+  "results": [
+    {
+      "filename": "floor-1-overview.png",
+      "viewport": "1920x1080",
+      "area": "Complete Floor 1 overview with status panel",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "security-executive.png",
+      "viewport": "1920x1080",
+      "area": "Executive Command, Security hierarchy, north core",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "operations.png",
+      "viewport": "1920x1080",
+      "area": "Operations Pods A/B/C, Incident Command, private offices",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "engineering-project.png",
+      "viewport": "1920x1080",
+      "area": "Engineering functions, collaboration, Project Coordination",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "reception-checkpoint.png",
+      "viewport": "1920x1080",
+      "area": "Entrance, Reception, intake, full-width checkpoint, three routes",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "quality-sandbox.png",
+      "viewport": "1920x1080",
+      "area": "Quality, secure transfer corridor, vestibule, four sandbox cells",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "knowledge-memory.png",
+      "viewport": "1920x1080",
+      "area": "Knowledge Library, manager offices, Decision Archive",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "temporary-support.png",
+      "viewport": "1920x1080",
+      "area": "Temporary Launch, focus rooms, support rooms, emergency stair",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "workspace-states.png",
+      "viewport": "1920x1080",
+      "area": "Assigned, vacant, shared surge, temporary, and sandbox state context",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    },
+    {
+      "filename": "responsive-laptop.png",
+      "viewport": "1366x768",
+      "area": "Complete usable Floor 1 at laptop viewport",
+      "title": "Jarvis HQ — Floor 1",
+      "renderCommandCount": "766",
+      "errors": []
+    }
+  ]
+}
