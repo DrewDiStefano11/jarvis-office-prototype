@@ -112,6 +112,45 @@ describe('Office Layout Validation', () => {
         validateLayout(defaultOfficeLayout);
         expect(defaultOfficeLayout.rooms.length).toBe(originalRoomsLength);
     });
+
+    it('rejects doorway entirely inside one room', () => {
+        const invalidLayout = {
+            ...defaultOfficeLayout,
+            doorways: [
+                ...defaultOfficeLayout.doorways,
+                { id: 'door-inside', bounds: { x: 210, y: 10, width: 20, height: 20 }, connectsRooms: ['room-main-office', 'room-meeting'] as readonly [string, string] }
+            ]
+        };
+        const result = validateLayout(invalidLayout);
+        expect(result.isValid).toBe(false);
+        expect(result.issues.some(i => i.code === 'INVALID_DOORWAY' && i.entityId === 'door-inside')).toBe(true);
+    });
+
+    it('rejects furniture with zero width or negative height', () => {
+        const invalidLayout = {
+            ...defaultOfficeLayout,
+            furniture: [
+                ...defaultOfficeLayout.furniture,
+                { id: 'furn-bad', roomId: 'room-main-office', spriteId: 'sprite-desk', position: { x: 210, y: 10 }, size: { width: 0, height: -10 }, blockedArea: { x: 210, y: 10, width: 64, height: 32 } }
+            ]
+        };
+        const result = validateLayout(invalidLayout);
+        expect(result.isValid).toBe(false);
+        expect(result.issues.some(i => i.code === 'INVALID_DIMENSIONS' && i.entityId === 'furn-bad')).toBe(true);
+    });
+
+    it('rejects furniture whose blockedArea does not intersect footprint', () => {
+        const invalidLayout = {
+            ...defaultOfficeLayout,
+            furniture: [
+                ...defaultOfficeLayout.furniture,
+                { id: 'furn-block-distant', roomId: 'room-main-office', spriteId: 'sprite-desk', position: { x: 210, y: 10 }, size: { width: 64, height: 32 }, blockedArea: { x: 999, y: 999, width: 64, height: 32 } }
+            ]
+        };
+        const result = validateLayout(invalidLayout);
+        expect(result.isValid).toBe(false);
+        expect(result.issues.some(i => i.code === 'BLOCKED_GEOMETRY_CONFLICT' && i.entityId === 'furn-block-distant')).toBe(true);
+    });
 });
 
 describe('Asset Manifest Validation', () => {

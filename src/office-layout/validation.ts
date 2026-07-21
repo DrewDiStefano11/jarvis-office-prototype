@@ -31,6 +31,34 @@ function isFiniteBounds(b: Bounds): boolean {
     return Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.width) && Number.isFinite(b.height);
 }
 
+function doorwayTouchesRoomBoundary(doorway: Bounds, room: Bounds): boolean {
+    // Touching means the doorway edge aligns with a room edge, and overlaps along that edge
+    const touchesLeft = doorway.x === room.x + room.width;
+    const touchesRight = doorway.x + doorway.width === room.x;
+    const touchesTop = doorway.y === room.y + room.height;
+    const touchesBottom = doorway.y + doorway.height === room.y;
+
+    // It can also span across the boundary exactly (e.g. half in one room, half in the other)
+    const spansLeftEdge = doorway.x <= room.x && doorway.x + doorway.width >= room.x;
+    const spansRightEdge = doorway.x <= room.x + room.width && doorway.x + doorway.width >= room.x + room.width;
+    const spansTopEdge = doorway.y <= room.y && doorway.y + doorway.height >= room.y;
+    const spansBottomEdge = doorway.y <= room.y + room.height && doorway.y + doorway.height >= room.y + room.height;
+
+    const touchesHorizontal = touchesLeft || touchesRight || spansLeftEdge || spansRightEdge;
+    const touchesVertical = touchesTop || touchesBottom || spansTopEdge || spansBottomEdge;
+
+    if (!touchesHorizontal && !touchesVertical) return false;
+
+    // Must overlap on the perpendicular axis
+    const overlapHorizontal = doorway.x < room.x + room.width && doorway.x + doorway.width > room.x;
+    const overlapVertical = doorway.y < room.y + room.height && doorway.y + doorway.height > room.y;
+
+    if (touchesHorizontal && !overlapVertical) return false;
+    if (touchesVertical && !overlapHorizontal) return false;
+
+    return true;
+}
+
 export function validateLayout(layout: OfficeLayout): OfficeValidationResult {
     const issues: OfficeValidationIssue[] = [];
 
@@ -104,10 +132,53 @@ export function validateLayout(layout: OfficeLayout): OfficeValidationResult {
         if (!isFinitePoint(f.position)) {
             addIssue('NONFINITE_COORDINATE', `Furniture ${f.id} has non-finite position`, 'Furniture', f.id);
         }
+
+        if (!Number.isFinite(f.size.width)) addIssue('NONFINITE_COORDINATE', `Furniture ${f.id} width is non-finite`, 'Furniture', f.id);
+        if (!Number.isFinite(f.size.height)) addIssue('NONFINITE_COORDINATE', `Furniture ${f.id} height is non-finite`, 'Furniture', f.id);
+
+        if (f.size.width <= 0 || f.size.height <= 0) {
+            addIssue('INVALID_DIMENSIONS', `Furniture ${f.id} has non-positive dimensions`, 'Furniture', f.id);
+        }
+
+        if (!isFiniteBounds(f.blockedArea)) {
+            addIssue('NONFINITE_COORDINATE', `Furniture ${f.id} blockedArea is non-finite`, 'Furniture', f.id);
+        } else if (f.blockedArea.width <= 0 || f.blockedArea.height <= 0) {
+            addIssue('INVALID_DIMENSIONS', `Furniture ${f.id} blockedArea has non-positive dimensions`, 'Furniture', f.id);
+        } else {
+             // Check blockedArea encapsulates footprint or overlaps footprint
+             // Footprint is position to position + size
+             if (f.size.width > 0 && f.size.height > 0 && isFinitePoint(f.position)) {
+                 const footprint = { x: f.position.x, y: f.position.y, width: f.size.width, height: f.size.height };
+
+                 // blockedArea must overlap the footprint
+                 const overlaps = !(
+                     f.blockedArea.x + f.blockedArea.width <= footprint.x ||
+                     footprint.x + footprint.width <= f.blockedArea.x ||
+                     f.blockedArea.y + f.blockedArea.height <= footprint.y ||
+                     footprint.y + footprint.height <= f.blockedArea.y
+                 );
+                 if (!overlaps) {
+                     addIssue('BLOCKED_GEOMETRY_CONFLICT', `Furniture ${f.id} blockedArea does not overlap its footprint`, 'Furniture', f.id);
+                 }
+             }
+        }
+
         if (checkRoomRef(f.roomId, f.id, 'Furniture')) {
             const room = layout.rooms.find(r => r.id === f.roomId)!;
             if (!pointInBounds(f.position, room.bounds)) {
                 addIssue('OUTSIDE_ROOM_BOUNDS', `Furniture ${f.id} outside room ${room.id}`, 'Furniture', f.id);
+            }
+            if (f.blockedArea && isFiniteBounds(f.blockedArea) && f.blockedArea.width > 0 && f.blockedArea.height > 0) {
+                // Determine if blocked area is strictly within room bounds
+                // Room boundary rules state points exactly on edge are inside. So min x must be >= room.x, max x <= room.x + room.width
+                const isContained =
+                    f.blockedArea.x >= room.bounds.x &&
+                    f.blockedArea.x + f.blockedArea.width <= room.bounds.x + room.bounds.width &&
+                    f.blockedArea.y >= room.bounds.y &&
+                    f.blockedArea.y + f.blockedArea.height <= room.bounds.y + room.bounds.height;
+                if (!isContained) {
+                    addIssue('OUTSIDE_ROOM_BOUNDS', `Furniture ${f.id} blockedArea is outside room ${room.id} bounds`, 'Furniture', f.id);
+                }
             }
         }
     });
@@ -162,16 +233,34 @@ export function validateLayout(layout: OfficeLayout): OfficeValidationResult {
 
     layout.doorways.forEach(d => {
         checkId(d.id, 'Doorway', idSets.doorways, 'EMPTY_ID', 'DUPLICATE_DOORWAY_ID');
+
+        let validGeometry = true;
         if (!isFiniteBounds(d.bounds)) {
             addIssue('NONFINITE_COORDINATE', `Doorway ${d.id} has non-finite coordinates`, 'Doorway', d.id);
+            validGeometry = false;
         } else if (d.bounds.width <= 0 || d.bounds.height <= 0) {
             addIssue('INVALID_DOORWAY', `Doorway ${d.id} has non-positive dimensions`, 'Doorway', d.id);
+            validGeometry = false;
         }
+
         if (d.connectsRooms[0] === d.connectsRooms[1]) {
             addIssue('INVALID_DOORWAY', `Doorway ${d.id} connects a room to itself`, 'Doorway', d.id);
         }
+
+        let validRooms = true;
         if (!idSets.rooms.has(d.connectsRooms[0]) || !idSets.rooms.has(d.connectsRooms[1])) {
             addIssue('UNKNOWN_ROOM_REFERENCE', `Doorway ${d.id} references missing room`, 'Doorway', d.id);
+            validRooms = false;
+        }
+
+        if (validGeometry && validRooms && d.connectsRooms[0] !== d.connectsRooms[1]) {
+            const room1 = layout.rooms.find(r => r.id === d.connectsRooms[0])!;
+            const room2 = layout.rooms.find(r => r.id === d.connectsRooms[1])!;
+            const touchesR1 = doorwayTouchesRoomBoundary(d.bounds, room1.bounds);
+            const touchesR2 = doorwayTouchesRoomBoundary(d.bounds, room2.bounds);
+            if (!touchesR1 || !touchesR2) {
+                 addIssue('INVALID_DOORWAY', `Doorway ${d.id} does not physically touch both referenced rooms`, 'Doorway', d.id);
+            }
         }
     });
 

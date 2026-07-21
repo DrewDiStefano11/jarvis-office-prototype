@@ -163,6 +163,7 @@ export type OfficeValidationCode =
   | "PNG_IHDR_MISSING"
   | "PNG_WIDTH_MISMATCH"
   | "PNG_HEIGHT_MISMATCH"
+  | "PNG_IHDR_INVALID"
   | "MISSING_REQUIRED_ASSET";
 
 export interface OfficeValidationIssue {

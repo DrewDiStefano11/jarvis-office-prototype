@@ -2,6 +2,24 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AssetManifest, OfficeValidationResult, OfficeValidationIssue, OfficeValidationCode } from './types';
 
+function resolvePathInsideRoot(
+  root: string,
+  relativePath: string
+):
+  | { readonly ok: true; readonly fullPath: string }
+  | { readonly ok: false } {
+
+    const resolvedRoot = path.resolve(root);
+    const fullPath = path.resolve(resolvedRoot, relativePath);
+    const relative = path.relative(resolvedRoot, fullPath);
+
+    if (relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) {
+        return { ok: false };
+    }
+
+    return { ok: true, fullPath };
+}
+
 export function validateAssetFiles(manifest: AssetManifest, publicRoot: string): OfficeValidationResult {
     const issues: OfficeValidationIssue[] = [];
 
@@ -15,14 +33,13 @@ export function validateAssetFiles(manifest: AssetManifest, publicRoot: string):
              return;
         }
 
-        // Resolving against publicRoot guarantees absolute path
-        const fullPath = path.resolve(publicRoot, entry.filePath);
-
-        // Security check: Must not escape public root
-        if (!fullPath.startsWith(publicRoot)) {
+        const resolveResult = resolvePathInsideRoot(publicRoot, entry.filePath);
+        if (!resolveResult.ok) {
             addIssue('INVALID_ASSET_PATH', `Asset path escapes public root: ${entry.filePath}`, entry.id, entry.filePath);
             return;
         }
+
+        const fullPath = resolveResult.fullPath;
 
         if (!fs.existsSync(fullPath)) {
             addIssue('ASSET_FILE_MISSING', `Missing asset file: ${entry.filePath}`, entry.id, entry.filePath);
@@ -36,7 +53,15 @@ export function validateAssetFiles(manifest: AssetManifest, publicRoot: string):
             fs.closeSync(fd);
 
             if (bytesRead < 24) {
-                 addIssue('INVALID_PNG_SIGNATURE', `File is too small to be a PNG: ${entry.filePath}`, entry.id, entry.filePath);
+                 // The prompt specifies "File shorter than PNG signature fails" and it emits INVALID_PNG_SIGNATURE.
+                 // However, we should also check if it's less than 24, which includes IHDR.
+                 // A valid signature but missing IHDR fails. So let's be careful.
+                 if (bytesRead < 8 || buffer.toString('hex', 0, 8) !== '89504e470d0a1a0a') {
+                     addIssue('INVALID_PNG_SIGNATURE', `Invalid PNG signature in file: ${entry.filePath}`, entry.id, entry.filePath);
+                     return;
+                 }
+                 // If we have a signature but not enough for IHDR:
+                 addIssue('PNG_IHDR_MISSING', `Missing or truncated IHDR chunk in PNG: ${entry.filePath}`, entry.id, entry.filePath);
                  return;
             }
 
@@ -47,7 +72,14 @@ export function validateAssetFiles(manifest: AssetManifest, publicRoot: string):
                 return;
             }
 
-            // Read IHDR length (4 bytes) and Chunk Type (4 bytes)
+            // Validate IHDR chunk length is exactly 13
+            const ihdrLength = buffer.readUInt32BE(8);
+            if (ihdrLength !== 13) {
+                addIssue('PNG_IHDR_INVALID', `IHDR chunk length must be exactly 13: ${entry.filePath}`, entry.id, entry.filePath);
+                return;
+            }
+
+            // Read Chunk Type (4 bytes)
             const ihdrType = buffer.toString('ascii', 12, 16);
             if (ihdrType !== 'IHDR') {
                 addIssue('PNG_IHDR_MISSING', `Missing IHDR chunk in PNG: ${entry.filePath}`, entry.id, entry.filePath);

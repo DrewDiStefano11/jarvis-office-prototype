@@ -62,7 +62,8 @@ This document outlines the foundation for the upcoming deterministic office layo
 - In `assetManifest.ts`, browser paths must omit the leading `public/` folder, for example: `assets/office/agents/jarvis-placeholder.png`.
 
 ## Filesystem Path Resolution
-- When performing validation or generating files inside Node.js scripts (like tests and generation), paths are fully resolved absolute paths, combining the manifest `filePath` prefixed with `public/` using `path.resolve(process.cwd(), 'public')` safely.
+- When performing validation or generating files inside Node.js scripts (like tests and generation), paths are fully resolved absolute paths against a strictly provided `publicRoot`.
+- Safety against sibling/parent directory traversal attacks (e.g. `../` escapes or absolute `/etc` paths) is enforced algorithmically by evaluating if `path.relative` leads back up beyond the defined public boundary.
 
 ## Placeholder Dimensions
 - The generated deterministic placeholder files exactly match the manifest `frameWidth` and `frameHeight`.
@@ -78,9 +79,10 @@ Validation has been split into two strict layers: pure browser-safe metadata val
 - **Layout Validation:**
   - Emits specific codes like `EMPTY_ID`, `DUPLICATE_ROOM_ID`, `DUPLICATE_WORKSTATION_ID`.
   - Enforces finite geometries (`NONFINITE_COORDINATE`, `INVALID_DIMENSIONS`).
+  - Validates `Furniture` size dimensions (`INVALID_DIMENSIONS`) and exact bounding-box overlap of footprints (`BLOCKED_GEOMETRY_CONFLICT`).
   - Checks for strictly inside bounds (`OUTSIDE_ROOM_BOUNDS`).
   - Checks for blocked area conflicts (`BLOCKED_GEOMETRY_CONFLICT`).
-  - Asserts doorways aren't malformed and reference two distinct valid rooms (`INVALID_DOORWAY`, `UNKNOWN_ROOM_REFERENCE`).
+  - Asserts doorways physically touch the shared border geometries of two distinct valid rooms explicitly (`INVALID_DOORWAY`, `UNKNOWN_ROOM_REFERENCE`).
 - **Assignment Validation:**
   - Precisely maps every agent defined in the canonical `PERMANENT_AGENT_IDS` list (`MISSING_PERMANENT_AGENT_ASSIGNMENT`).
   - Verifies presence of workstations, spawn points, primary and secondary destinations, and sprites inside the active layout and manifest (`UNKNOWN_WORKSPACE_ID`, `UNKNOWN_SPAWN_ID`, etc).
@@ -95,10 +97,10 @@ Validation has been split into two strict layers: pure browser-safe metadata val
   - Enforces required elements exist like chair, computer, wall tile (`MISSING_REQUIRED_ASSET`).
 
 ### Node-Only File Validation (`src/office-layout/nodeValidation.ts`)
-- Accepts a manifest and resolves against a strict public root directory.
+- Accepts a manifest and resolves against a strict public root directory checking `path.relative` constraints.
 - Verifies files physically exist (`ASSET_FILE_MISSING`).
 - Checks PNG structural headers using `fs`/Buffer directly without large library dependencies (`INVALID_PNG_SIGNATURE`).
-- Finds the `IHDR` chunk to compare binary encoded dimensions to the source-of-truth declared in the manifest (`PNG_WIDTH_MISMATCH`, `PNG_HEIGHT_MISMATCH`).
+- Finds the `IHDR` chunk verifying its exact length is exactly 13 bytes (`PNG_IHDR_INVALID`), to correctly compare binary encoded dimensions to the source-of-truth declared in the manifest (`PNG_WIDTH_MISMATCH`, `PNG_HEIGHT_MISMATCH`).
 
 ## How to Expand the Layout
 1. **Rooms**: Add new bounds objects to `rooms` in `layout.ts`.
