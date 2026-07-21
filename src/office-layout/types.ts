@@ -119,3 +119,63 @@ export interface AssetManifestEntry {
 export interface AssetManifest {
     readonly entries: readonly AssetManifestEntry[];
 }
+
+export type OfficeValidationSeverity = "error" | "warning";
+
+export type OfficeValidationCode =
+  | "EMPTY_ID"
+  | "DUPLICATE_ROOM_ID"
+  | "DUPLICATE_FURNITURE_ID"
+  | "DUPLICATE_WORKSTATION_ID"
+  | "DUPLICATE_SPAWN_ID"
+  | "DUPLICATE_DESTINATION_ID"
+  | "DUPLICATE_DOORWAY_ID"
+  | "DUPLICATE_WALKABLE_AREA_ID"
+  | "DUPLICATE_BLOCKED_AREA_ID"
+  | "INVALID_DIMENSIONS"
+  | "NONFINITE_COORDINATE"
+  | "UNKNOWN_ROOM_REFERENCE"
+  | "OUTSIDE_ROOM_BOUNDS"
+  | "BLOCKED_GEOMETRY_CONFLICT"
+  | "INVALID_DOORWAY"
+  | "DUPLICATE_ASSIGNMENT"
+  | "MISSING_PERMANENT_AGENT_ASSIGNMENT"
+  | "UNKNOWN_AGENT_ID"
+  | "UNKNOWN_WORKSPACE_ID"
+  | "UNKNOWN_SPAWN_ID"
+  | "UNKNOWN_SPRITE_ID"
+  | "UNKNOWN_DESTINATION_ID"
+  | "DUPLICATE_SECONDARY_DESTINATION"
+  | "PRIMARY_DESTINATION_REPEATED"
+  | "WORKSTATION_CONFLICT"
+  | "DUPLICATE_ASSET_ID"
+  | "UNSUPPORTED_ASSET_CATEGORY"
+  | "INVALID_ASSET_PATH"
+  | "INVALID_ASSET_DIMENSIONS"
+  | "INVALID_ASSET_SCALE"
+  | "DUPLICATE_ANIMATION_ID"
+  | "INVALID_ANIMATION_RANGE"
+  | "INVALID_ANIMATION_FRAME_RATE"
+  | "INVALID_ANIMATION_REPEAT"
+  | "STATIC_ASSET_HAS_ANIMATION"
+  | "ASSET_FILE_MISSING"
+  | "INVALID_PNG_SIGNATURE"
+  | "PNG_IHDR_MISSING"
+  | "PNG_WIDTH_MISMATCH"
+  | "PNG_HEIGHT_MISMATCH"
+  | "MISSING_REQUIRED_ASSET";
+
+export interface OfficeValidationIssue {
+  readonly code: OfficeValidationCode;
+  readonly severity: OfficeValidationSeverity;
+  readonly message: string;
+  readonly entityType?: string;
+  readonly entityId?: string;
+  readonly field?: string;
+  readonly path?: string;
+}
+
+export interface OfficeValidationResult {
+  readonly isValid: boolean;
+  readonly issues: readonly OfficeValidationIssue[];
+}

@@ -4,207 +4,332 @@ import {
     WorkspaceAssignment,
     Point,
     Bounds,
-    RoomId,
-    SpriteCategory
+    SpriteCategory,
+    OfficeValidationCode,
+    OfficeValidationIssue,
+    OfficeValidationResult
 } from './types';
-
-// Used in assignments validation
 import { PERMANENT_AGENT_IDS } from './assignments';
 
-export interface ValidationResult {
-    readonly isValid: boolean;
-    readonly errors: readonly string[];
-}
-
+// Geometric inclusion policy:
+// "Inside a room" means the point is >= x and <= x + width, AND >= y and <= y + height (edges included).
 function pointInBounds(p: Point, b: Bounds): boolean {
     return p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
 }
 
-export function validateLayout(layout: OfficeLayout): ValidationResult {
-    const errors: string[] = [];
-    const entityIds = new Set<string>();
+// "Overlaps blocked geometry" means strictly inside the bounds.
+// Exactly on the edge is considered outside the block.
+function pointInBlocked(p: Point, b: Bounds): boolean {
+    return p.x > b.x && p.x < b.x + b.width && p.y > b.y && p.y < b.y + b.height;
+}
 
-    const checkId = (id: string, type: string) => {
-        if (entityIds.has(id)) {
-            errors.push(`Duplicate ID found: ${id} (${type})`);
-        } else {
-            entityIds.add(id);
-        }
+function isFinitePoint(p: Point): boolean {
+    return Number.isFinite(p.x) && Number.isFinite(p.y);
+}
+
+function isFiniteBounds(b: Bounds): boolean {
+    return Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.width) && Number.isFinite(b.height);
+}
+
+export function validateLayout(layout: OfficeLayout): OfficeValidationResult {
+    const issues: OfficeValidationIssue[] = [];
+
+    const addIssue = (code: OfficeValidationCode, message: string, entityType?: string, entityId?: string) => {
+        issues.push({ code, severity: 'error', message, entityType, entityId });
     };
 
-    const roomIds = new Set<RoomId>();
+    const idSets = {
+        rooms: new Set<string>(),
+        furniture: new Set<string>(),
+        workstations: new Set<string>(),
+        spawnPoints: new Set<string>(),
+        destinations: new Set<string>(),
+        doorways: new Set<string>(),
+        walkableAreas: new Set<string>(),
+        blockedAreas: new Set<string>(),
+    };
+
+    const checkId = (id: string, type: string, set: Set<string>, emptyCode: OfficeValidationCode, duplicateCode: OfficeValidationCode) => {
+        if (!id || id.trim() === '') {
+            addIssue(emptyCode, `Empty ID found in ${type}`, type);
+            return false;
+        }
+        if (set.has(id)) {
+            addIssue(duplicateCode, `Duplicate ID found: ${id}`, type, id);
+            return false;
+        }
+        set.add(id);
+        return true;
+    };
 
     layout.rooms.forEach(r => {
-        checkId(r.id, 'Room');
-        roomIds.add(r.id);
-        if (r.bounds.width <= 0 || r.bounds.height <= 0) {
-            errors.push(`Room ${r.id} has invalid dimensions`);
+        checkId(r.id, 'Room', idSets.rooms, 'EMPTY_ID', 'DUPLICATE_ROOM_ID');
+        if (!isFiniteBounds(r.bounds)) {
+            addIssue('NONFINITE_COORDINATE', `Room ${r.id} has non-finite coordinates`, 'Room', r.id);
+        } else if (r.bounds.width <= 0 || r.bounds.height <= 0) {
+            addIssue('INVALID_DIMENSIONS', `Room ${r.id} has non-positive dimensions`, 'Room', r.id);
         }
     });
 
-    layout.doorways.forEach(d => {
-        checkId(d.id, 'Doorway');
-        if (d.connectsRooms[0] === d.connectsRooms[1]) {
-            errors.push(`Doorway ${d.id} references duplicate rooms: ${d.connectsRooms[0]}`);
-        }
-        if (!roomIds.has(d.connectsRooms[0]) || !roomIds.has(d.connectsRooms[1])) {
-            errors.push(`Doorway ${d.id} references missing room: ${d.connectsRooms.join(', ')}`);
+    layout.walkableAreas.forEach(w => {
+        checkId(w.id, 'WalkableArea', idSets.walkableAreas, 'EMPTY_ID', 'DUPLICATE_WALKABLE_AREA_ID');
+        if (!isFiniteBounds(w.bounds)) {
+            addIssue('NONFINITE_COORDINATE', `WalkableArea ${w.id} has non-finite coordinates`, 'WalkableArea', w.id);
+        } else if (w.bounds.width <= 0 || w.bounds.height <= 0) {
+            addIssue('INVALID_DIMENSIONS', `WalkableArea ${w.id} has non-positive dimensions`, 'WalkableArea', w.id);
         }
     });
 
-    layout.walkableAreas.forEach(w => checkId(w.id, 'WalkableArea'));
-    layout.blockedAreas.forEach(b => checkId(b.id, 'BlockedArea'));
+    layout.blockedAreas.forEach(b => {
+        checkId(b.id, 'BlockedArea', idSets.blockedAreas, 'EMPTY_ID', 'DUPLICATE_BLOCKED_AREA_ID');
+        if (!isFiniteBounds(b.bounds)) {
+            addIssue('NONFINITE_COORDINATE', `BlockedArea ${b.id} has non-finite coordinates`, 'BlockedArea', b.id);
+        } else if (b.bounds.width <= 0 || b.bounds.height <= 0) {
+            addIssue('INVALID_DIMENSIONS', `BlockedArea ${b.id} has non-positive dimensions`, 'BlockedArea', b.id);
+        }
+    });
 
-    const checkRoomRef = (roomId: string, id: string, type: string) => {
-        if (!roomIds.has(roomId)) {
-            errors.push(`${type} ${id} references missing room: ${roomId}`);
+    const checkRoomRef = (roomId: string, entityId: string, type: string) => {
+        if (!idSets.rooms.has(roomId)) {
+            addIssue('UNKNOWN_ROOM_REFERENCE', `${type} ${entityId} references unknown room: ${roomId}`, type, entityId);
             return false;
         }
         return true;
     };
 
+    const isInsideBlocked = (p: Point) => layout.blockedAreas.some(b => pointInBlocked(p, b.bounds));
+
+    layout.furniture.forEach(f => {
+        checkId(f.id, 'Furniture', idSets.furniture, 'EMPTY_ID', 'DUPLICATE_FURNITURE_ID');
+        if (!isFinitePoint(f.position)) {
+            addIssue('NONFINITE_COORDINATE', `Furniture ${f.id} has non-finite position`, 'Furniture', f.id);
+        }
+        if (checkRoomRef(f.roomId, f.id, 'Furniture')) {
+            const room = layout.rooms.find(r => r.id === f.roomId)!;
+            if (!pointInBounds(f.position, room.bounds)) {
+                addIssue('OUTSIDE_ROOM_BOUNDS', `Furniture ${f.id} outside room ${room.id}`, 'Furniture', f.id);
+            }
+        }
+    });
+
     layout.workstations.forEach(w => {
-        checkId(w.id, 'Workstation');
+        checkId(w.id, 'Workstation', idSets.workstations, 'EMPTY_ID', 'DUPLICATE_WORKSTATION_ID');
+        if (!isFinitePoint(w.position)) {
+            addIssue('NONFINITE_COORDINATE', `Workstation ${w.id} has non-finite position`, 'Workstation', w.id);
+        }
         if (checkRoomRef(w.roomId, w.id, 'Workstation')) {
             const room = layout.rooms.find(r => r.id === w.roomId)!;
             if (!pointInBounds(w.position, room.bounds)) {
-                errors.push(`Workstation ${w.id} is outside room ${room.id} bounds`);
+                addIssue('OUTSIDE_ROOM_BOUNDS', `Workstation ${w.id} outside room ${room.id}`, 'Workstation', w.id);
             }
         }
-        layout.blockedAreas.forEach(b => {
-            if (pointInBounds(w.position, b.bounds)) {
-                errors.push(`Workstation ${w.id} occupies a blocked area`);
-            }
-        });
+        if (isInsideBlocked(w.position)) {
+            addIssue('BLOCKED_GEOMETRY_CONFLICT', `Workstation ${w.id} occupies a blocked area`, 'Workstation', w.id);
+        }
     });
 
     layout.spawnPoints.forEach(s => {
-        checkId(s.id, 'SpawnPoint');
+        checkId(s.id, 'SpawnPoint', idSets.spawnPoints, 'EMPTY_ID', 'DUPLICATE_SPAWN_ID');
+        if (!isFinitePoint(s.position)) {
+            addIssue('NONFINITE_COORDINATE', `SpawnPoint ${s.id} has non-finite position`, 'SpawnPoint', s.id);
+        }
         if (checkRoomRef(s.roomId, s.id, 'SpawnPoint')) {
             const room = layout.rooms.find(r => r.id === s.roomId)!;
             if (!pointInBounds(s.position, room.bounds)) {
-                errors.push(`SpawnPoint ${s.id} is outside room ${room.id} bounds`);
+                addIssue('OUTSIDE_ROOM_BOUNDS', `SpawnPoint ${s.id} outside room ${room.id}`, 'SpawnPoint', s.id);
             }
         }
-        layout.blockedAreas.forEach(b => {
-            if (pointInBounds(s.position, b.bounds)) {
-                errors.push(`SpawnPoint ${s.id} occupies a blocked area`);
-            }
-        });
+        if (isInsideBlocked(s.position)) {
+            addIssue('BLOCKED_GEOMETRY_CONFLICT', `SpawnPoint ${s.id} occupies a blocked area`, 'SpawnPoint', s.id);
+        }
     });
 
     layout.destinations.forEach(d => {
-        checkId(d.id, 'Destination');
+        checkId(d.id, 'Destination', idSets.destinations, 'EMPTY_ID', 'DUPLICATE_DESTINATION_ID');
+        if (!isFinitePoint(d.position)) {
+            addIssue('NONFINITE_COORDINATE', `Destination ${d.id} has non-finite position`, 'Destination', d.id);
+        }
         if (checkRoomRef(d.roomId, d.id, 'Destination')) {
             const room = layout.rooms.find(r => r.id === d.roomId)!;
             if (!pointInBounds(d.position, room.bounds)) {
-                errors.push(`Destination ${d.id} is outside room ${room.id} bounds`);
+                addIssue('OUTSIDE_ROOM_BOUNDS', `Destination ${d.id} outside room ${room.id}`, 'Destination', d.id);
             }
+        }
+        if (isInsideBlocked(d.position)) {
+             addIssue('BLOCKED_GEOMETRY_CONFLICT', `Destination ${d.id} occupies a blocked area`, 'Destination', d.id);
         }
     });
 
-    layout.furniture.forEach(f => {
-        checkId(f.id, 'Furniture');
-        if (checkRoomRef(f.roomId, f.id, 'Furniture')) {
-            const room = layout.rooms.find(r => r.id === f.roomId)!;
-            // Optional: ensuring furniture is generally inside room
-            if (!pointInBounds(f.position, room.bounds)) {
-                errors.push(`Furniture ${f.id} position is outside room ${room.id} bounds`);
-            }
+    layout.doorways.forEach(d => {
+        checkId(d.id, 'Doorway', idSets.doorways, 'EMPTY_ID', 'DUPLICATE_DOORWAY_ID');
+        if (!isFiniteBounds(d.bounds)) {
+            addIssue('NONFINITE_COORDINATE', `Doorway ${d.id} has non-finite coordinates`, 'Doorway', d.id);
+        } else if (d.bounds.width <= 0 || d.bounds.height <= 0) {
+            addIssue('INVALID_DOORWAY', `Doorway ${d.id} has non-positive dimensions`, 'Doorway', d.id);
+        }
+        if (d.connectsRooms[0] === d.connectsRooms[1]) {
+            addIssue('INVALID_DOORWAY', `Doorway ${d.id} connects a room to itself`, 'Doorway', d.id);
+        }
+        if (!idSets.rooms.has(d.connectsRooms[0]) || !idSets.rooms.has(d.connectsRooms[1])) {
+            addIssue('UNKNOWN_ROOM_REFERENCE', `Doorway ${d.id} references missing room`, 'Doorway', d.id);
         }
     });
 
-    return { isValid: errors.length === 0, errors };
+    return { isValid: issues.length === 0, issues };
 }
 
-export function validateAssetManifest(manifest: AssetManifest): ValidationResult {
-    const errors: string[] = [];
+export function validateAssetManifest(manifest: AssetManifest): OfficeValidationResult {
+    const issues: OfficeValidationIssue[] = [];
     const spriteIds = new Set<string>();
 
     const validCategories: SpriteCategory[] = ['agent', 'furniture', 'decoration', 'door', 'indicator', 'effect', 'tile', 'computer', 'chair'];
 
+    const addIssue = (code: OfficeValidationCode, message: string, assetId?: string, path?: string) => {
+        issues.push({ code, severity: 'error', message, entityId: assetId, entityType: 'Sprite', path });
+    };
+
     manifest.entries.forEach(e => {
+        if (!e.id || e.id.trim() === '') {
+            addIssue('EMPTY_ID', `Empty asset ID found`);
+            return;
+        }
+
         if (spriteIds.has(e.id)) {
-            errors.push(`Duplicate Sprite ID found: ${e.id}`);
+            addIssue('DUPLICATE_ASSET_ID', `Duplicate asset ID found: ${e.id}`, e.id);
         } else {
             spriteIds.add(e.id);
         }
 
-        if (e.frameWidth <= 0 || e.frameHeight <= 0) {
-            errors.push(`Sprite ${e.id} has invalid dimensions (${e.frameWidth}x${e.frameHeight})`);
+        if (!Number.isFinite(e.frameWidth) || !Number.isFinite(e.frameHeight) || e.frameWidth <= 0 || e.frameHeight <= 0) {
+            addIssue('INVALID_ASSET_DIMENSIONS', `Sprite ${e.id} has nonpositive dimensions`, e.id);
+        }
+
+        if (!Number.isFinite(e.scale) || e.scale <= 0) {
+            addIssue('INVALID_ASSET_SCALE', `Sprite ${e.id} has nonpositive scale`, e.id);
         }
 
         if (!e.filePath || e.filePath.trim() === '') {
-            errors.push(`Sprite ${e.id} has empty file path`);
+            addIssue('INVALID_ASSET_PATH', `Sprite ${e.id} has empty file path`, e.id);
+        } else if (e.filePath.startsWith('public/')) {
+            addIssue('INVALID_ASSET_PATH', `Sprite path must not begin with public/: ${e.filePath}`, e.id, e.filePath);
+        } else if (e.filePath.startsWith('/') || e.filePath.includes('../') || e.filePath.includes('\\')) {
+            addIssue('INVALID_ASSET_PATH', `Sprite path is absolute or traverses dirs: ${e.filePath}`, e.id, e.filePath);
         }
 
         if (!validCategories.includes(e.category)) {
-            errors.push(`Sprite ${e.id} has unsupported category: ${e.category}`);
+            addIssue('UNSUPPORTED_ASSET_CATEGORY', `Sprite ${e.id} has unsupported category: ${e.category}`, e.id);
         }
 
         if (e.isPlaceholder && e.animations.length > 0) {
-            errors.push(`Sprite ${e.id} is a static placeholder but claims animations`);
+            addIssue('STATIC_ASSET_HAS_ANIMATION', `Sprite ${e.id} is a static placeholder but declares animations`, e.id);
         }
 
+        const animNames = new Set<string>();
         e.animations.forEach(anim => {
-            if (anim.frameRange[0] < 0 || anim.frameRange[1] < anim.frameRange[0]) {
-                errors.push(`Sprite ${e.id} has invalid animation range for '${anim.name}'`);
+            if (animNames.has(anim.name)) {
+                addIssue('DUPLICATE_ANIMATION_ID', `Sprite ${e.id} duplicate animation ${anim.name}`, e.id);
             }
-            if (anim.frameRate < 0) {
-                errors.push(`Sprite ${e.id} has invalid frameRate for '${anim.name}'`);
+            animNames.add(anim.name);
+
+            if (anim.frameRange[0] < 0 || anim.frameRange[1] < 0) {
+                addIssue('INVALID_ANIMATION_RANGE', `Sprite ${e.id} has negative frames`, e.id);
+            }
+            if (anim.frameRange[0] > anim.frameRange[1]) {
+                addIssue('INVALID_ANIMATION_RANGE', `Sprite ${e.id} start frame > end frame`, e.id);
+            }
+            if (!Number.isFinite(anim.frameRate) || anim.frameRate <= 0) {
+                addIssue('INVALID_ANIMATION_FRAME_RATE', `Sprite ${e.id} has nonpositive frameRate`, e.id);
+            }
+            if (!Number.isFinite(anim.repeat)) {
+                addIssue('INVALID_ANIMATION_REPEAT', `Sprite ${e.id} has invalid repeat`, e.id);
             }
         });
     });
 
-    return { isValid: errors.length === 0, errors };
+    if (!spriteIds.has('sprite-chair')) addIssue('MISSING_REQUIRED_ASSET', 'Missing chair');
+    if (!spriteIds.has('sprite-computer')) addIssue('MISSING_REQUIRED_ASSET', 'Missing computer');
+    if (!spriteIds.has('sprite-wall-tile')) addIssue('MISSING_REQUIRED_ASSET', 'Missing wall tile');
+
+    return { isValid: issues.length === 0, issues };
 }
 
 export function validateAssignments(
     assignments: readonly WorkspaceAssignment[],
     layout: OfficeLayout,
     manifest: AssetManifest
-): ValidationResult {
-    const errors: string[] = [];
-    const agentIds = new Set<string>();
+): OfficeValidationResult {
+    const issues: OfficeValidationIssue[] = [];
 
+    const addIssue = (code: OfficeValidationCode, message: string, entityId?: string) => {
+        issues.push({ code, severity: 'error', message, entityType: 'Assignment', entityId });
+    };
+
+    const agentIds = new Set<string>();
     const workstationIds = new Set(layout.workstations.map(w => w.id));
     const spawnIds = new Set(layout.spawnPoints.map(s => s.id));
     const destinationIds = new Set(layout.destinations.map(d => d.id));
     const spriteIds = new Set(manifest.entries.map(e => e.id));
 
+    const assignedWorkstations = new Set<string>();
+
     assignments.forEach(a => {
+        if (!a.agentId || a.agentId.trim() === '') {
+            addIssue('UNKNOWN_AGENT_ID', 'Empty agent ID');
+            return;
+        }
+
         if (agentIds.has(a.agentId)) {
-            errors.push(`Duplicate Assignment for agent: ${a.agentId}`);
+            addIssue('DUPLICATE_ASSIGNMENT', `Duplicate Assignment for agent: ${a.agentId}`, a.agentId);
         } else {
             agentIds.add(a.agentId);
         }
 
         if (!(PERMANENT_AGENT_IDS as readonly string[]).includes(a.agentId)) {
-            errors.push(`Unknown or invalid agent ID: ${a.agentId}`);
+            addIssue('UNKNOWN_AGENT_ID', `Unknown or invalid agent ID: ${a.agentId}`, a.agentId);
         }
 
-        if (!workstationIds.has(a.workstationId)) {
-            errors.push(`Agent ${a.agentId} references missing workstation: ${a.workstationId}`);
+        if (!a.workstationId || !workstationIds.has(a.workstationId)) {
+            addIssue('UNKNOWN_WORKSPACE_ID', `Agent references unknown workspace: ${a.workstationId}`, a.agentId);
+        } else {
+            if (assignedWorkstations.has(a.workstationId)) {
+                addIssue('WORKSTATION_CONFLICT', `Two agents assigned to workstation: ${a.workstationId}`, a.agentId);
+            }
+            assignedWorkstations.add(a.workstationId);
         }
 
-        if (!spawnIds.has(a.spawnPointId)) {
-            errors.push(`Agent ${a.agentId} references missing spawn point: ${a.spawnPointId}`);
+        if (!a.spawnPointId || !spawnIds.has(a.spawnPointId)) {
+            addIssue('UNKNOWN_SPAWN_ID', `Agent references unknown spawn: ${a.spawnPointId}`, a.agentId);
         }
 
-        if (!destinationIds.has(a.primaryDestinationId)) {
-            errors.push(`Agent ${a.agentId} references missing primary destination: ${a.primaryDestinationId}`);
+        if (!a.primaryDestinationId || !destinationIds.has(a.primaryDestinationId)) {
+            addIssue('UNKNOWN_DESTINATION_ID', `Agent references unknown primary destination: ${a.primaryDestinationId}`, a.agentId);
         }
 
+        const secDestSet = new Set<string>();
         a.secondaryDestinationIds.forEach(destId => {
-            if (!destinationIds.has(destId)) {
-                errors.push(`Agent ${a.agentId} references missing secondary destination: ${destId}`);
+            if (destId === a.primaryDestinationId) {
+                addIssue('PRIMARY_DESTINATION_REPEATED', `Primary destination repeated in secondaries: ${destId}`, a.agentId);
+            }
+            if (secDestSet.has(destId)) {
+                addIssue('DUPLICATE_SECONDARY_DESTINATION', `Duplicate secondary destination: ${destId}`, a.agentId);
+            }
+            secDestSet.add(destId);
+
+            if (!destId || !destinationIds.has(destId)) {
+                addIssue('UNKNOWN_DESTINATION_ID', `Agent references unknown secondary destination: ${destId}`, a.agentId);
             }
         });
 
-        if (!spriteIds.has(a.spriteId)) {
-            errors.push(`Agent ${a.agentId} references missing sprite: ${a.spriteId}`);
+        if (!a.spriteId || !spriteIds.has(a.spriteId)) {
+            addIssue('UNKNOWN_SPRITE_ID', `Agent references unknown sprite: ${a.spriteId}`, a.agentId);
         }
     });
 
-    return { isValid: errors.length === 0, errors };
+    PERMANENT_AGENT_IDS.forEach(id => {
+        if (!agentIds.has(id)) {
+            addIssue('MISSING_PERMANENT_AGENT_ASSIGNMENT', `Missing assignment for permanent agent: ${id}`, id);
+        }
+    });
+
+    return { isValid: issues.length === 0, issues };
 }

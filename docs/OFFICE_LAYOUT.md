@@ -72,21 +72,33 @@ This document outlines the foundation for the upcoming deterministic office layo
 - Static assets like simple placeholder PNGs must be marked as `isPlaceholder: true` and have **empty animations** `animations: []`. They should not attempt to define animation clips for frames that do not exist.
 
 ## Validation Contracts
-- `src/office-layout/validation.ts` provides structured validations returning `ValidationIssue` objects pointing to specific problems (`code`, `message`, `severity`).
+Validation has been split into two strict layers: pure browser-safe metadata validation and a Node.js physical file validator. Both return structured `OfficeValidationResult` objects populated with typed `OfficeValidationIssue` entries utilizing exact `OfficeValidationCode`s.
+
+### Browser-Safe Validation (`src/office-layout/validation.ts`)
 - **Layout Validation:**
-  - Duplicate IDs (rooms, doorways, workstations).
-  - Out of bounds and blocked area geometry checks.
-  - Empty IDs.
-  - Negative/non-finite dimension rules.
-  - Doorway references invalid or duplicate rooms.
+  - Emits specific codes like `EMPTY_ID`, `DUPLICATE_ROOM_ID`, `DUPLICATE_WORKSTATION_ID`.
+  - Enforces finite geometries (`NONFINITE_COORDINATE`, `INVALID_DIMENSIONS`).
+  - Checks for strictly inside bounds (`OUTSIDE_ROOM_BOUNDS`).
+  - Checks for blocked area conflicts (`BLOCKED_GEOMETRY_CONFLICT`).
+  - Asserts doorways aren't malformed and reference two distinct valid rooms (`INVALID_DOORWAY`, `UNKNOWN_ROOM_REFERENCE`).
 - **Assignment Validation:**
-  - Exactly maps every canonical permanent agent.
-  - Verifies presence of workstations, spawn points, primary and secondary destinations, and sprites inside the active layout and manifest.
+  - Precisely maps every agent defined in the canonical `PERMANENT_AGENT_IDS` list (`MISSING_PERMANENT_AGENT_ASSIGNMENT`).
+  - Verifies presence of workstations, spawn points, primary and secondary destinations, and sprites inside the active layout and manifest (`UNKNOWN_WORKSPACE_ID`, `UNKNOWN_SPAWN_ID`, etc).
+  - Detects duplicate assignment mappings (`DUPLICATE_ASSIGNMENT`) and exclusive workstation conflicts (`WORKSTATION_CONFLICT`).
+  - Primary destination repeated in secondaries (`PRIMARY_DESTINATION_REPEATED`).
 - **Asset Manifest Validation:**
-  - Checks duplicate assets.
-  - Files exist on disk via filesystem validation.
-  - Tests verify valid actual file dimensions and PNG signatures.
-  - Invalid paths (`public/`, `../`, etc) are rejected.
+  - Emits `DUPLICATE_ASSET_ID`, `INVALID_ASSET_DIMENSIONS`, `INVALID_ASSET_PATH`.
+  - Rejects browser paths trying to escape root (`INVALID_ASSET_PATH`).
+  - Rejects unsupported categories (`UNSUPPORTED_ASSET_CATEGORY`).
+  - Ensures static placeholders properly enforce empty animations (`STATIC_ASSET_HAS_ANIMATION`).
+  - Validates animation structures natively (`INVALID_ANIMATION_RANGE`, `INVALID_ANIMATION_FRAME_RATE`).
+  - Enforces required elements exist like chair, computer, wall tile (`MISSING_REQUIRED_ASSET`).
+
+### Node-Only File Validation (`src/office-layout/nodeValidation.ts`)
+- Accepts a manifest and resolves against a strict public root directory.
+- Verifies files physically exist (`ASSET_FILE_MISSING`).
+- Checks PNG structural headers using `fs`/Buffer directly without large library dependencies (`INVALID_PNG_SIGNATURE`).
+- Finds the `IHDR` chunk to compare binary encoded dimensions to the source-of-truth declared in the manifest (`PNG_WIDTH_MISMATCH`, `PNG_HEIGHT_MISMATCH`).
 
 ## How to Expand the Layout
 1. **Rooms**: Add new bounds objects to `rooms` in `layout.ts`.
