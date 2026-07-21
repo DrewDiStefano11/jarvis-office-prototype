@@ -1,88 +1,85 @@
-import { Agent, AgentStatus } from '../types';
+import { Agent, AgentStatus, MovementOperation, Task, DomainResult } from '../types';
 
-export function handleMovementCommand(
+export function createMovementOperation(
     agentId: string,
-    locationId: string,
-    currentCommandCounter: number,
-    agents: Agent[],
-    activeCommands: Record<string, number>
+    taskId: string,
+    destinationId: string,
+    commandCounter: number,
+    simulationGeneration: number,
+    movementOperations: Readonly<Record<string, MovementOperation>>
 ) {
-    const cmdId = currentCommandCounter + 1;
-    const newActiveCommands = {
-        ...activeCommands,
-        [agentId]: cmdId
+    const nextCommandId = commandCounter + 1;
+    const operation: MovementOperation = {
+        agentId,
+        taskId,
+        destinationId,
+        commandId: nextCommandId,
+        simulationGeneration
     };
 
-    const newAgents = agents.map(a => {
-        if (a.id === agentId) {
-            return {
-                ...a,
-                currentStatus: 'moving' as AgentStatus,
-                targetLocation: locationId,
-                statusMessage: `Moving to ${locationId}`
-            };
-        }
-        return a;
-    });
+    const newOperations = { ...movementOperations };
+    newOperations[agentId] = operation;
 
     return {
-        nextCommandId: cmdId,
-        newAgents,
-        newActiveCommands
+        commandCounter: nextCommandId,
+        movementOperations: newOperations,
+        operation
     };
 }
 
-export function handleMovementCompleted(
+export function invalidateMovementOperation(
+    agentId: string,
+    movementOperations: Readonly<Record<string, MovementOperation>>
+): Readonly<Record<string, MovementOperation>> {
+    const newOps = { ...movementOperations };
+    delete newOps[agentId];
+    return newOps;
+}
+
+export function applyMovementCompletion(
     agentId: string,
     locationId: string,
     commandId: number,
-    agents: Agent[],
-    activeCommands: Record<string, number>
-) {
-    // Stale completion check
-    if (activeCommands[agentId] !== commandId) {
-        return agents; // No state change
+    simulationGeneration: number,
+    taskId: string,
+    agents: readonly Agent[],
+    tasks: readonly Task[],
+    movementOperations: Readonly<Record<string, MovementOperation>>
+): DomainResult<{ agents: readonly Agent[]; movementOperations: Readonly<Record<string, MovementOperation>> }> {
+
+    const agent = agents.find(a => a.id === agentId);
+    if (!agent) return { ok: false, code: "AGENT_NOT_FOUND", message: "Agent not found" };
+
+    const op = movementOperations[agentId];
+    if (!op) return { ok: false, code: "STALE_OPERATION", message: "No outstanding operation" };
+
+    if (op.commandId !== commandId || op.simulationGeneration !== simulationGeneration || op.taskId !== taskId) {
+        return { ok: false, code: "STALE_OPERATION", message: "Operation mismatch" };
     }
 
-    return agents.map(a => {
-        if (a.id === agentId) {
-            // Restore previous correct status instead of blindly forcing idle if they have a task state
-            let nextStatus: AgentStatus = 'idle';
-            let nextMessage = 'Arrived';
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return { ok: false, code: "STALE_OPERATION", message: "Task missing" };
+    if (agent.currentTaskId !== taskId) return { ok: false, code: "STALE_OPERATION", message: "Task reassigned" };
+    if (task.status !== 'active') return { ok: false, code: "STALE_OPERATION", message: "Task not active" };
 
-            if (a.currentBlocker) {
-                nextStatus = 'error';
-                nextMessage = `Blocked: ${a.currentBlocker}`;
-            } else if (a.currentTaskId) {
-                // If we don't have direct access to the Tasks array here, we can infer from currentBlocker and taskId
-                // If it was working/paused, we restore a logical default. App.tsx passes tasks down eventually,
-                // but for simple movement completion, let's look at the prior agent state.
-                // We'll preserve working or paused.
-                nextStatus = a.currentStatus === 'paused' ? 'paused' : 'working';
-                nextMessage = a.statusMessage.startsWith('Moving') ? 'Working on task' : a.statusMessage;
-            }
+    const step = task.steps[task.currentStepIndex];
+    if (!step || step.destinationId !== locationId || step.destinationId !== op.destinationId) {
+         return { ok: false, code: "STALE_OPERATION", message: "Destination mismatch" };
+    }
 
-            return {
-                ...a,
-                currentStatus: nextStatus,
-                currentLocation: locationId,
-                targetLocation: null,
-                statusMessage: nextMessage
-            };
-        }
-        return a;
-    });
-}
+    const newAgents = agents.map(a =>
+        a.id === agentId
+        ? { ...a, currentLocation: locationId, targetLocation: null, currentStatus: 'working' as AgentStatus, statusMessage: `Working: ${task.title}` }
+        : a
+    );
 
-export function handleResetAll(agents: Agent[]) {
+    const newOps = invalidateMovementOperation(agentId, movementOperations);
+
     return {
-        newAgents: agents.map(a => ({
-            ...a,
-            currentStatus: 'idle' as AgentStatus,
-            currentLocation: a.homeDesk,
-            targetLocation: null,
-            statusMessage: 'Reset to home'
-        })),
-        newActiveCommands: {} as Record<string, number>
-    };
+        ok: true,
+        value: {
+            agents: newAgents,
+            movementOperations: newOps
+        }
+    }
 }

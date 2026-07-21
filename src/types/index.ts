@@ -79,6 +79,48 @@ export interface Task {
     blocker: string | null;
 }
 
-export type TaskTransitionResult =
-    | { success: true; newAgents: Agent[]; newTasks: Task[] }
-    | { success: false; error: string };
+export type DomainErrorCode =
+  | "AGENT_NOT_FOUND"
+  | "AGENT_NOT_IDLE"
+  | "AGENT_BUSY"
+  | "TASK_NOT_FOUND"
+  | "NO_ELIGIBLE_TASK"
+  | "INVALID_TRANSITION"
+  | "DESTINATION_UNKNOWN"
+  | "DESTINATION_UNAVAILABLE"
+  | "BLOCK_REASON_REQUIRED"
+  | "FAILURE_REASON_REQUIRED"
+  | "STALE_OPERATION";
+
+export type DomainResult<T> =
+  | { readonly ok: true; readonly value: T; }
+  | { readonly ok: false; readonly code: DomainErrorCode; readonly message: string; };
+
+export interface MovementOperation {
+  readonly agentId: string;
+  readonly taskId: string;
+  readonly destinationId: string;
+  readonly commandId: number;
+  readonly simulationGeneration: number;
+}
+
+export interface MovementCommand {
+  readonly agentId: string;
+  readonly taskId: string;
+  readonly destinationId: string;
+  readonly commandId: number;
+  readonly simulationGeneration: number;
+}
+
+export interface SimulationTransition {
+  readonly agents: readonly Agent[];
+  readonly tasks: readonly Task[];
+  readonly movementOperations: Readonly<Record<string, MovementOperation>>;
+  readonly commandCounter: number;
+  readonly simulationGeneration: number;
+  readonly movementCommand?: MovementCommand;
+}
+
+export interface StartTaskValue extends SimulationTransition {
+  readonly startedTaskId: string;
+}
