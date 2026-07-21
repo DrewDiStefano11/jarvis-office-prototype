@@ -1,4 +1,5 @@
 import { floor1Definition } from '../domain/floors/floor-1';
+import { createRenderPlan } from '../rendering/renderPlan';
 
 export function FloorStatusPanel() {
     const permanent = floor1Definition.workspaces.filter((workspace) => workspace.permanentAssignmentAllowed);
@@ -9,9 +10,10 @@ export function FloorStatusPanel() {
         temporary: floor1Definition.workspaces.filter((workspace) => workspace.workspaceType === 'temporary').length,
         sandbox: floor1Definition.rooms.filter((room) => room.roomType === 'sandbox-cell').length,
     };
+    const renderCommandCount = createRenderPlan(floor1Definition).length;
 
     return (
-        <aside className="floor-status-panel" aria-label="Floor 1 status">
+        <aside className="floor-status-panel" aria-label="Floor 1 status" data-render-command-count={renderCommandCount}>
             <div className="status-title">JARVIS HQ</div>
             <div className="status-subtitle">FLOOR 1 · FOUNDING COMMAND</div>
             <dl className="status-grid">
