@@ -1,10 +1,9 @@
 import { GameObjects, Scene, Textures } from 'phaser';
-import type { ArchitecturalObjectType, FurnitureType, OccupantCategory } from '../domain/building/types';
+import type { ArchitecturalObjectType, FurnitureType } from '../domain/building/types';
 
 const safeKey = (value: string) => value.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
 export const furnitureTextureKey = (type: FurnitureType, variant = 'base') => `pixel-furniture-${type}-${safeKey(variant)}`;
 export const architectureTextureKey = (type: ArchitecturalObjectType, variant = 'base') => `pixel-architecture-${type}-${safeKey(variant)}`;
-export const occupantTextureKey = (category: OccupantCategory) => `pixel-occupant-${category}`;
 
 const variantAccent = (variant: string): number => {
     if (/executive|gold|leather|wood/.test(variant)) return 0xd49a4d;
@@ -160,30 +159,11 @@ function drawArchitecture(scene: Scene, type: ArchitecturalObjectType, variant =
     });
 }
 
-function drawOccupant(scene: Scene, category: OccupantCategory): void {
-    const colors: Record<OccupantCategory, number> = {
-        permanent: 0x4778a8,
-        temporary: 0xd6a43d,
-        sandbox: 0x8e5bc2,
-        visitor: 0x6d8a68,
-        escort: 0xc45c48,
-        waiting: 0x8b7766,
-    };
-    createTexture(scene, occupantTextureKey(category), 16, 24, (graphics) => {
-        graphics.fillStyle(0x2b1d18).fillRect(5, 1, 6, 3);
-        graphics.fillStyle(0xd6a273).fillRect(4, 4, 8, 7).fillStyle(0xf2c397).fillRect(6, 5, 4, 3);
-        graphics.fillStyle(colors[category]).fillRect(3, 11, 10, 8).fillStyle(0x222d37).fillRect(3, 19, 4, 5).fillRect(9, 19, 4, 5);
-        graphics.fillStyle(0xf1c35f).fillRect(11, 12, 2, 3);
-    });
-}
-
 export function createPixelArtTextures(scene: Scene): void {
     const furnitureTypes: readonly FurnitureType[] = ['desk', 'chair', 'monitor', 'conference-table', 'operations-console', 'nexus-console', 'shelf', 'plant', 'display', 'security-terminal', 'checkpoint-gate', 'glass-barrier', 'credenza', 'whiteboard', 'cabinet', 'support-equipment'];
     const architectureTypes: readonly ArchitecturalObjectType[] = ['elevator', 'service-elevator', 'stairs', 'emergency-exit', 'expansion-seal', 'hologram', 'clock', 'camera', 'badge-reader', 'construction-material'];
-    const occupantCategories: readonly OccupantCategory[] = ['permanent', 'temporary', 'sandbox', 'visitor', 'escort', 'waiting'];
     furnitureTypes.forEach((type) => drawFurniture(scene, type));
     architectureTypes.forEach((type) => drawArchitecture(scene, type));
-    occupantCategories.forEach((category) => drawOccupant(scene, category));
 }
 
 export function ensureFurnitureTexture(scene: Scene, type: FurnitureType, variant: string): string {

@@ -247,6 +247,47 @@ export interface ArchitecturalObjectDefinition extends SpaceAssignment {
 export type OccupantCategory = 'permanent' | 'temporary' | 'sandbox' | 'visitor' | 'escort' | 'waiting';
 export type OccupantActivity = 'working' | 'seated-meeting' | 'briefing' | 'waiting' | 'escorting' | 'contained' | 'reception';
 
+export type CharacterBodySilhouette = 'narrow' | 'standard' | 'broad';
+export type CharacterHeightVariant = 'short' | 'standard' | 'tall';
+export type CharacterSkinTone = 'porcelain' | 'light' | 'warm' | 'olive' | 'brown' | 'deep';
+export type CharacterHairStyle = 'short' | 'side-parted' | 'close-cropped' | 'shaved' | 'medium' | 'long' | 'tied-back' | 'curly' | 'swept' | 'bun' | 'headwear';
+export type CharacterHairColor = 'black' | 'dark-brown' | 'brown' | 'auburn' | 'blond' | 'silver';
+export type CharacterFacialHair = 'none' | 'stubble' | 'mustache' | 'beard';
+export type CharacterGlasses = 'none' | 'round' | 'square';
+export type CharacterClothing = 'shirt' | 'sweater' | 'casual-jacket' | 'blazer' | 'executive' | 'technical' | 'security' | 'laboratory' | 'temporary' | 'visitor' | 'sandbox';
+export type CharacterPalette = 'warm-neutral' | 'charcoal' | 'navy' | 'steel' | 'olive' | 'rust' | 'cyan' | 'violet' | 'indigo' | 'green' | 'amber' | 'plum';
+export type CharacterBadge = 'none' | 'credential' | 'temporary' | 'visitor' | 'security' | 'escort' | 'containment';
+export type CharacterAccessory = 'none' | 'headset' | 'tablet' | 'clipboard' | 'notebook' | 'coffee' | 'book' | 'toolkit' | 'deployment-device' | 'laboratory-device' | 'containment-indicator' | 'connector-device';
+export type CharacterPose = 'standing-idle' | 'standing-conversation' | 'standing-briefing' | 'standing-presentation' | 'standing-security-monitoring' | 'standing-waiting' | 'standing-research' | 'seated-desk-work' | 'seated-console-work' | 'seated-meeting' | 'seated-waiting' | 'seated-reading' | 'sandbox-observation';
+export type CharacterFacing = 'forward-left' | 'forward-right' | 'rear-left' | 'rear-right';
+export type CharacterSeatType = 'none' | 'desk-chair' | 'operations-chair' | 'nexus-seat' | 'conference-chair' | 'boardroom-chair' | 'waiting-chair' | 'research-chair' | 'security-chair';
+export type CharacterShadow = 'compact' | 'standard' | 'seated';
+export type CharacterAnimationProfile = 'static' | 'breathing' | 'typing' | 'monitoring' | 'reading' | 'calibration';
+
+export interface CharacterAppearanceDefinition {
+    readonly id: string;
+    readonly occupantId: OccupantId;
+    readonly stableSeed: number;
+    readonly bodySilhouette: CharacterBodySilhouette;
+    readonly heightVariant: CharacterHeightVariant;
+    readonly skinTone: CharacterSkinTone;
+    readonly hairStyle: CharacterHairStyle;
+    readonly hairColor: CharacterHairColor;
+    readonly facialHair: CharacterFacialHair;
+    readonly glasses: CharacterGlasses;
+    readonly clothing: CharacterClothing;
+    readonly primaryPalette: CharacterPalette;
+    readonly secondaryPalette: CharacterPalette;
+    readonly departmentAccent: CharacterPalette;
+    readonly badge: CharacterBadge;
+    readonly accessory: CharacterAccessory;
+    readonly pose: CharacterPose;
+    readonly facing: CharacterFacing;
+    readonly seatType: CharacterSeatType;
+    readonly shadow: CharacterShadow;
+    readonly animationProfile: CharacterAnimationProfile;
+}
+
 export interface SceneOccupantDefinition extends SpaceAssignment {
     readonly id: OccupantId;
     readonly floorId: FloorId;
@@ -258,6 +299,7 @@ export interface SceneOccupantDefinition extends SpaceAssignment {
     readonly orientation: Orientation;
     readonly visualVariant: string;
     readonly label?: string;
+    readonly appearance: CharacterAppearanceDefinition;
 }
 
 export interface PermanentAgentDefinition {

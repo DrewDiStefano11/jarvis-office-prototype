@@ -2,7 +2,9 @@ import { GameObjects, Input, Scene, Time, Tweens } from 'phaser';
 import type { FloorDefinition, Point2D, VisualMetadata } from '../domain/building/types';
 import { inspectEntity, type InspectableEntityType, type InspectionDetails } from '../domain/building/inspection';
 import { projectBounds, worldToIsometric } from './isometric';
-import { createPixelArtTextures, ensureArchitectureTexture, ensureFurnitureTexture, occupantTextureKey } from './pixelTextures';
+import { createPixelArtTextures, ensureArchitectureTexture, ensureFurnitureTexture } from './pixelTextures';
+import { ensureOccupantTexture, isSeatedAppearance, OCCUPANT_FLOOR_ANCHOR, OCCUPANT_RENDER_SCALE } from './occupantSprites';
+import { shouldAnimateAppearance } from './occupantSpriteModel';
 import { DEFAULT_VIEW_PREFERENCES, type ViewPreferences } from './viewState';
 import { EventBus } from '../game/EventBus';
 
@@ -59,6 +61,7 @@ export class FloorSceneRenderer {
     private readonly accessObjects: GameObjects.Shape[] = [];
     private readonly ambientObjects: Array<GameObjects.Rectangle | GameObjects.Ellipse> = [];
     private readonly ambientTweens: Tweens.Tween[] = [];
+    private readonly occupantIdleTweens: Tweens.Tween[] = [];
     private readonly entityAnchors = new Map<string, EntityAnchor>();
     private readonly selectionRing: GameObjects.Ellipse;
     private readonly hoverRing: GameObjects.Ellipse;
@@ -100,6 +103,8 @@ export class FloorSceneRenderer {
         const effectsVisible = preferences.effects !== 'off';
         this.ambientObjects.forEach((object) => object.setVisible(effectsVisible).setAlpha(preferences.effects === 'reduced' ? 0.38 : 0.78));
         this.ambientTweens.forEach((tween) => preferences.effects === 'on' ? tween.resume() : tween.pause());
+        this.occupantIdleTweens.forEach((tween) => preferences.effects === 'on' ? tween.resume() : tween.pause());
+        if (preferences.effects !== 'on') this.occupantObjects.forEach((object) => object.setY(object.getData('floor-y')));
     }
 
     public selectEntity(id?: string): InspectionDetails | undefined {
@@ -230,11 +235,24 @@ export class FloorSceneRenderer {
     }
 
     private drawOccupants(): void {
+        const idleTargets: GameObjects.Image[] = [];
         this.floor.occupants.forEach((entity) => {
-            const image = this.addPixelImage(occupantTextureKey(entity.category), entity.position, 1.25, entity.visualVariant).setInteractive({ useHandCursor: true });
+            const point = worldToIsometric(entity.position);
+            const seated = isSeatedAppearance(entity.appearance);
+            const image = this.scene.add.image(Math.round(point.x), Math.round(point.y), ensureOccupantTexture(this.scene, entity.appearance))
+                .setScale(OCCUPANT_RENDER_SCALE)
+                .setOrigin(OCCUPANT_FLOOR_ANCHOR.x, seated ? OCCUPANT_FLOOR_ANCHOR.seatedY : OCCUPANT_FLOOR_ANCHOR.standingY)
+                .setDepth(point.depth + (seated ? 330 : 430))
+                .setInteractive({ useHandCursor: true });
+            image.setData('floor-y', image.y);
             this.occupantObjects.push(image);
-            this.bindInteraction(image, 'occupant', entity.id, worldToIsometric(entity.position));
+            if (shouldAnimateAppearance(entity.appearance, 'on')) idleTargets.push(image);
+            this.bindInteraction(image, 'occupant', entity.id, point);
+            this.renderedObjectCount += 1;
         });
+        if (idleTargets.length > 0) {
+            this.occupantIdleTweens.push(this.scene.tweens.add({ targets: idleTargets, y: '-=1', duration: 1800, repeat: -1, yoyo: true, stagger: 140, ease: 'Stepped' }));
+        }
     }
 
     private drawAmbientEffects(): void {
@@ -325,5 +343,6 @@ export class FloorSceneRenderer {
         this.hoverTimer?.remove(false);
         EventBus.off('floor-drag-state', this.handleDragState, this);
         this.ambientTweens.forEach((tween) => tween.destroy());
+        this.occupantIdleTweens.forEach((tween) => tween.destroy());
     }
 }

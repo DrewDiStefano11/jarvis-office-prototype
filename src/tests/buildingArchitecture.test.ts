@@ -29,6 +29,7 @@ const mockZoneId = zoneId('mock-floor.zone.hall');
 const mockDoorId = doorId('mock-floor.door.studio');
 const mockAgentId = agentId('mock-agent-001');
 const mockWorkspaceId = workspaceId('mock-floor.workspace.studio-01');
+const mockOccupantId = occupantId('mock-floor.occupant.agent');
 
 const mockFloor: FloorDefinition = {
     id: mockFloorId,
@@ -47,7 +48,16 @@ const mockFloor: FloorDefinition = {
     furniture: [{ id: furnitureId('mock-floor.furniture.desk'), floorId: mockFloorId, roomId: mockRoomId, furnitureType: 'desk', position: { x: 70, y: 60 }, orientation: 'south', footprint: { x: 50, y: 50, width: 40, height: 20 }, blockedFootprint: { x: 46, y: 46, width: 48, height: 28 }, blocksMovement: true, interactable: true, accessLevel: 'general', visualVariant: 'mock-desk' }],
     workspaces: [{ id: mockWorkspaceId, floorId: mockFloorId, roomId: mockRoomId, departmentId: mockDepartmentId, workspaceType: 'permanent', permanentAssignmentAllowed: true, shared: false, position: { x: 70, y: 76 }, interactionPosition: { x: 70, y: 90 }, orientation: 'north', footprint: { x: 62, y: 70, width: 16, height: 16 }, capacity: 1, occupancyState: 'occupied', assignedAgentId: mockAgentId, accessLevel: 'general', visualVariant: 'mock-workspace' }],
     architecturalObjects: [{ id: architecturalObjectId('mock-floor.architecture.stairs'), floorId: mockFloorId, zoneId: mockZoneId, architecturalType: 'stairs', position: { x: 220, y: 60 }, orientation: 'north', footprint: { x: 200, y: 40, width: 40, height: 40 }, accessLevel: 'general', visualVariant: 'mock-stairs' }],
-    occupants: [{ id: occupantId('mock-floor.occupant.agent'), floorId: mockFloorId, roomId: mockRoomId, agentId: mockAgentId, workspaceId: mockWorkspaceId, category: 'permanent', activity: 'working', position: { x: 70, y: 84 }, orientation: 'north', visualVariant: 'mock-agent' }],
+    occupants: [{
+        id: mockOccupantId, floorId: mockFloorId, roomId: mockRoomId, agentId: mockAgentId, workspaceId: mockWorkspaceId,
+        category: 'permanent', activity: 'working', position: { x: 70, y: 84 }, orientation: 'north', visualVariant: 'mock-agent',
+        appearance: {
+            id: 'appearance-mock-agent', occupantId: mockOccupantId, stableSeed: 1, bodySilhouette: 'standard', heightVariant: 'standard',
+            skinTone: 'warm', hairStyle: 'short', hairColor: 'brown', facialHair: 'none', glasses: 'none', clothing: 'technical',
+            primaryPalette: 'navy', secondaryPalette: 'charcoal', departmentAccent: 'steel', badge: 'credential', accessory: 'none',
+            pose: 'seated-desk-work', facing: 'rear-left', seatType: 'desk-chair', shadow: 'seated', animationProfile: 'typing',
+        },
+    }],
     permanentAgents: [{ id: mockAgentId, displayName: 'Mock Agent', role: 'Designer', departmentId: mockDepartmentId, accessLevel: 'general', visualVariant: 'mock-agent' }],
 };
 
