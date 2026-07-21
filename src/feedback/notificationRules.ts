@@ -6,6 +6,30 @@ import {
 } from './notificationTypes';
 import { SoundDefinition, SoundPreferences } from './soundTypes';
 
+export type NotificationIncidentIdentity = {
+  readonly type: string;
+  readonly deduplicationKey: string;
+  readonly workflowOrIncidentId?: string;
+  readonly taskId?: string;
+  readonly agentId?: string;
+};
+
+/**
+ * Derives a stable incident identity from a notification descriptor.
+ * This is used to determine if two notifications belong to the exact same incident/flow.
+ */
+export function getNotificationIncidentIdentity(
+  notification: NotificationDescriptor
+): NotificationIncidentIdentity {
+  return {
+    type: notification.type,
+    deduplicationKey: notification.deduplicationKey,
+    workflowOrIncidentId: notification.workflowOrIncidentId,
+    taskId: notification.taskId,
+    agentId: notification.agentId,
+  };
+}
+
 /**
  * Creates a stable deduplication key for a notification based on its core identity.
  */
@@ -136,11 +160,17 @@ export function resolveNotificationPresentation(
   const isCriticalOrError = notification.severity === 'critical' || notification.severity === 'error';
   const isRecoveryRequired = notification.type === 'recovery_required';
 
-  // A completely new incident exists if there is no previous descriptor, or if the deduplication keys mismatch,
-  // or if the workflow/incident IDs fundamentally mismatch.
-  const isNewIncident = !context.previousDescriptor ||
-                        context.previousDescriptor.deduplicationKey !== notification.deduplicationKey ||
-                        context.previousDescriptor.workflowOrIncidentId !== notification.workflowOrIncidentId;
+  const isNewIncident = (() => {
+    if (!context.previousDescriptor) return true;
+    const currentId = getNotificationIncidentIdentity(notification);
+    const previousId = getNotificationIncidentIdentity(context.previousDescriptor);
+
+    return currentId.type !== previousId.type ||
+           currentId.deduplicationKey !== previousId.deduplicationKey ||
+           currentId.workflowOrIncidentId !== previousId.workflowOrIncidentId ||
+           currentId.taskId !== previousId.taskId ||
+           currentId.agentId !== previousId.agentId;
+  })();
 
   // If not a new incident, determine material change status compared to previous descriptor
   const isMateriallyChanged = !isNewIncident && !areNotificationsMateriallyEquivalent(notification, context.previousDescriptor!);
@@ -152,6 +182,7 @@ export function resolveNotificationPresentation(
     if (isRecoveryRequired || isCriticalOrError) {
       announcementPriority = 'assertive';
     }
+    // New ordinary warning/informational uses its configured priority (already set above) unless elevated by documented rules.
   } else if (isMateriallyChanged) {
     // Materially changed same incident: announce politely by default, escalate if error/critical
     if (isCriticalOrError) {

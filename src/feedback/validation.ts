@@ -180,6 +180,30 @@ export function validateNotificationDescriptors(
       }
     }
 
+    if (notification.taskId && !notification.deduplicationKey.includes('task:')) {
+      issues.push({
+        id: contextId,
+        type: 'warning',
+        message: `Notification has taskId but deduplicationKey does not contain 'task:'.`
+      });
+    }
+
+    if (notification.agentId && !notification.deduplicationKey.includes('agent:')) {
+      issues.push({
+        id: contextId,
+        type: 'warning',
+        message: `Notification has agentId but deduplicationKey does not contain 'agent:'.`
+      });
+    }
+
+    if (notification.workflowOrIncidentId && !notification.deduplicationKey.includes('incident:')) {
+      issues.push({
+        id: contextId,
+        type: 'warning',
+        message: `Notification has workflowOrIncidentId but deduplicationKey does not contain 'incident:'.`
+      });
+    }
+
     if (notification.type !== 'recovery_required' && notification.severity === 'critical' && notification.persistenceExpectation !== 'persistent_until_resolved') {
       issues.push({
         id: contextId,

@@ -74,6 +74,39 @@ describe('Sound Manifest and Validation', () => {
     const issues = validateNotificationDescriptors(notifications, soundManifest);
     expect(issues.some(i => i.message.includes("must provide non-audio readable text alternatives"))).toBe(true);
   });
+
+  describe('Recovery Validation Edge Cases', () => {
+    it('should detect missing recovery identity as validation error', () => {
+      const notifications: NotificationDescriptor[] = [{
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1'
+        // Missing workflowOrIncidentId
+      }];
+      const issues = validateNotificationDescriptors(notifications, soundManifest);
+      expect(issues.some(i => i.message.includes("must provide a valid workflowOrIncidentId"))).toBe(true);
+    });
+
+    it('should detect whitespace-only recovery identity as validation error', () => {
+      const notifications: NotificationDescriptor[] = [{
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1',
+        workflowOrIncidentId: '   ' // Whitespace only
+      }];
+      const issues = validateNotificationDescriptors(notifications, soundManifest);
+      expect(issues.some(i => i.message.includes("must provide a valid workflowOrIncidentId"))).toBe(true);
+    });
+
+    it('should detect ephemeral recovery notification as validation error', () => {
+      const notifications: NotificationDescriptor[] = [{
+        type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'ephemeral', // Invalid for recovery
+        screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1',
+        workflowOrIncidentId: 'inc-1'
+      }];
+      const issues = validateNotificationDescriptors(notifications, soundManifest);
+      expect(issues.some(i => i.message.includes("Recovery required notifications cannot be ephemeral"))).toBe(true);
+    });
+  });
 });
 
 describe('Notification Rules (Pure Helpers)', () => {
@@ -311,36 +344,52 @@ describe('Notification Rules (Pure Helpers)', () => {
       expect(presentation.announcementPriority).toBe('assertive');
     });
 
-    it('should evaluate materially changed if task ID changes', () => {
+    it('should evaluate as new incident if task ID changes', () => {
        const previous: NotificationDescriptor = {
         type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
         dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1',
         taskId: 'task-1'
       };
-      const notification = { ...previous, taskId: 'task-2' }; // Materially changed (but same dedup key, theoretically)
+      const notification = { ...previous, taskId: 'task-2' }; // New incident because task identity differs
 
       const presentation = resolveNotificationPresentation(
         notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
       );
 
       expect(presentation.shouldAnnounce).toBe(true);
-      expect(presentation.announcementPriority).toBe('polite');
+      expect(presentation.announcementPriority).toBe('assertive'); // New recovery incident is assertive
     });
 
-    it('should evaluate materially changed if agent ID changes', () => {
+    it('should evaluate as new incident if agent ID changes', () => {
        const previous: NotificationDescriptor = {
         type: 'recovery_required', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
         dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'assertive', deduplicationKey: 'recovery-1',
         agentId: 'agent-1'
       };
-      const notification = { ...previous, agentId: 'agent-2' }; // Materially changed
+      const notification = { ...previous, agentId: 'agent-2' }; // New incident because agent identity differs
 
       const presentation = resolveNotificationPresentation(
         notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
       );
 
       expect(presentation.shouldAnnounce).toBe(true);
-      expect(presentation.announcementPriority).toBe('polite');
+      expect(presentation.announcementPriority).toBe('assertive'); // New recovery incident is assertive
+    });
+
+    it('should evaluate as new incident if type changes', () => {
+       const previous: NotificationDescriptor = {
+        type: 'warning', severity: 'warning', title: 'Recovery', message: 'Agent stuck',
+        dismissible: true, persistenceExpectation: 'persistent_until_resolved', screenReaderAnnouncementPriority: 'polite', deduplicationKey: 'recovery-1',
+      };
+      // Escalating severity to 'error' directly triggers the 'assertive' fallback on new incidents.
+      const notification = { ...previous, type: 'error' as const, severity: 'error' as const }; // New incident because type differs
+
+      const presentation = resolveNotificationPresentation(
+        notification, defaultPrefs, { previousDescriptor: previous }, soundManifest, true
+      );
+
+      expect(presentation.shouldAnnounce).toBe(true);
+      expect(presentation.announcementPriority).toBe('assertive'); // Error incident is assertive
     });
   });
 
