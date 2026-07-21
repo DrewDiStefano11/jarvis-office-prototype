@@ -17,6 +17,13 @@ export interface ValidationOptions {
   readonly requiredAgentIds?: readonly StableAgentId[];
 }
 
+export function validateDefaultAgentProfiles(options: Omit<ValidationOptions, 'requiredAgentIds'>): AgentProfileValidationResult {
+  return validateAgentProfiles({
+    ...options,
+    requiredAgentIds: ['jarvis', 'atlas', 'scout', 'archive', 'sentinel']
+  });
+}
+
 export function validateAgentProfiles(options: ValidationOptions): AgentProfileValidationResult {
   const issues: AgentProfileValidationIssue[] = [];
   const { profiles, themes, knownWorkspaceIds, knownSpriteIds, requiredAgentIds } = options;

@@ -94,7 +94,7 @@ describe('Agent Profiles Foundation', () => {
     const unexpectedProfile = {
       ...agentProfiles[0],
       profileId: 'profile_temporary',
-      stableAgentId: 'temporary-agent'
+      stableAgentId: 'temporary-agent' as unknown as import('../types').StableAgentId
     };
 
     const result = validateAgentProfiles({
@@ -110,8 +110,8 @@ describe('Agent Profiles Foundation', () => {
   });
 
   it('two unexpected profiles produce two separate issues', () => {
-    const unexpected1 = { ...agentProfiles[0], profileId: 'profile_temp1', stableAgentId: 'temp-1' };
-    const unexpected2 = { ...agentProfiles[0], profileId: 'profile_temp2', stableAgentId: 'temp-2' };
+    const unexpected1 = { ...agentProfiles[0], profileId: 'profile_temp1', stableAgentId: 'temp-1' as unknown as import('../types').StableAgentId };
+    const unexpected2 = { ...agentProfiles[0], profileId: 'profile_temp2', stableAgentId: 'temp-2' as unknown as import('../types').StableAgentId };
 
     const result = validateAgentProfiles({
       profiles: [...agentProfiles, unexpected1, unexpected2],
@@ -287,7 +287,7 @@ describe('Agent Profiles Foundation', () => {
       expect(jarvisProfile).toBeDefined();
       expect(jarvisProfile?.stableAgentId).toBe('jarvis');
 
-      const unknownProfile = getAgentProfileByAgentId(agentProfiles, 'unknown');
+      const unknownProfile = getAgentProfileByAgentId(agentProfiles, 'unknown' as unknown as import('../types').StableAgentId);
       expect(unknownProfile).toBeUndefined();
     });
 
@@ -296,7 +296,7 @@ describe('Agent Profiles Foundation', () => {
       expect(atlasProfile).toBeDefined();
       expect(atlasProfile.stableAgentId).toBe('atlas');
 
-      expect(() => requireAgentProfileByAgentId(agentProfiles, 'unknown')).toThrow('Agent profile not found for agent ID: unknown');
+      expect(() => requireAgentProfileByAgentId(agentProfiles, 'unknown' as unknown as import('../types').StableAgentId)).toThrow('Agent profile not found for agent ID: unknown');
     });
 
     it('safe map result succeeds', () => {

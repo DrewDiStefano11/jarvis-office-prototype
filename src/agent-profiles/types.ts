@@ -1,5 +1,15 @@
 export type AgentProfileId = string;
-export type StableAgentId = string;
+
+export const PERMANENT_AGENT_IDS = [
+  "jarvis",
+  "atlas",
+  "scout",
+  "archive",
+  "sentinel",
+] as const;
+
+export type StableAgentId = (typeof PERMANENT_AGENT_IDS)[number];
+
 export type ThemeId = string;
 export type WorkspaceId = string;
 export type SpriteId = string;
