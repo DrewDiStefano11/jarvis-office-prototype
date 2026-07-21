@@ -47,6 +47,7 @@ export interface VisualMetadata {
     readonly floorPattern?: 'wood' | 'tile' | 'carpet' | 'metal' | 'glass';
     readonly visualVariant: string;
     readonly icon?: string;
+    readonly labelVisibility?: 'always' | 'detail' | 'hidden';
 }
 
 export interface BuildingDefinition {
@@ -83,6 +84,7 @@ export interface DepartmentDefinition {
     readonly name: string;
     readonly accessLevel: AccessLevel;
     readonly visual: VisualMetadata;
+    readonly labelPosition: Point2D;
     readonly metadata?: EntityMetadata;
 }
 
@@ -204,6 +206,8 @@ export interface WorkspaceDefinition extends SpaceAssignment {
     readonly floorId: FloorId;
     readonly departmentId?: DepartmentId;
     readonly workspaceType: WorkspaceType;
+    readonly permanentAssignmentAllowed: boolean;
+    readonly shared: boolean;
     readonly position: Point2D;
     readonly interactionPosition: Point2D;
     readonly orientation: Orientation;
