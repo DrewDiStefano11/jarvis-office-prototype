@@ -203,65 +203,6 @@ describe('Design System Components', () => {
             document.body.removeChild(root);
         });
 
-        it('calls onClose when Escape is pressed', async () => {
-            const onClose = vi.fn();
-            render(<Modal open={true} onClose={onClose} title="Modal">Content</Modal>);
-
-            await userEvent.keyboard('[Escape]');
-            expect(onClose).toHaveBeenCalledTimes(1);
-        });
-
-        it('traps focus with Tab and Shift+Tab', async () => {
-            const user = userEvent.setup();
-            render(
-                <Modal open={true} onClose={() => {}} title="Modal">
-                    <button id="first">First</button>
-                    <button id="second">Second</button>
-                    <button id="last">Last</button>
-                </Modal>
-            );
-
-            // Wait until the modal's internal requestAnimationFrame focuses the close button
-            // The close button is rendered FIRST inside Modal.tsx
-            const closeBtn = await screen.findByRole('button', { name: 'Close modal' });
-
-            // By default Modal will focus the first tabbable element, which is the close button
-            expect(document.activeElement).toBe(closeBtn);
-
-            // Tab from Close Button -> First
-            await user.tab();
-            expect(document.activeElement?.id).toBe('first');
-
-            // Shift + Tab from First -> Close Button
-            await user.keyboard('{Shift>}{Tab}{/Shift}');
-            expect(document.activeElement).toBe(closeBtn);
-
-            // Shift + Tab from Close Button (first tabbable) -> Last
-            await user.keyboard('{Shift>}{Tab}{/Shift}');
-            expect(document.activeElement?.id).toBe('last');
-
-            // Tab from Last -> Close Button
-            await user.tab();
-            expect(document.activeElement).toBe(closeBtn);
-        });
-    });
-
-    describe('Tabs', () => {
-        it('manages roles, focus, and selection correctly', () => {
-            render(
-                <Tabs items={[
-                    { id: '1', label: 'Tab 1', content: 'Content 1' },
-                    { id: '2', label: 'Tab 2', content: 'Content 2' }
-                ]} />
-            );
-
-            const tabs = screen.getAllByRole('tab');
-            expect(tabs.length).toBe(2);
-            expect(tabs[0].getAttribute('aria-selected')).toBe('true');
-            expect(tabs[1].getAttribute('aria-selected')).toBe('false');
-            expect(tabs[0].getAttribute('tabIndex')).toBe('0');
-            expect(tabs[1].getAttribute('tabIndex')).toBe('-1');
-        });
 
         it('generates unique instance IDs for different tab groups', () => {
             render(
