@@ -33,3 +33,20 @@ Known problems: repeated programmer-art silhouettes, standing bodies over seated
 ## Implementation plan
 
 Add a strict deterministic appearance model to each population record; generate layered low-resolution textures from stable appearance/pose/facing keys; use dedicated standing and seated dimensions/anchors; express department identity through small clothing panels, badge shapes, accessories, pose, and inspector text; use one shared restrained idle tween; and validate counts, cache keys, pose/seat compatibility, assigned-space containment, selection bounds, and cleanup. No external assets or dependencies are required.
+
+## Final architecture and measured counts
+
+- 38 typed appearance definitions and 38 stable cached texture combinations
+- 24×34 standing source pixels; 24×30 seated source pixels; 1.24× render scale
+- 3 body silhouettes and 3 controlled heights
+- 11 hair styles, 6 skin-tone palettes, and 11 clothing structures
+- All 13 authored pose families represented on the floor
+- All 4 isometric facing directions represented and context-authored
+- 11 accessory states including `none`; accessories remain selective
+- Dedicated standing/seated anchors and contact shadows
+- 5 occupants in one shared restrained idle tween; reduced/off modes freeze them
+- Population render-object count unchanged at 38; unique character textures increased from 6 to 38
+- Texture generation occurs once per stable key and never on pan, resize, selection, or React rerender
+- Renderer shutdown destroys both ambient and occupant tweens and removes shared event listeners
+
+Automated checks cover deterministic regeneration, variation floors, stable texture keys, appearance validity, pose/seat compatibility, assigned-space containment, doorway clearance, severe furniture intersections, duplicate IDs/positions, exact population categories, permanent identity, vacant workspaces, four Sandbox cells, interaction-bound standards, and reduced/off motion policy.

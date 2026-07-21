@@ -1,26 +1,43 @@
-# Floor 1 Visual Evidence Index
+# Floor 1 Final Visual Evidence Index
 
-All screenshots were captured directly from the running application on branch `feature/floor-1-visual-foundation-v2` at rendering source SHA `322a4ec885f57439d498829b1e69f596b646f8ac`. Close-ups use the normal wheel-zoom and drag-to-pan controls at a moderate zoom. No screenshot uses developer overlays, manual edits, or defect-concealing crops. `capture-metadata.json` records the viewport, branch, SHA, area, title, render-command count, and browser errors for every image.
+The authoritative final-pass evidence is in [`final-sprite-pass/`](final-sprite-pass/). It was captured from the running application on `feature/floor-1-visual-foundation-v2` at rendering source SHA `2fe2bfdbe14c180756c93daddc26aa74bdab42e6`. That commit contains the final renderer and sprite source; the later evidence/documentation commit does not alter rendering. `capture-metadata.json` records branch, SHA, viewport, zoom, area, requirement, effects, motion, and browser errors for each capture.
 
-| Screenshot | Viewport | Area shown | Requirement evidence |
-| --- | --- | --- | --- |
-| [Floor 1 overview](floor-1-overview.png) | 1920×1080 | Complete Floor 1 and status panel | Whole floor, all nine department banners, Central Nexus, both expansion seals, consolidated totals, overall density and hierarchy |
-| [Executive and Security](security-executive.png) | 1920×1080 | Executive Command, layered Security, north core | 3 Executive offices, Boardroom, Strategy room, 4 Security offices, separate Audit, Vault, Approval Review, passenger elevators, stair, service vestibule |
-| [Operations](operations.png) | 1920×1080 | Reliability and Operations | Pods A/B/C, 12 consoles, assigned/vacant/surge states, Incident Command, 2 Operations private offices |
-| [Engineering and Project](engineering-project.png) | 1920×1080 | Engineering Bay and Project | Departments 4–6, all 8 engineering functions, collaboration table, GitHub/DevOps adjacency, separate manager office, open Project Coordination, review room |
-| [Reception and checkpoint](reception-checkpoint.png) | 1920×1080 | Public entrance sequence and secure split | Public vestibule, reception, intake, 4 gates, equipment side gate, full-width barrier, controlled lobby, three post-checkpoint routes |
-| [Quality and Sandbox](quality-sandbox.png) | 1920×1080 | Quality lab and containment suite | Quality stations, glass transfer corridor, locked ends, shared vestibule, lab control, 4 independent cells and occupants |
-| [Knowledge and Memory](knowledge-memory.png) | 1920×1080 | Knowledge Center | Public library, manager offices, shelves/search, department layer, locked Decision Archive and retention display |
-| [Temporary Launch and support](temporary-support.png) | 1920×1080 | Southwest support areas | 8 temporary desks, 4 focus rooms, Break Room, Restrooms, Utility, Electrical/IT, remote emergency stair |
-| [Workspace states](workspace-states.png) | 1920×1080 | Core state context | Assigned green, vacant blue, temporary amber, surge gray, and sandbox purple states; detailed examples are also visible in Operations, Temporary, and Sandbox close-ups |
-| [Responsive laptop](responsive-laptop.png) | 1366×768 | Complete Floor 1 | Floor remains usable at laptop size; status panel and controls do not hide the office |
+The 1920×1080 overview uses Labels Auto. Character close-ups use the normal Labels Minimal control so sprite silhouettes and furniture depth remain unobstructed; this is a shipped user control, not a developer overlay. Images are direct browser captures with no retouching or defect-concealing crops. The older root-level images remain historical first-pass evidence and are not the final sprite acceptance set.
+
+| # | Screenshot | Area / requirement |
+| --- | --- | --- |
+| 1 | [Full Floor overview](final-sprite-pass/01-full-floor-overview.png) | Complete floor, all 38 occupants, exact totals |
+| 2 | [Medium population overview](final-sprite-pass/02-medium-population-overview.png) | Density and character-to-furniture scale |
+| 3 | [Close pixel clarity](final-sprite-pass/03-close-pixel-clarity.png) | Crisp layered sprites, outlines, contact shadows |
+| 4 | [Executive variations](final-sprite-pass/04-executive-variations.png) | Leadership clothing and accessories |
+| 5 | [Boardroom composition](final-sprite-pass/05-boardroom-composition.png) | Meeting facings, seats, table depth |
+| 6 | [Security and visitor variations](final-sprite-pass/06-security-visitor-variations.png) | Security badge/pose versus visitor treatment |
+| 7 | [Checkpoint orientation](final-sprite-pass/07-checkpoint-orientation.png) | Controlled entrance and public-flow context |
+| 8 | [Operations seated poses](final-sprite-pass/08-operations-seated-poses.png) | Dedicated console seating and headset variation |
+| 9 | [Engineering poses](final-sprite-pass/09-engineering-poses.png) | Technical desk and collaboration context |
+| 10 | [Project variations](final-sprite-pass/10-project-variations.png) | Standing/meeting states and visible vacancies |
+| 11 | [Knowledge research](final-sprite-pass/11-knowledge-research.png) | Reading/research treatment and archive context |
+| 12 | [Quality review](final-sprite-pass/12-quality-review.png) | Testing/review identity |
+| 13 | [Temporary Launch](final-sprite-pass/13-temporary-launch.png) | Temporary badges and occupied/vacant desks |
+| 14 | [Waiting occupants](final-sprite-pass/14-waiting-occupants.png) | Waiting pose and neutral visitor clothing |
+| 15 | [Four Sandbox occupants](final-sprite-pass/15-four-sandbox-occupants.png) | New Agent, Plugin, Model, Automation differentiation |
+| 16 | [Hair variety](final-sprite-pass/16-hair-variety.png) | Visible hair silhouettes |
+| 17 | [Skin and clothing variety](final-sprite-pass/17-skin-clothing-variety.png) | Natural skin palettes and structural clothing differences |
+| 18 | [Accessory variety](final-sprite-pass/18-accessory-variety.png) | Selective badge/device/accessory treatment |
+| 19 | [Seated depth ordering](final-sprite-pass/19-seated-depth-ordering.png) | Chair, character, and table composition |
+| 20 | [Character behind glass](final-sprite-pass/20-character-behind-glass.png) | Contained sprite remains readable through cell treatment |
+| 21 | [Selected character](final-sprite-pass/21-selected-character.png) | Floor ring without body recolor |
+| 22 | [Hover tooltip](final-sprite-pass/22-hover-tooltip.png) | Delayed, concise character tooltip |
+| 23 | [Inspector details](final-sprite-pass/23-inspector-details.png) | Domain-sourced role, location, pose, facing, appearance, access |
+| 24 | [Reduced motion](final-sprite-pass/24-reduced-motion.png) | Optional idle motion frozen |
+| 25 | [Effects off](final-sprite-pass/25-effects-off.png) | Identity remains legible without ambient effects |
+| 26 | [Responsive 1366×768](final-sprite-pass/26-responsive-1366x768.png) | Complete-floor fit with responsive product UI |
 
 ## Reproduction
 
-1. Check out the reported branch SHA.
-2. Run `npm ci`.
-3. Run `npm run dev-nolog`.
-4. Open `http://127.0.0.1:5173`.
-5. Use wheel zoom and drag-to-pan for the close-up areas listed above.
+1. Check out the reported rendering source SHA.
+2. Run `npm ci` and `npm run dev-nolog`.
+3. Open `http://127.0.0.1:5173`.
+4. Use Fit Floor, department navigation, wheel/controls, Labels, Effects, hover, and selection to reproduce the recorded states.
 
-The overview is the clean initial camera state. The application renders no temporary developer guides.
+The evidence run returned HTTP 200, produced no page/console errors, and verified that a camera drag does not create a selection.

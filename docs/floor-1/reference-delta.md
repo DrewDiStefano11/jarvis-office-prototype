@@ -23,18 +23,17 @@
 
 These are deliberate corrections, not failures to copy the image.
 
-## Simplified for the primitive-based prototype
+## Simplified for the generated pixel prototype
 
-- Original low-resolution textures use reusable silhouettes and palette tints rather than individually illustrated production sprites.
+- Characters now use deterministic layered low-resolution art with varied silhouettes, anatomy, hair, skin, clothing, poses, facings, badges, and accessories. They remain generated sprites rather than hand-painted animation sheets.
 - Fine text shown on review, incident, lineage, quality, and briefing displays is represented by recognizable screen layouts and nearby concise labels.
 - Furniture orientations share a compact set of reusable isometric forms.
 - Walls use consistent generated faces rather than hand-painted per-room tile seams and weathering.
 - Lighting is expressed through palette, hard highlights, and shadows rather than dynamic light maps.
 
-## Later sprite-art pass
+## Later production-art opportunities
 
-- Add bespoke character hair, clothing, seated poses, and department accessories while keeping the current scale.
 - Replace reusable display silhouettes with unique pixel screens for incident timelines, architecture diagrams, lineage, approvals, and Daily Briefing metrics.
 - Add per-room wall trim, richer wood/tile patterns, small personal items, and additional plant variants.
 - Refine door animations, glass reflections, elevator indicators, construction scaffolding, and Nexus hologram frames.
-- Add optional subtle idle animation without introducing movement or runtime simulation.
+- Add hand-authored blink/typing frames on top of the current deterministic animation-ready appearance model; movement and pathfinding remain intentionally out of scope.

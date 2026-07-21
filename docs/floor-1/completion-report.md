@@ -47,9 +47,17 @@ The running app was inspected after geometry, furniture, population, and final s
 ## Known visual limitations
 
 - Fine content on monitors is iconographic rather than fully readable at the overview zoom.
-- Character variants share a reusable silhouette and palette treatment.
-- Some dense close-up labels overlap nearby props at high zoom; the uncluttered overview remains readable.
-- Dynamic lighting, animation, and production sprite polish are intentionally deferred.
+- Automatic detail labels can become dense at extreme zoom; the shipped Labels Minimal control provides an uncluttered inspection state.
+- Character idle motion is intentionally limited to a one-pixel shared posture shift; hand-authored multi-frame blinks and typing loops remain future production art.
+- Dynamic light maps and room-specific painted texture wear remain intentionally simplified.
+
+## Final visual and sprite refinement addendum
+
+The final product shell adds projected-bounds Fit Floor, clamped pointer-centered camera controls, responsive expanded/compact/collapsed status modes, zoom-aware labels, navigation, hover, selection, an accessible domain-sourced inspector, presentation mode, session view persistence, ambient effect controls, loading/error states, and responsive viewport handling.
+
+The final character pass replaces six repeated 16×24 category sprites with 38 deterministic cached appearance textures. Standing frames are 24×34; seated frames are 24×30; both render at 1.24× with dedicated floor anchors. The visible population contains 3 silhouettes, 3 heights, 11 hair styles, 6 skin palettes, 11 clothing structures, all 13 pose families, all 4 isometric facings, and 11 accessory states. Five deterministically selected occupants share one restrained tween, which pauses and restores anchors in Reduced and Off modes. Population object count remains 38; the pass adds no per-frame texture generation and no external dependency.
+
+Final evidence includes 26 browser captures at 1920×1080 and 1366×768 plus an interaction video. The capture run returned HTTP 200 with no page or console errors and confirmed that camera dragging does not create a selection.
 
 ## Deferred work
 
