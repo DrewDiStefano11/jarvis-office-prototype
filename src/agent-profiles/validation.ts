@@ -30,18 +30,32 @@ export function validateAgentProfiles(options: ValidationOptions): AgentProfileV
 
   const profileIds = new Set<string>();
   const stableAgentIds = new Set<string>();
-  const themeIds = new Set(themes.map(t => t.id));
 
   // Validate themes
+  const validThemeIds = new Set<string>();
   const seenThemeIds = new Set<string>();
   for (const theme of themes) {
-    if (seenThemeIds.has(theme.id)) {
+    const isBlank = !theme.id || !theme.id.trim();
+
+    if (isBlank) {
       issues.push({
-        code: 'DUPLICATE_THEME_ID',
+        code: 'MISSING_THEME_ID',
         severity: 'error',
-        message: `Duplicate theme ID found: ${theme.id}`,
-        themeId: theme.id
+        message: `Missing theme ID`,
+        field: 'id'
       });
+    } else {
+      if (seenThemeIds.has(theme.id)) {
+        issues.push({
+          code: 'DUPLICATE_THEME_ID',
+          severity: 'error',
+          message: `Duplicate theme ID found: ${theme.id}`,
+          themeId: theme.id
+        });
+      } else {
+        seenThemeIds.add(theme.id);
+        validThemeIds.add(theme.id);
+      }
     }
 
     // Check required css tokens
@@ -104,7 +118,6 @@ export function validateAgentProfiles(options: ValidationOptions): AgentProfileV
         field: 'accessibleThemeLabel'
       });
     }
-    seenThemeIds.add(theme.id);
   }
 
   for (const profile of profiles) {
@@ -187,7 +200,7 @@ export function validateAgentProfiles(options: ValidationOptions): AgentProfileV
     }
 
     // Check references
-    if (!themeIds.has(profile.themeId)) {
+    if (!validThemeIds.has(profile.themeId)) {
       issues.push({
         code: 'UNKNOWN_THEME_ID',
         severity: 'error',

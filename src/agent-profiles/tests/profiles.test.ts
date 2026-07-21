@@ -196,14 +196,91 @@ describe('Agent Profiles Foundation', () => {
     expect(result1).toEqual(result2);
   });
 
-  it('helpers do not mutate their inputs', () => {
-    const profilesCopy = [...agentProfiles];
-    validateAgentProfiles({
+  it('helpers do not mutate their inputs (deep freeze)', () => {
+    function deepFreeze<T>(obj: T): T {
+      if (obj && typeof obj === 'object') {
+        Object.freeze(obj);
+        Object.values(obj).forEach(prop => deepFreeze(prop));
+      }
+      return obj;
+    }
+
+    const profilesCopy = JSON.parse(JSON.stringify(agentProfiles));
+    const themesCopy = JSON.parse(JSON.stringify(agentThemes));
+    const workspacesCopy = [...knownWorkspaceIds];
+    const spritesCopy = [...knownSpriteIds];
+
+    // Test that our deep freeze is actually effective without validate mutating
+    const options = deepFreeze({
       profiles: agentProfiles,
       themes: agentThemes,
-      knownWorkspaceIds
+      knownWorkspaceIds,
+      knownSpriteIds,
+      requiredAgentIds: ['jarvis', 'atlas', 'scout', 'archive', 'sentinel'] as const
     });
-    expect(agentProfiles).toEqual(profilesCopy);
+
+    // Should not throw
+    const result1 = validateAgentProfiles(options);
+    expect(result1.isValid).toBe(true);
+
+    // Deep structural check against original stringified versions
+    expect(JSON.parse(JSON.stringify(agentProfiles))).toEqual(profilesCopy);
+    expect(JSON.parse(JSON.stringify(agentThemes))).toEqual(themesCopy);
+    expect(knownWorkspaceIds).toEqual(workspacesCopy);
+    expect(knownSpriteIds).toEqual(spritesCopy);
+  });
+
+  describe('Theme validation', () => {
+    it('empty theme ID produces MISSING_THEME_ID', () => {
+      const invalidTheme = { ...agentThemes[0], id: '' };
+      const result = validateAgentProfiles({
+        profiles: agentProfiles,
+        themes: [invalidTheme, ...agentThemes.slice(1)],
+        knownWorkspaceIds
+      });
+      expect(result.isValid).toBe(false);
+      const missingIssues = result.issues.filter(i => i.code === 'MISSING_THEME_ID');
+      expect(missingIssues.length).toBeGreaterThan(0);
+      expect(missingIssues[0].field).toBe('id');
+    });
+
+    it('whitespace-only theme ID produces MISSING_THEME_ID', () => {
+      const invalidTheme = { ...agentThemes[0], id: '   ' };
+      const result = validateAgentProfiles({
+        profiles: agentProfiles,
+        themes: [invalidTheme, ...agentThemes.slice(1)],
+        knownWorkspaceIds
+      });
+      expect(result.isValid).toBe(false);
+      expect(result.issues.some(i => i.code === 'MISSING_THEME_ID')).toBe(true);
+    });
+
+    it('invalid blank theme cannot satisfy a profile reference', () => {
+      const blankThemeId = '';
+      const invalidTheme = { ...agentThemes[0], id: blankThemeId };
+      const invalidProfile = { ...agentProfiles[0], themeId: blankThemeId };
+
+      const result = validateAgentProfiles({
+        profiles: [invalidProfile, ...agentProfiles.slice(1)],
+        themes: [invalidTheme, ...agentThemes.slice(1)],
+        knownWorkspaceIds
+      });
+      expect(result.isValid).toBe(false);
+      expect(result.issues.some(i => i.code === 'MISSING_THEME_ID')).toBe(true);
+      expect(result.issues.some(i => i.code === 'UNKNOWN_THEME_ID' && i.profileId === invalidProfile.profileId)).toBe(true);
+    });
+
+    it('duplicate valid theme ID produces DUPLICATE_THEME_ID without MISSING_THEME_ID', () => {
+      const duplicateTheme = { ...agentThemes[0] }; // already has a valid ID
+      const result = validateAgentProfiles({
+        profiles: agentProfiles,
+        themes: [agentThemes[0], duplicateTheme, ...agentThemes.slice(1)],
+        knownWorkspaceIds
+      });
+      expect(result.isValid).toBe(false);
+      expect(result.issues.some(i => i.code === 'DUPLICATE_THEME_ID')).toBe(true);
+      expect(result.issues.some(i => i.code === 'MISSING_THEME_ID')).toBe(false);
+    });
   });
 
   it('runtime state is not embedded in profile fixtures', () => {
