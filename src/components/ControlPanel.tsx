@@ -1,213 +1,99 @@
-import React, { useState } from 'react';
-import { Agent } from '../types';
-import { OFFICE_LOCATIONS } from '../domain/seed';
+import React, { useEffect, useState } from 'react';
+import { floor1PlaceholderRoster } from '../domain/agents/placeholderRoster';
+import { floor1RouteNodes } from '../domain/floors/floor-1/routes';
+import { globalBuildingRegistry } from '../domain/building/registry';
+import { createFloorId } from '../types/ids';
+import { EventBus } from '../game/EventBus';
 
 interface ControlPanelProps {
-    selectedAgent: Agent | null;
-    agents: Agent[];
-    onSelectAgent: (agentId: string) => void;
+    selectedAgentId: string | null;
+    onSelectAgent: (id: string) => void;
     onSendToLocation: (agentId: string, locationId: string) => void;
-    onResetAll: () => void;
     errorMsg: string | null;
 }
 
-export const ControlPanel: React.FC<ControlPanelProps> = ({
-    selectedAgent,
-    agents,
-    onSelectAgent,
-    onSendToLocation,
-    onResetAll,
-    errorMsg
-}) => {
-    const occupiableLocations = OFFICE_LOCATIONS.filter(loc => loc.canOccupy);
-    const [selectedDestination, setSelectedDestination] = useState<string>('');
+export const ControlPanel: React.FC<ControlPanelProps> = ({ selectedAgentId, onSelectAgent, onSendToLocation, errorMsg }) => {
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+    const selectedAgent = floor1PlaceholderRoster.find(a => a.id === selectedAgentId);
+
+    useEffect(() => {
+        const handleRoomSelection = (roomId: string) => setSelectedRoomId(roomId);
+        EventBus.on('room-selected', handleRoomSelection);
+        return () => { EventBus.removeListener('room-selected', handleRoomSelection); };
+    }, []);
+
+    const floorData = globalBuildingRegistry.getFloor(createFloorId('floor-1'));
+    const selectedRoom = floorData?.rooms.find(r => r.id === selectedRoomId);
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px',
-            padding: '20px',
-            backgroundColor: '#1e2124',
-            color: '#e0e0e0',
-            height: '100%',
-            boxSizing: 'border-box',
-            fontFamily: 'sans-serif',
-            overflowY: 'auto'
-        }}>
-            <div>
-                <h2 style={{ margin: '0 0 5px 0', fontSize: '1.5rem', color: '#fff' }}>Jarvis Agent Ecosystem</h2>
-                <div style={{ fontSize: '0.8rem', color: '#ffb300', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    Simulation Prototype
-                </div>
+        <div style={{ padding: '20px', color: '#eee', fontFamily: 'sans-serif', height: '100%', overflowY: 'auto' }}>
+            <h2>Control Panel</h2>
+
+            {/* AGENT SELECTION */}
+            <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px' }}>Select Agent:</label>
+                <select
+                    value={selectedAgentId || ''}
+                    onChange={e => onSelectAgent(e.target.value)}
+                    style={{ width: '100%', padding: '8px', background: '#333', color: '#fff', border: '1px solid #555' }}
+                >
+                    <option value="">-- None Selected --</option>
+                    {floor1PlaceholderRoster.map(a => (
+                        <option key={a.id} value={a.id}>{a.placeholderName} ({a.placeholderRole})</option>
+                    ))}
+                </select>
             </div>
 
-            {errorMsg && (
-                <div style={{ backgroundColor: '#f44336', color: '#fff', padding: '10px', borderRadius: '4px', fontSize: '0.9rem' }}>
-                    {errorMsg}
+            {selectedAgent && (
+                <div style={{ background: '#222', padding: '15px', borderRadius: '4px', marginBottom: '20px', border: '1px solid #444' }}>
+                    <h3 style={{ marginTop: 0 }}>Agent Details</h3>
+                    <p><strong>Name:</strong> {selectedAgent.placeholderName}</p>
+                    <p><strong>Role:</strong> {selectedAgent.placeholderRole}</p>
+                    <p><strong>Dept:</strong> {selectedAgent.departmentId?.split('.').pop()}</p>
+                    <p><strong>Workspace:</strong> {selectedAgent.assignedWorkspaceId?.split('.').pop()}</p>
+                    <p><strong>Access:</strong> {selectedAgent.accessPermissions}</p>
+                    <p><strong>State:</strong> {selectedAgent.visualState}</p>
                 </div>
             )}
 
-            {/* Developer Controls */}
-            <div style={{
-                backgroundColor: '#282b30',
-                padding: '15px',
-                borderRadius: '8px',
-                border: '1px solid #424549'
-            }}>
-                <h3 style={{ margin: '0 0 15px 0', fontSize: '1.1rem', color: '#fff' }}>Controls</h3>
-
-                <div style={{ marginBottom: '15px' }}>
-                    <label htmlFor="agent-select" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Select Agent:</label>
-                    <select
-                        id="agent-select"
-                        value={selectedAgent?.id || ''}
-                        onChange={(e) => onSelectAgent(e.target.value)}
-                        className="accessible-select"
-                        style={{ width: '100%', padding: '8px', backgroundColor: '#36393e', color: '#fff', border: '1px solid #424549', borderRadius: '4px' }}
-                    >
-                        <option value="" disabled>-- Select an Agent --</option>
-                        {agents.map(a => (
-                            <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
-                        ))}
-                    </select>
+            {/* ROOM SELECTION (NEW) */}
+            {selectedRoom && (
+                <div style={{ background: '#2a2222', padding: '15px', borderRadius: '4px', marginBottom: '20px', border: '1px solid #544' }}>
+                    <h3 style={{ marginTop: 0, color: '#fca' }}>Room Details</h3>
+                    <p><strong>Name:</strong> {selectedRoom.name}</p>
+                    <p><strong>Type:</strong> {selectedRoom.roomType}</p>
+                    <p><strong>Dept:</strong> {selectedRoom.departmentId?.split('.').pop() || 'None'}</p>
+                    <p><strong>Access Required:</strong> {selectedRoom.accessLevel}</p>
+                    <p><strong>Capacity:</strong> {selectedRoom.capacity}</p>
                 </div>
+            )}
 
-                {selectedAgent && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
-                        <button
-                            onClick={() => onSendToLocation(selectedAgent.id, selectedAgent.homeDesk)}
-                            className="accessible-button"
-                            style={buttonStyle}
-                        >
-                            Send to Home Desk
-                        </button>
-                        <button
-                            onClick={() => onSendToLocation(selectedAgent.id, 'meeting_room')}
-                            className="accessible-button"
-                            style={buttonStyle}
-                        >
-                            Send to Meeting Room
-                        </button>
-                        <button
-                            onClick={() => onSendToLocation(selectedAgent.id, 'project_table')}
-                            className="accessible-button"
-                            style={buttonStyle}
-                        >
-                            Send to Project Table
-                        </button>
+            {errorMsg && <div style={{ color: '#ff6b6b', marginBottom: '15px', padding: '10px', background: 'rgba(255,0,0,0.1)', border: '1px solid #ff6b6b' }}>{errorMsg}</div>}
 
-                        <div style={{ marginTop: '5px' }}>
-                            <label htmlFor="specific-location-select" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Send to specific location:</label>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <select
-                                    id="specific-location-select"
-                                    value={selectedDestination}
-                                    onChange={(e) => setSelectedDestination(e.target.value)}
-                                    className="accessible-select"
-                                    style={{ flex: 1, padding: '8px', backgroundColor: '#36393e', color: '#fff', border: '1px solid #424549', borderRadius: '4px' }}
-                                >
-                                    <option value="" disabled>-- Location --</option>
-                                    {occupiableLocations.map(loc => (
-                                        <option key={loc.id} value={loc.id}>{loc.displayName}</option>
-                                    ))}
-                                </select>
-                                <button
-                                    onClick={() => {
-                                        if (selectedDestination) {
-                                            onSendToLocation(selectedAgent.id, selectedDestination);
-                                        }
-                                    }}
-                                    className="accessible-button"
-                                    style={{ ...buttonStyle, flex: '0 0 auto', padding: '8px 15px' }}
-                                >
-                                    Go
-                                </button>
-                            </div>
-                        </div>
+            {selectedAgent && (
+                <div>
+                    <h3 style={{ marginBottom: '10px' }}>Dispatch (Route Testing)</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {floor1RouteNodes.filter(n => n.nodeType === 'destination').map(dest => (
+                            <button
+                                key={dest.id}
+                                onClick={() => onSendToLocation(selectedAgent.id, dest.id)}
+                                style={{
+                                    padding: '10px',
+                                    background: '#4CAF50',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                }}
+                            >
+                                Route to: {dest.id.split('.').pop()}
+                            </button>
+                        ))}
                     </div>
-                )}
-
-                <div style={{ borderTop: '1px solid #424549', margin: '15px 0' }}></div>
-
-                <button
-                    onClick={onResetAll}
-                    className="accessible-button"
-                    style={{ ...buttonStyle, backgroundColor: '#d32f2f', color: '#fff', border: 'none' }}
-                >
-                    Reset All Positions
-                </button>
-            </div>
-
-            {/* Information Panel */}
-            <div style={{
-                backgroundColor: '#282b30',
-                padding: '15px',
-                borderRadius: '8px',
-                border: '1px solid #424549',
-                flex: 1
-            }}>
-                <h3 style={{ margin: '0 0 15px 0', fontSize: '1.1rem', color: '#fff' }}>Agent Information</h3>
-
-                {selectedAgent ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.95rem' }}>
-                        <InfoRow label="Name" value={selectedAgent.name} />
-                        <InfoRow label="Role" value={selectedAgent.role} />
-                        <InfoRow label="Department" value={selectedAgent.department} />
-                        <InfoRow label="Manager" value={agents.find(a => a.id === selectedAgent.managerId)?.name || 'None'} />
-                        <InfoRow label="Status" value={selectedAgent.currentStatus} valueColor={getStatusColor(selectedAgent.currentStatus)} />
-                        <InfoRow label="Message" value={selectedAgent.statusMessage} />
-                        <InfoRow label="Current Loc" value={OFFICE_LOCATIONS.find(l => l.id === selectedAgent.currentLocation)?.displayName || selectedAgent.currentLocation} />
-                        <InfoRow label="Target Loc" value={selectedAgent.targetLocation ? (OFFICE_LOCATIONS.find(l => l.id === selectedAgent.targetLocation)?.displayName || selectedAgent.targetLocation) : 'None'} />
-                        <InfoRow label="Progress" value={`${selectedAgent.progress}%`} />
-                        <InfoRow label="Queue" value={selectedAgent.queueCount.toString()} />
-                        <InfoRow label="Blocker" value={selectedAgent.currentBlocker || 'None'} />
-                        <InfoRow label="Type" value={selectedAgent.isTemporary ? 'Temporary' : 'Permanent'} />
-                    </div>
-                ) : (
-                    <div style={{ color: '#888', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
-                        No agent selected
-                    </div>
-                )}
-            </div>
-
-            <style>{`
-                .accessible-button:focus-visible, .accessible-select:focus-visible {
-                    outline: 2px solid #64b5f6 !important;
-                    outline-offset: 2px;
-                }
-                .accessible-button, .accessible-select {
-                    outline: none;
-                }
-            `}</style>
+                </div>
+            )}
         </div>
     );
-};
-
-const InfoRow = ({ label, value, valueColor = '#fff' }: { label: string, value: string, valueColor?: string }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #36393e', paddingBottom: '4px' }}>
-        <span style={{ color: '#aaa' }}>{label}:</span>
-        <span style={{ color: valueColor, fontWeight: '500', textAlign: 'right' }}>{value}</span>
-    </div>
-);
-
-function getStatusColor(status: string) {
-    switch (status) {
-        case 'idle': return '#aeea00';
-        case 'moving': return '#29b6f6';
-        case 'working': return '#ffa726';
-        case 'error': return '#ef5350';
-        default: return '#fff';
-    }
-}
-
-const buttonStyle: React.CSSProperties = {
-    padding: '10px 15px',
-    backgroundColor: '#424549',
-    color: '#fff',
-    border: '1px solid #555',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    transition: 'background-color 0.2s',
 };

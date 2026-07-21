@@ -1,135 +1,235 @@
-import { Scene, GameObjects, Math as PhaserMath, Input } from 'phaser';
+import { Scene, GameObjects, Input } from 'phaser';
 import { EventBus } from '../EventBus';
-import { INITIAL_AGENTS, OFFICE_LOCATIONS, WAYPOINTS } from '../../domain/seed';
-import { getPath } from '../../domain/navigation';
+import { globalBuildingRegistry } from '../../domain/building/registry';
+import { createFloorId } from '../../types/ids';
+import { floor1Departments } from '../../domain/floors/floor-1/departments';
+import { floor1Rooms } from '../../domain/floors/floor-1/rooms';
+import { floor1Workspaces } from '../../domain/floors/floor-1/workspaces';
+import { floor1PlaceholderRoster } from '../../domain/agents/placeholderRoster';
+import { floor1RouteNodes, floor1RouteEdges } from '../../domain/floors/floor-1/routes';
+import { AgentVisualState } from '../../types/agents';
+import { RouteEngine } from '../../domain/movement/routeEngine';
+
+globalBuildingRegistry.registerFloor({
+    id: createFloorId('floor-1'),
+    name: 'JARVIS HQ',
+    status: 'Operational',
+    departments: floor1Departments,
+    rooms: floor1Rooms,
+    workspaces: floor1Workspaces,
+    doors: [],
+    routes: floor1RouteNodes as any,
+    destinations: [],
+    furniture: []
+});
 
 export class OfficeScene extends Scene {
-    private agentSprites: Map<string, GameObjects.Container> = new Map();
-    private selectedAgentId: string | null = null;
+    private agentSprites = new Map<string, GameObjects.Container>();
+    private roomPolygons = new Map<string, GameObjects.Graphics>();
 
-    // Stable references for event bus cleanup
+    private selectedAgentId: string | null = null;
+    private selectedRoomId: string | null = null;
+
+    private engine: RouteEngine;
+
     private handleSelectAgentBound = this.handleSelectAgent.bind(this);
     private handleMoveAgentBound = this.handleMoveAgent.bind(this);
-    private handleResetAllBound = this.handleResetAll.bind(this);
 
     constructor() {
         super('OfficeScene');
+        this.engine = new RouteEngine(floor1RouteNodes, floor1RouteEdges);
     }
 
     create() {
+        this.cameras.main.setBackgroundColor('#f5f5f0');
+
+        const logicalWidth = 1792;
+        const logicalHeight = 1024;
+
+        // Start view centered roughly
+        this.cameras.main.setBounds(-500, -200, logicalWidth + 1000, logicalHeight + 1000);
+        this.cameras.main.setScroll(400, -200);
+
         this.drawOffice();
         this.createAgents();
         this.setupEventListeners();
 
-        // Enable basic camera dragging/panning
         this.input.on('pointermove', (pointer: Input.Pointer) => {
             if (!pointer.isDown) return;
-            if (pointer.event.target !== this.game.canvas) return;
-
             this.cameras.main.scrollX -= (pointer.x - pointer.prevPosition.x) / this.cameras.main.zoom;
             this.cameras.main.scrollY -= (pointer.y - pointer.prevPosition.y) / this.cameras.main.zoom;
         });
 
-        // Zoom with mouse wheel
         this.input.on('wheel', (_pointer: Input.Pointer, _gameObjects: GameObjects.GameObject[], _deltaX: number, deltaY: number) => {
-            const currentZoom = this.cameras.main.zoom;
-            let newZoom = currentZoom - deltaY * 0.001;
-            newZoom = PhaserMath.Clamp(newZoom, 0.5, 2);
+            let newZoom = this.cameras.main.zoom - deltaY * 0.001;
+            newZoom = Phaser.Math.Clamp(newZoom, 0.5, 2);
             this.cameras.main.setZoom(newZoom);
         });
 
         EventBus.emit('current-scene-ready', this);
     }
 
+    // Isometric projection helper
+    private toIso(x: number, y: number): { x: number, y: number } {
+        return {
+            x: (x - y) * Math.cos(0.523599),
+            y: (x + y) * Math.sin(0.523599)
+        };
+    }
+
     private drawOffice() {
-        this.cameras.main.setBackgroundColor('#2f3136');
+        const floorData = globalBuildingRegistry.getFloor(createFloorId('floor-1'));
+        if (!floorData) return;
 
-        const graphics = this.add.graphics();
-        graphics.lineStyle(2, 0x424549);
+        // Depth sorting is critical in iso. We'll draw floor tiles, then back walls, then items.
+        // For prototype, we'll draw simple iso polygons.
 
-        graphics.strokeRect(312, 50, 400, 150);
-        this.add.text(512, 60, 'Executive', { color: '#555', fontSize: '14px' }).setOrigin(0.5);
+        floorData.rooms.forEach(room => {
+            let color = 0xe0e0e0;
+            if (room.roomType === 'private-office') color = 0xd7ccc8;
+            if (room.roomType === 'conference') color = 0xc5cae9;
+            if (room.roomType === 'sandbox') color = 0xe1bee7;
+            if (room.roomType === 'construction') color = 0xffe082;
+            if (room.id.includes('nexus')) color = 0xb2ebf2;
 
-        graphics.strokeRect(50, 150, 300, 200);
-        this.add.text(200, 160, 'Research & Knowledge', { color: '#555', fontSize: '14px' }).setOrigin(0.5);
+            const isoTL = this.toIso(room.bounds.x, room.bounds.y);
+            const isoTR = this.toIso(room.bounds.x + room.bounds.width, room.bounds.y);
+            const isoBR = this.toIso(room.bounds.x + room.bounds.width, room.bounds.y + room.bounds.height);
+            const isoBL = this.toIso(room.bounds.x, room.bounds.y + room.bounds.height);
 
-        graphics.strokeRect(650, 150, 300, 200);
-        this.add.text(800, 160, 'Personal Operations', { color: '#555', fontSize: '14px' }).setOrigin(0.5);
+            const floorGfx = this.add.graphics();
+            floorGfx.fillStyle(color, 1);
+            floorGfx.beginPath();
+            floorGfx.moveTo(isoTL.x, isoTL.y);
+            floorGfx.lineTo(isoTR.x, isoTR.y);
+            floorGfx.lineTo(isoBR.x, isoBR.y);
+            floorGfx.lineTo(isoBL.x, isoBL.y);
+            floorGfx.closePath();
+            floorGfx.fillPath();
+            floorGfx.lineStyle(2, 0x9e9e9e, 1);
+            floorGfx.strokePath();
 
-        graphics.strokeRect(400, 300, 224, 150);
-        this.add.text(512, 310, 'Meeting Room', { color: '#555', fontSize: '14px' }).setOrigin(0.5);
+            // Add interaction zone for selection
+            const hitArea = new Phaser.Geom.Polygon([isoTL, isoTR, isoBR, isoBL]);
+            floorGfx.setInteractive(hitArea, Phaser.Geom.Polygon.Contains);
+            floorGfx.on('pointerdown', () => this.selectRoom(room.id));
 
-        graphics.strokeRect(400, 470, 224, 100);
-        this.add.text(512, 480, 'Shared Project Area', { color: '#555', fontSize: '14px' }).setOrigin(0.5);
+            this.roomPolygons.set(room.id, floorGfx);
 
-        graphics.strokeRect(650, 450, 300, 250);
-        this.add.text(800, 460, 'Governance & Security', { color: '#555', fontSize: '14px' }).setOrigin(0.5);
+            // Draw a partial cutaway wall on the left and top edges (isoTL -> isoTR and isoTL -> isoBL)
+            const wallHeight = 40;
+            const wallColor = 0xc0c0c0;
 
-        graphics.strokeRect(400, 600, 224, 100);
-        this.add.text(512, 610, 'Audit & Notification', { color: '#555', fontSize: '14px' }).setOrigin(0.5);
+            const wallGfx = this.add.graphics();
+            wallGfx.fillStyle(wallColor, 1);
+            wallGfx.beginPath();
+            wallGfx.moveTo(isoTL.x, isoTL.y);
+            wallGfx.lineTo(isoTR.x, isoTR.y);
+            wallGfx.lineTo(isoTR.x, isoTR.y - wallHeight);
+            wallGfx.lineTo(isoTL.x, isoTL.y - wallHeight);
+            wallGfx.closePath();
+            wallGfx.fillPath();
+            wallGfx.strokePath();
 
-        graphics.strokeRect(50, 450, 300, 250);
-        this.add.text(200, 460, 'Agent Builder Lab\n[OFFLINE]', { color: '#555', fontSize: '14px', align: 'center' }).setOrigin(0.5);
+            wallGfx.beginPath();
+            wallGfx.moveTo(isoTL.x, isoTL.y);
+            wallGfx.lineTo(isoBL.x, isoBL.y);
+            wallGfx.lineTo(isoBL.x, isoBL.y - wallHeight);
+            wallGfx.lineTo(isoTL.x, isoTL.y - wallHeight);
+            wallGfx.closePath();
+            wallGfx.fillPath();
+            wallGfx.strokePath();
 
-        OFFICE_LOCATIONS.forEach(loc => {
-            let color = 0x666666;
-            let w = 40;
-            let h = 40;
+            wallGfx.setDepth(isoTL.y);
 
-            if (loc.type === 'desk') { color = 0x5c6bc0; w = 60; h = 30; }
-            else if (loc.type === 'table') { color = 0x8d6e63; w = 100; h = 60; }
-            else if (loc.type === 'terminal' || loc.type === 'station') { color = 0x78909c; w = 40; h = 40; }
-            else if (loc.type === 'storage') { color = 0x8d6e63; w = 50; h = 80; }
-            else if (loc.type === 'delivery') { color = 0x66bb6a; w = 30; h = 30; }
+            if (room.roomType !== 'support' && room.roomType !== 'sandbox' && room.roomType !== 'focus') {
+                 const center = this.toIso(room.bounds.x + room.bounds.width/2, room.bounds.y + room.bounds.height/2);
+                 const text = this.add.text(center.x, center.y, room.name, { fontSize: '10px', color: '#555', fontStyle: 'bold', align: 'center', wordWrap: { width: 80 } }).setOrigin(0.5);
+                 text.setDepth(center.y + 10);
+            }
+        });
+
+        // Nexus
+        const nexus = floorData.rooms.find(r => r.id.includes('nexus'));
+        if (nexus) {
+             const cx = nexus.bounds.x + nexus.bounds.width / 2;
+             const cy = nexus.bounds.y + nexus.bounds.height / 2;
+             const isoC = this.toIso(cx, cy);
+             const graphics = this.add.graphics();
+             graphics.fillStyle(0x00bcd4, 0.5);
+             graphics.fillCircle(isoC.x, isoC.y - 20, 30);
+             graphics.setDepth(isoC.y);
+             const text = this.add.text(isoC.x, isoC.y - 20, 'JARVIS\nCORE', { fontSize: '10px', color: '#0ff', align: 'center', fontStyle: 'bold' }).setOrigin(0.5);
+             text.setDepth(isoC.y + 1);
+        }
+
+        floorData.workspaces.forEach(ws => {
+            let color = 0x90caf9;
+            let size = 20;
+
+            if (ws.workspaceType === 'operational-console') color = 0xb0bec5;
+            if (ws.workspaceType === 'private-office') { color = 0x795548; size = 25; }
+            if (ws.workspaceType === 'temporary-desk') color = 0xffe082;
+            if (ws.occupancyState === 'vacant') color = 0xe0e0e0;
+
+            const isoPos = this.toIso(ws.position.x, ws.position.y);
+            const graphics = this.add.graphics();
 
             graphics.fillStyle(color, 1);
-            graphics.fillRect(loc.x - w/2, loc.y - h/2, w, h);
+            // Draw a small 3D box
+            graphics.beginPath();
+            graphics.moveTo(isoPos.x, isoPos.y);
+            graphics.lineTo(isoPos.x + size/2, isoPos.y + size/4);
+            graphics.lineTo(isoPos.x, isoPos.y + size/2);
+            graphics.lineTo(isoPos.x - size/2, isoPos.y + size/4);
+            graphics.closePath();
+            graphics.fillPath();
+            graphics.lineStyle(1, 0x000, 0.5);
+            graphics.strokePath();
 
-            this.add.text(loc.x, loc.y - h/2 - 10, loc.displayName, { fontSize: '10px', color: '#ccc' }).setOrigin(0.5);
+            graphics.setDepth(isoPos.y);
+
+            if (ws.accessLevel === 'highly-restricted') {
+                const text = this.add.text(isoPos.x, isoPos.y - size, '🔒', { fontSize: '10px' }).setOrigin(0.5);
+                text.setDepth(isoPos.y + 1);
+            }
         });
     }
 
     private createAgents() {
-        INITIAL_AGENTS.forEach(agent => {
-            const loc = OFFICE_LOCATIONS.find(l => l.id === agent.homeDesk);
-            const startX = loc ? loc.x : 512;
-            const startY = loc ? loc.y : 384;
+        floor1PlaceholderRoster.forEach(agent => {
+            const ws = floor1Workspaces.find(w => w.id === agent.assignedWorkspaceId);
+            const startX = ws ? ws.position.x : 100;
+            const startY = ws ? ws.position.y : 100;
+            const isoStart = this.toIso(startX, startY);
 
-            const container = this.add.container(startX, startY);
-            container.setSize(30, 30);
+            const container = this.add.container(isoStart.x, isoStart.y);
+            container.setSize(20, 40);
             container.setInteractive({ useHandCursor: true });
+            container.setDepth(isoStart.y + 5);
 
-            let shape;
-            if (agent.visuals.shape === 'circle') {
-                shape = this.add.circle(0, 0, 15, agent.visuals.color);
-            } else if (agent.visuals.shape === 'triangle') {
-                shape = this.add.triangle(0, 0, 0, -15, 15, 15, -15, 15, agent.visuals.color);
-            } else {
-                shape = this.add.rectangle(0, 0, 30, 30, agent.visuals.color);
-            }
+            // Iso Agent Sprite (mocked as a vertical rectangle/capsule standing up)
+            const shape = this.add.rectangle(0, -10, 12, 24, 0x4caf50);
 
-            const ring = this.add.circle(0, 0, 20, 0xffffff, 0);
-            ring.setStrokeStyle(2, 0xffffff);
+            const stateIcon = this.add.text(8, -25, '', { fontSize: '10px' }).setOrigin(0.5);
+            stateIcon.setName('stateIcon');
+
+            const ring = this.add.ellipse(0, 5, 24, 12, 0x00bcd4, 0);
+            ring.setStrokeStyle(2, 0x00bcd4);
             ring.setName('selectionRing');
             ring.setVisible(false);
 
-            const initialText = this.add.text(0, 0, agent.visuals.initial, {
-                fontSize: '14px',
-                color: '#000',
-                fontStyle: 'bold'
-            }).setOrigin(0.5);
-
-            const nameText = this.add.text(0, -25, agent.name, {
-                fontSize: '12px',
-                color: '#fff',
-                backgroundColor: '#000000cc',
-                padding: { x: 2, y: 1 }
+            const nameText = this.add.text(0, -30, agent.placeholderName, {
+                fontSize: '10px', color: '#fff', backgroundColor: '#000000aa', padding: { x: 2, y: 1 }
             }).setOrigin(0.5);
             nameText.setName('nameText');
 
-            container.add([ring, shape, initialText, nameText]);
+            container.add([ring, shape, stateIcon, nameText]);
 
-            container.on('pointerdown', () => {
+            this.updateAgentVisualState(container, agent.visualState);
+
+            container.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+                event.stopPropagation();
                 this.selectAgent(agent.id);
             });
 
@@ -137,11 +237,25 @@ export class OfficeScene extends Scene {
         });
     }
 
+    private updateAgentVisualState(container: GameObjects.Container, state: AgentVisualState) {
+        const icon = container.getByName('stateIcon') as GameObjects.Text;
+        if (!icon) return;
+
+        switch (state) {
+            case 'idle': icon.setText(''); break;
+            case 'working': icon.setText('💻'); break;
+            case 'waiting-for-approval': icon.setText('⏳'); break;
+            case 'in-meeting': icon.setText('🗣️'); break;
+            case 'testing-in-sandbox': icon.setText('🧪'); break;
+            case 'paused': icon.setText('⏸️'); break;
+            case 'error-alert': icon.setText('⚠️'); break;
+            case 'walking': icon.setText('🚶'); break;
+        }
+    }
+
     private setupEventListeners() {
         EventBus.on('react-select-agent', this.handleSelectAgentBound);
         EventBus.on('react-move-agent', this.handleMoveAgentBound);
-        EventBus.on('react-reset-all', this.handleResetAllBound);
-
         this.events.on('shutdown', this.cleanupListeners, this);
         this.events.on('destroy', this.cleanupListeners, this);
     }
@@ -149,7 +263,6 @@ export class OfficeScene extends Scene {
     private cleanupListeners() {
         EventBus.removeListener('react-select-agent', this.handleSelectAgentBound);
         EventBus.removeListener('react-move-agent', this.handleMoveAgentBound);
-        EventBus.removeListener('react-reset-all', this.handleResetAllBound);
         this.input.off('pointermove');
         this.input.off('wheel');
     }
@@ -158,21 +271,61 @@ export class OfficeScene extends Scene {
         this.selectAgent(agentId, false);
     }
 
-    private handleMoveAgent(data: { agentId: string, locationId: string, commandId: number }) {
-        this.moveAgent(data.agentId, data.locationId, data.commandId);
+    private selectRoom(roomId: string) {
+        if (this.selectedRoomId && this.roomPolygons.has(this.selectedRoomId)) {
+             // Reset alpha
+             const poly = this.roomPolygons.get(this.selectedRoomId)!;
+             poly.setAlpha(1);
+        }
+
+        this.selectedRoomId = roomId;
+        const poly = this.roomPolygons.get(roomId);
+        if (poly) {
+             poly.setAlpha(0.6); // highlight
+        }
+
+        EventBus.emit('room-selected', roomId);
     }
 
-    private handleResetAll() {
-        this.resetAllAgents();
+    private handleMoveAgent(data: { agentId: string, locationId: string }) {
+        const agentData = floor1PlaceholderRoster.find(a => a.id === data.agentId);
+        if (!agentData) return;
+
+        // Use the route engine instead of straight lines
+        // We assume agent starts at their assigned workspace for this mock.
+        const ws = floor1Workspaces.find(w => w.id === agentData.assignedWorkspaceId);
+        if (!ws) return;
+
+        // Find closest node to workspace
+        let startNode = floor1RouteNodes[0];
+        let minDist = Infinity;
+        floor1RouteNodes.forEach(n => {
+             const d = Phaser.Math.Distance.Between(n.position.x, n.position.y, ws.position.x, ws.position.y);
+             if (d < minDist) { minDist = d; startNode = n; }
+        });
+
+        const req = {
+            startNodeId: startNode.id,
+            endNodeId: data.locationId as any,
+            agentAccessLevel: agentData.accessPermissions,
+            agentType: agentData.isPermanent ? 'permanent' : 'temporary'
+        } as any;
+
+        const path = this.engine.findPath(req);
+        if (!path || path.length === 0) {
+             console.log("Path not found or blocked by access control");
+             EventBus.emit('movement-failed', { agentId: data.agentId, reason: 'Access Denied or No Route' });
+             return;
+        }
+
+        this.moveAgentAlongPath(data.agentId, path);
     }
 
     private selectAgent(agentId: string, emitToReact: boolean = true) {
         if (this.selectedAgentId && this.agentSprites.has(this.selectedAgentId)) {
-            const prevContainer = this.agentSprites.get(this.selectedAgentId)!;
-            const ring = prevContainer.getByName('selectionRing') as GameObjects.Arc;
+            const prev = this.agentSprites.get(this.selectedAgentId)!;
+            const ring = prev.getByName('selectionRing') as GameObjects.Arc;
             if (ring) ring.setVisible(false);
-            const text = prevContainer.getByName('nameText') as GameObjects.Text;
-            if(text) text.setColor('#fff');
         }
 
         this.selectedAgentId = agentId;
@@ -181,8 +334,9 @@ export class OfficeScene extends Scene {
         if (container) {
             const ring = container.getByName('selectionRing') as GameObjects.Arc;
             if (ring) ring.setVisible(true);
-            const text = container.getByName('nameText') as GameObjects.Text;
-            if(text) text.setColor('#ffff00');
+
+            // Bring to top
+            container.setDepth(container.y + 100);
         }
 
         if (emitToReact) {
@@ -190,78 +344,42 @@ export class OfficeScene extends Scene {
         }
     }
 
-    private moveAgent(agentId: string, destinationLocationId: string, commandId: number) {
-        const agentData = INITIAL_AGENTS.find(a => a.id === agentId); // Just for static config like speed
+    private moveAgentAlongPath(agentId: string, path: any[]) {
         const sprite = this.agentSprites.get(agentId);
-        const destination = OFFICE_LOCATIONS.find(l => l.id === destinationLocationId);
+        if (!sprite) return;
 
-        if (!agentData || !sprite || !destination) return;
-
-        // Cancel existing tweens
         this.tweens.killTweensOf(sprite);
+        this.updateAgentVisualState(sprite, 'walking');
 
-        let pathNodes: { x: number; y: number }[] = [];
+        const tweens: any[] = [];
+        let currX = sprite.x;
+        let currY = sprite.y;
 
-        if (destination.approachNodeId) {
-            const currentNode = WAYPOINTS.reduce((prev, curr) => {
-                const prevDist = PhaserMath.Distance.Between(sprite.x, sprite.y, prev.x, prev.y);
-                const currDist = PhaserMath.Distance.Between(sprite.x, sprite.y, curr.x, curr.y);
-                return (currDist < prevDist) ? curr : prev;
-            });
-
-            const p = getPath(currentNode.id, destination.approachNodeId);
-            if(p.length > 0) {
-                pathNodes.push(currentNode);
-                pathNodes = pathNodes.concat(p);
-            }
-        }
-
-        pathNodes.push({ x: destination.x, y: destination.y });
-
-        const speed = agentData.movementSpeed;
-        const tweens: Phaser.Types.Tweens.TweenBuilderConfig[] = [];
-        let currentX = sprite.x;
-        let currentY = sprite.y;
-
-        pathNodes.forEach(node => {
-            const distance = PhaserMath.Distance.Between(currentX, currentY, node.x, node.y);
-            if (distance > 5) {
-                const duration = (distance / speed) * 1000;
-                tweens.push({
-                    targets: sprite,
-                    x: node.x,
-                    y: node.y,
-                    duration: duration,
-                    ease: 'Linear'
-                });
-                currentX = node.x;
-                currentY = node.y;
-            }
+        path.forEach(node => {
+             const target = this.toIso(node.position.x, node.position.y);
+             const distance = Phaser.Math.Distance.Between(currX, currY, target.x, target.y);
+             if(distance > 1) {
+                 tweens.push({
+                     targets: sprite,
+                     x: target.x,
+                     y: target.y,
+                     duration: (distance / 50) * 1000,
+                     ease: 'Linear',
+                     onUpdate: () => { sprite.setDepth(sprite.y + 5); } // keep depth sorted correctly in isometric
+                 });
+                 currX = target.x;
+                 currY = target.y;
+             }
         });
 
         if (tweens.length > 0) {
             this.tweens.chain({
                 tweens: tweens,
                 onComplete: () => {
-                    EventBus.emit('movement-completed', { agentId, locationId: destinationLocationId, commandId });
+                    this.updateAgentVisualState(sprite, 'idle');
+                    EventBus.emit('movement-completed', { agentId });
                 }
             });
-        } else {
-             // Already there
-             EventBus.emit('movement-completed', { agentId, locationId: destinationLocationId, commandId });
         }
-    }
-
-    private resetAllAgents() {
-        INITIAL_AGENTS.forEach(agent => {
-            const sprite = this.agentSprites.get(agent.id);
-            const home = OFFICE_LOCATIONS.find(l => l.id === agent.homeDesk);
-
-            if (sprite && home) {
-                this.tweens.killTweensOf(sprite);
-                sprite.x = home.x;
-                sprite.y = home.y;
-            }
-        });
     }
 }
