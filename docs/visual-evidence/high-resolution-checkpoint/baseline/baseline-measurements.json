@@ -1,0 +1,734 @@
+{
+  "verifiedStartingSha": "694521d71aa64450dcec2921e524c6aa47468d7f",
+  "floorWorldDimensions": {
+    "width": 1792,
+    "height": 1024
+  },
+  "projectedBounds": {
+    "x": 193.19999999999993,
+    "y": 2.1500000000000057,
+    "width": 1521,
+    "height": 1007.9000000000001,
+    "center": {
+      "x": 953.7,
+      "y": 506.1
+    }
+  },
+  "projection": {
+    "origin": {
+      "x": 760,
+      "y": 72
+    },
+    "tileWidth": 1.04,
+    "tileHeight": 0.66
+  },
+  "representativeRooms": {
+    "engineeringModule": {
+      "id": "floor-1.zone.engineering-devops-deployment",
+      "name": "DevOps and Deployment",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    "privateOffice": {
+      "id": "floor-1.room.jarvis-command-office",
+      "name": "Jarvis Command Office",
+      "type": "private-office",
+      "width": 160,
+      "depth": 135,
+      "area": 21600
+    },
+    "boardroom": {
+      "id": "floor-1.room.executive-boardroom",
+      "name": "Executive Boardroom",
+      "type": "conference",
+      "width": 300,
+      "depth": 180,
+      "area": 54000
+    },
+    "operationsPod": {
+      "id": "floor-1.zone.operations-pod-a",
+      "name": "Pod A — System Health",
+      "type": "open-workspace",
+      "width": 120,
+      "depth": 220,
+      "area": 26400
+    },
+    "sandboxCell": {
+      "id": "floor-1.room.sandbox-cell-model",
+      "name": "Sandbox Cell 3 — Model",
+      "type": "sandbox-cell",
+      "width": 82,
+      "depth": 115,
+      "area": 9430
+    }
+  },
+  "character": {
+    "standingSource": {
+      "width": 24,
+      "height": 34
+    },
+    "seatedSource": {
+      "width": 24,
+      "height": 30
+    },
+    "renderScale": 1.24,
+    "standingRendered": {
+      "width": 29.759999999999998,
+      "height": 42.16
+    },
+    "seatedRendered": {
+      "width": 29.759999999999998,
+      "height": 37.2
+    },
+    "anchor": {
+      "x": 0.5,
+      "standingY": 0.91,
+      "seatedY": 0.88
+    },
+    "uniqueTextures": 38
+  },
+  "furniture": {
+    "sourceTexture": {
+      "width": 32,
+      "height": 32
+    },
+    "renderScale": 1.28,
+    "renderedTexture": {
+      "width": 40.96,
+      "height": 40.96
+    },
+    "standardDeskWorld": {
+      "width": 44,
+      "depth": 24
+    },
+    "standardChairWorld": {
+      "width": 18,
+      "depth": 18
+    },
+    "operationsConsoleWorld": {
+      "width": 44,
+      "depth": 28
+    }
+  },
+  "architecture": {
+    "sourceTexture": {
+      "width": 40,
+      "height": 40
+    },
+    "renderScale": 1.28,
+    "renderedTexture": {
+      "width": 51.2,
+      "height": 51.2
+    },
+    "doorRender": {
+      "width": "door world width / 3, minimum 12",
+      "height": 22
+    },
+    "wallRender": "authoritative world height; 2 px edge, 3 px cap, 1 px base line"
+  },
+  "canvas": {
+    "cssViewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "internalResolution": {
+      "width": 1920,
+      "height": 1080
+    },
+    "devicePixelRatio": 1,
+    "nearestNeighbor": true,
+    "antialias": false,
+    "roundPixels": true
+  },
+  "camera": {
+    "minZoom": 0.5,
+    "maxZoom": 2.75,
+    "fitMaxZoom": 1.28,
+    "zoomStep": 0.16,
+    "fitAt1920x1080": 0.9683500347256672
+  },
+  "counts": {
+    "departments": 9,
+    "rooms": 41,
+    "zones": 28,
+    "walls": 164,
+    "doors": 44,
+    "accessThresholds": 48,
+    "furniture": 328,
+    "workspaces": 52,
+    "architecture": 23,
+    "occupants": 38,
+    "renderPlanCommands": 766,
+    "estimatedRendererObjectCount": 766,
+    "baseFurnitureTextures": 16,
+    "baseArchitectureTextures": 10,
+    "uniqueFurnitureVariantTextures": 109,
+    "uniqueArchitectureVariantTextures": 14,
+    "uniqueCharacterTextures": 38,
+    "estimatedGeneratedTextures": 187,
+    "activeTweenGroups": 4,
+    "animatedOccupants": 5,
+    "hologramParticles": 9,
+    "sandboxParticles": 12,
+    "equipmentLights": 12,
+    "animatedTargets": 38
+  },
+  "rooms": [
+    {
+      "id": "floor-1.room.future-west-wing",
+      "name": "Future West Wing Connection",
+      "type": "construction",
+      "width": 180,
+      "depth": 145,
+      "area": 26100
+    },
+    {
+      "id": "floor-1.room.security-review-room",
+      "name": "Security Review Room",
+      "type": "conference",
+      "width": 170,
+      "depth": 145,
+      "area": 24650
+    },
+    {
+      "id": "floor-1.room.approval-review-center",
+      "name": "Approval Review Center",
+      "type": "restricted",
+      "width": 175,
+      "depth": 145,
+      "area": 25375
+    },
+    {
+      "id": "floor-1.room.executive-boardroom",
+      "name": "Executive Boardroom",
+      "type": "conference",
+      "width": 300,
+      "depth": 180,
+      "area": 54000
+    },
+    {
+      "id": "floor-1.room.strategy-architecture-room",
+      "name": "Strategy and Architecture Room",
+      "type": "conference",
+      "width": 260,
+      "depth": 180,
+      "area": 46800
+    },
+    {
+      "id": "floor-1.room.future-east-wing",
+      "name": "Future East Wing Connection",
+      "type": "construction",
+      "width": 165,
+      "depth": 145,
+      "area": 23925
+    },
+    {
+      "id": "floor-1.room.security-approval-office",
+      "name": "Security and Approval Office",
+      "type": "private-office",
+      "width": 135,
+      "depth": 135,
+      "area": 18225
+    },
+    {
+      "id": "floor-1.room.cybersecurity-credentials-office",
+      "name": "Cybersecurity and Credentials Office",
+      "type": "private-office",
+      "width": 135,
+      "depth": 135,
+      "area": 18225
+    },
+    {
+      "id": "floor-1.room.governance-autonomy-office",
+      "name": "Governance and Autonomy Office",
+      "type": "private-office",
+      "width": 135,
+      "depth": 135,
+      "area": 18225
+    },
+    {
+      "id": "floor-1.room.independent-audit-office",
+      "name": "Independent Audit Office",
+      "type": "private-office",
+      "width": 135,
+      "depth": 135,
+      "area": 18225
+    },
+    {
+      "id": "floor-1.room.security-vault",
+      "name": "Security Vault",
+      "type": "restricted",
+      "width": 280,
+      "depth": 95,
+      "area": 26600
+    },
+    {
+      "id": "floor-1.room.evidence-storage",
+      "name": "Evidence Storage",
+      "type": "restricted",
+      "width": 135,
+      "depth": 95,
+      "area": 12825
+    },
+    {
+      "id": "floor-1.room.emergency-credentials",
+      "name": "Emergency Credentials",
+      "type": "restricted",
+      "width": 135,
+      "depth": 95,
+      "area": 12825
+    },
+    {
+      "id": "floor-1.room.jarvis-command-office",
+      "name": "Jarvis Command Office",
+      "type": "private-office",
+      "width": 160,
+      "depth": 135,
+      "area": 21600
+    },
+    {
+      "id": "floor-1.room.operations-director-office",
+      "name": "Operations Director Office",
+      "type": "private-office",
+      "width": 160,
+      "depth": 135,
+      "area": 21600
+    },
+    {
+      "id": "floor-1.room.strategic-planning-office",
+      "name": "Strategic Planning and Architecture Office",
+      "type": "private-office",
+      "width": 180,
+      "depth": 135,
+      "area": 24300
+    },
+    {
+      "id": "floor-1.room.service-elevator-vestibule",
+      "name": "Restricted Service Elevator Vestibule",
+      "type": "vestibule",
+      "width": 110,
+      "depth": 30,
+      "area": 3300
+    },
+    {
+      "id": "floor-1.room.incident-command-room",
+      "name": "Incident Command Room",
+      "type": "conference",
+      "width": 245,
+      "depth": 165,
+      "area": 40425
+    },
+    {
+      "id": "floor-1.room.incident-failure-manager-office",
+      "name": "Incident and Failure Manager Office",
+      "type": "private-office",
+      "width": 145,
+      "depth": 165,
+      "area": 23925
+    },
+    {
+      "id": "floor-1.room.backup-continuity-manager-office",
+      "name": "Backup, Migration, and Continuity Manager Office",
+      "type": "private-office",
+      "width": 155,
+      "depth": 165,
+      "area": 25575
+    },
+    {
+      "id": "floor-1.room.knowledge-library",
+      "name": "Knowledge Library",
+      "type": "restricted",
+      "width": 250,
+      "depth": 170,
+      "area": 42500
+    },
+    {
+      "id": "floor-1.room.knowledge-search-manager-office",
+      "name": "Knowledge and Search Manager Office",
+      "type": "private-office",
+      "width": 165,
+      "depth": 105,
+      "area": 17325
+    },
+    {
+      "id": "floor-1.room.memory-data-quality-office",
+      "name": "Memory, Context, and Data Quality Office",
+      "type": "private-office",
+      "width": 175,
+      "depth": 105,
+      "area": 18375
+    },
+    {
+      "id": "floor-1.room.decision-archive",
+      "name": "Decision Archive",
+      "type": "restricted",
+      "width": 350,
+      "depth": 90,
+      "area": 31500
+    },
+    {
+      "id": "floor-1.room.project-release-manager-office",
+      "name": "Project, Product, and Release Manager Office",
+      "type": "private-office",
+      "width": 180,
+      "depth": 125,
+      "area": 22500
+    },
+    {
+      "id": "floor-1.room.agent-release-review-room",
+      "name": "Agent and Release Review Room",
+      "type": "conference",
+      "width": 200,
+      "depth": 125,
+      "area": 25000
+    },
+    {
+      "id": "floor-1.room.focus-room-1",
+      "name": "Focus Room 1",
+      "type": "focus",
+      "width": 105,
+      "depth": 95,
+      "area": 9975
+    },
+    {
+      "id": "floor-1.room.focus-room-2",
+      "name": "Focus Room 2",
+      "type": "focus",
+      "width": 105,
+      "depth": 95,
+      "area": 9975
+    },
+    {
+      "id": "floor-1.room.focus-room-3",
+      "name": "Focus Room 3 — Modular",
+      "type": "focus",
+      "width": 105,
+      "depth": 95,
+      "area": 9975
+    },
+    {
+      "id": "floor-1.room.focus-room-4",
+      "name": "Focus Room 4 — Modular",
+      "type": "focus",
+      "width": 105,
+      "depth": 95,
+      "area": 9975
+    },
+    {
+      "id": "floor-1.room.break-room",
+      "name": "Break Room",
+      "type": "support",
+      "width": 145,
+      "depth": 80,
+      "area": 11600
+    },
+    {
+      "id": "floor-1.room.restrooms",
+      "name": "Restrooms",
+      "type": "support",
+      "width": 95,
+      "depth": 80,
+      "area": 7600
+    },
+    {
+      "id": "floor-1.room.utility-closet",
+      "name": "Utility Closet",
+      "type": "support",
+      "width": 85,
+      "depth": 80,
+      "area": 6800
+    },
+    {
+      "id": "floor-1.room.electrical-it-room",
+      "name": "Electrical / IT Room",
+      "type": "support",
+      "width": 95,
+      "depth": 80,
+      "area": 7600
+    },
+    {
+      "id": "floor-1.room.sandbox-transfer-corridor",
+      "name": "Sandbox Transfer Corridor",
+      "type": "circulation",
+      "width": 270,
+      "depth": 65,
+      "area": 17550
+    },
+    {
+      "id": "floor-1.room.containment-vestibule",
+      "name": "Containment Vestibule",
+      "type": "vestibule",
+      "width": 120,
+      "depth": 155,
+      "area": 18600
+    },
+    {
+      "id": "floor-1.room.sandbox-cell-new-agent",
+      "name": "Sandbox Cell 1 — New Agent",
+      "type": "sandbox-cell",
+      "width": 82,
+      "depth": 115,
+      "area": 9430
+    },
+    {
+      "id": "floor-1.room.sandbox-cell-plugin",
+      "name": "Sandbox Cell 2 — Plugin",
+      "type": "sandbox-cell",
+      "width": 82,
+      "depth": 115,
+      "area": 9430
+    },
+    {
+      "id": "floor-1.room.sandbox-cell-model",
+      "name": "Sandbox Cell 3 — Model",
+      "type": "sandbox-cell",
+      "width": 82,
+      "depth": 115,
+      "area": 9430
+    },
+    {
+      "id": "floor-1.room.sandbox-cell-automation",
+      "name": "Sandbox Cell 4 — Automation",
+      "type": "sandbox-cell",
+      "width": 79,
+      "depth": 115,
+      "area": 9085
+    },
+    {
+      "id": "floor-1.room.laboratory-control",
+      "name": "Laboratory Control",
+      "type": "restricted",
+      "width": 355,
+      "depth": 90,
+      "area": 31950
+    }
+  ],
+  "zones": [
+    {
+      "id": "floor-1.zone.security-outer",
+      "name": "Security Outer Review",
+      "type": "open-workspace",
+      "width": 360,
+      "depth": 20,
+      "area": 7200
+    },
+    {
+      "id": "floor-1.zone.security-controlled-corridor",
+      "name": "Security Controlled Corridor",
+      "type": "corridor",
+      "width": 570,
+      "depth": 15,
+      "area": 8550
+    },
+    {
+      "id": "floor-1.zone.operations-pod-a",
+      "name": "Pod A — System Health",
+      "type": "open-workspace",
+      "width": 120,
+      "depth": 220,
+      "area": 26400
+    },
+    {
+      "id": "floor-1.zone.operations-pod-b",
+      "name": "Pod B — Connectivity",
+      "type": "open-workspace",
+      "width": 120,
+      "depth": 220,
+      "area": 26400
+    },
+    {
+      "id": "floor-1.zone.operations-pod-c",
+      "name": "Pod C — Reliability",
+      "type": "open-workspace",
+      "width": 120,
+      "depth": 220,
+      "area": 26400
+    },
+    {
+      "id": "floor-1.zone.north-core",
+      "name": "Elevators and Main Stair",
+      "type": "corridor",
+      "width": 520,
+      "depth": 30,
+      "area": 15600
+    },
+    {
+      "id": "floor-1.zone.central-nexus",
+      "name": "Central Nexus",
+      "type": "nexus",
+      "width": 510,
+      "depth": 260,
+      "area": 132600
+    },
+    {
+      "id": "floor-1.zone.engineering-agent-factory",
+      "name": "Agent Factory",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-model-compute",
+      "name": "Model and Compute",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-software-development",
+      "name": "Software Development",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-platform-data",
+      "name": "Platform and Data",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-plugin-connector",
+      "name": "Plugin and Connector",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-automation-builder",
+      "name": "Automation Builder",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-github-review",
+      "name": "GitHub and Code Review",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-devops-deployment",
+      "name": "DevOps and Deployment",
+      "type": "open-workspace",
+      "width": 140,
+      "depth": 110,
+      "area": 15400
+    },
+    {
+      "id": "floor-1.zone.engineering-collaboration",
+      "name": "Engineering Collaboration",
+      "type": "open-workspace",
+      "width": 180,
+      "depth": 90,
+      "area": 16200
+    },
+    {
+      "id": "floor-1.zone.project-coordination",
+      "name": "Project Coordination",
+      "type": "open-workspace",
+      "width": 470,
+      "depth": 145,
+      "area": 68150
+    },
+    {
+      "id": "floor-1.zone.knowledge-department",
+      "name": "Data, Memory and Knowledge Center",
+      "type": "corridor",
+      "width": 610,
+      "depth": 45,
+      "area": 27450
+    },
+    {
+      "id": "floor-1.zone.quality-lab",
+      "name": "Quality and Testing",
+      "type": "open-workspace",
+      "width": 305,
+      "depth": 150,
+      "area": 45750
+    },
+    {
+      "id": "floor-1.zone.temporary-launch",
+      "name": "Temporary Launch",
+      "type": "open-workspace",
+      "width": 450,
+      "depth": 90,
+      "area": 40500
+    },
+    {
+      "id": "floor-1.zone.public-vestibule",
+      "name": "Public Vestibule",
+      "type": "exterior",
+      "width": 570,
+      "depth": 80,
+      "area": 45600
+    },
+    {
+      "id": "floor-1.zone.reception-navigation",
+      "name": "Reception and Navigation",
+      "type": "reception",
+      "width": 190,
+      "depth": 75,
+      "area": 14250
+    },
+    {
+      "id": "floor-1.zone.intake-stations",
+      "name": "Agent Intake",
+      "type": "reception",
+      "width": 160,
+      "depth": 75,
+      "area": 12000
+    },
+    {
+      "id": "floor-1.zone.secure-checkpoint",
+      "name": "Secure Checkpoint",
+      "type": "checkpoint",
+      "width": 130,
+      "depth": 75,
+      "area": 9750
+    },
+    {
+      "id": "floor-1.zone.controlled-internal-lobby",
+      "name": "Controlled Internal Lobby",
+      "type": "lobby",
+      "width": 570,
+      "depth": 15,
+      "area": 8550
+    },
+    {
+      "id": "floor-1.zone.temporary-route",
+      "name": "Temporary Route",
+      "type": "corridor",
+      "width": 130,
+      "depth": 20,
+      "area": 2600
+    },
+    {
+      "id": "floor-1.zone.production-route",
+      "name": "Production Route",
+      "type": "corridor",
+      "width": 25,
+      "depth": 30,
+      "area": 750
+    },
+    {
+      "id": "floor-1.zone.secure-evaluation-route",
+      "name": "Secure Evaluation Route",
+      "type": "corridor",
+      "width": 30,
+      "depth": 30,
+      "area": 900
+    }
+  ]
+}
