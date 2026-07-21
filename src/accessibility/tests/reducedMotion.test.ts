@@ -78,7 +78,7 @@ describe("Reduced Motion Policy", () => {
     const res = resolveMotionPresentation(basePolicy, req);
     expect(res.originalMotionAllowed).toBe(true);
     expect(res.durationMs).toBe(basePolicy.maximumTransitionDurationMs);
-    expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+    expect(res.appliedReasons).toContain("TRANSITION_SIMPLIFIED");
   });
 
   it("simplifies transitions exceeding max duration", () => {
@@ -97,47 +97,122 @@ describe("Reduced Motion Policy", () => {
     expect(res.appliedReasons).toContain("FULL_MOTION_ALLOWED");
   });
 
-  it("combines continuous and flashing restrictions but preserves essential fallback", () => {
-    const req = createRequest({ essential: true, continuous: true, flashing: true, fallbackPresentation: "text-update" });
+  it("essential continuous motion with text fallback", () => {
+    const req = createRequest({ essential: true, continuous: true, fallbackPresentation: "text-update" });
     const res = resolveMotionPresentation(basePolicy, req);
     expect(res.originalMotionAllowed).toBe(false);
-    expect(res.replacementAllowed).toBe(true); // essential fallback allowed
+    expect(res.replacementAllowed).toBe(true);
     expect(res.continuous).toBe(false);
-    expect(res.flashing).toBe(false);
     expect(res.appliedReasons).toContain("CONTINUOUS_MOTION_REPLACED");
+    expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+    expect(res.fallbackPresentation).toBe("text-update");
+  });
+
+  it("essential continuous motion with no fallback", () => {
+    const req = createRequest({ essential: true, continuous: true, fallbackPresentation: "none" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(false);
+    expect(res.continuous).toBe(false);
+    expect(res.appliedReasons).toContain("CONTINUOUS_MOTION_REPLACED");
+    expect(res.appliedReasons).not.toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+    expect(res.fallbackPresentation).toBe("none");
+  });
+
+  it("essential flashing request with static fallback", () => {
+    const req = createRequest({ essential: true, flashing: true, fallbackPresentation: "static-indicator" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(true);
+    expect(res.flashing).toBe(false);
     expect(res.appliedReasons).toContain("FLASHING_DISABLED");
+    expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+    expect(res.fallbackPresentation).toBe("static-indicator");
+  });
+
+  it("essential flashing request with no fallback", () => {
+    const req = createRequest({ essential: true, flashing: true, fallbackPresentation: "none" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(false);
+    expect(res.flashing).toBe(false);
+    expect(res.appliedReasons).toContain("FLASHING_DISABLED");
+    expect(res.appliedReasons).not.toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+  });
+
+  it("essential parallax request with instant fallback", () => {
+    const req = createRequest({ essential: true, parallax: true, fallbackPresentation: "instant" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(true);
+    expect(res.parallax).toBe(false);
+    expect(res.appliedReasons).toContain("PARALLAX_DISABLED");
     expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
   });
 
-  it("handles decorative motion marked essential with text fallback by preserving replacement", () => {
+  it("essential parallax request with no fallback", () => {
+    const req = createRequest({ essential: true, parallax: true, fallbackPresentation: "none" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.replacementAllowed).toBe(false);
+    expect(res.parallax).toBe(false);
+    expect(res.appliedReasons).toContain("PARALLAX_DISABLED");
+    expect(res.appliedReasons).not.toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+  });
+
+  it("decorative plus essential with safe fallback", () => {
     const req = createRequest({ purpose: "decorative", essential: true, fallbackPresentation: "text-update" });
     const res = resolveMotionPresentation(basePolicy, req);
     expect(res.originalMotionAllowed).toBe(false);
     expect(res.replacementAllowed).toBe(true);
-    expect(res.fallbackPresentation).toBe("text-update");
     expect(res.appliedReasons).toContain("DECORATIVE_MOTION_DISABLED");
     expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
   });
 
-  it("handles decorative motion marked essential with static fallback by preserving replacement", () => {
-    const req = createRequest({ purpose: "decorative", essential: true, fallbackPresentation: "static-indicator" });
+  it("decorative plus essential with no fallback", () => {
+    const req = createRequest({ purpose: "decorative", essential: true, fallbackPresentation: "none" });
     const res = resolveMotionPresentation(basePolicy, req);
     expect(res.originalMotionAllowed).toBe(false);
-    expect(res.replacementAllowed).toBe(true);
-    expect(res.fallbackPresentation).toBe("static-indicator");
+    expect(res.replacementAllowed).toBe(false);
     expect(res.appliedReasons).toContain("DECORATIVE_MOTION_DISABLED");
-    expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+    expect(res.appliedReasons).not.toContain("ESSENTIAL_FEEDBACK_PRESERVED");
   });
 
-  it("combines decorative, flashing, and essential restrictions", () => {
-    const req = createRequest({ purpose: "decorative", essential: true, flashing: true, fallbackPresentation: "text-update" });
+  it("multiple restrictions with safe fallback", () => {
+    const req = createRequest({ essential: true, continuous: true, flashing: true, parallax: true, fallbackPresentation: "text-update" });
     const res = resolveMotionPresentation(basePolicy, req);
     expect(res.originalMotionAllowed).toBe(false);
-    expect(res.replacementAllowed).toBe(true);
+    expect(res.continuous).toBe(false);
     expect(res.flashing).toBe(false);
-    expect(res.appliedReasons).toContain("DECORATIVE_MOTION_DISABLED");
+    expect(res.parallax).toBe(false);
+    expect(res.replacementAllowed).toBe(true);
     expect(res.appliedReasons).toContain("FLASHING_DISABLED");
+    expect(res.appliedReasons).toContain("PARALLAX_DISABLED");
+    expect(res.appliedReasons).toContain("CONTINUOUS_MOTION_REPLACED");
     expect(res.appliedReasons).toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+  });
+
+  it("multiple restrictions with no fallback", () => {
+    const req = createRequest({ essential: true, continuous: true, flashing: true, parallax: true, fallbackPresentation: "none" });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(false);
+    expect(res.continuous).toBe(false);
+    expect(res.flashing).toBe(false);
+    expect(res.parallax).toBe(false);
+    expect(res.replacementAllowed).toBe(false);
+    expect(res.appliedReasons).toContain("FLASHING_DISABLED");
+    expect(res.appliedReasons).toContain("PARALLAX_DISABLED");
+    expect(res.appliedReasons).toContain("CONTINUOUS_MOTION_REPLACED");
+    expect(res.appliedReasons).not.toContain("ESSENTIAL_FEEDBACK_PRESERVED");
+  });
+
+  it("unrestricted essential motion", () => {
+    const req = createRequest({ essential: true, durationMs: 100 });
+    const res = resolveMotionPresentation(basePolicy, req);
+    expect(res.originalMotionAllowed).toBe(true);
+    expect(res.replacementAllowed).toBe(false);
+    expect(res.appliedReasons).toContain("FULL_MOTION_ALLOWED");
+    expect(res.appliedReasons).not.toContain("ESSENTIAL_FEEDBACK_PRESERVED");
   });
 
   it("is deterministic", () => {
@@ -145,5 +220,14 @@ describe("Reduced Motion Policy", () => {
     const res1 = resolveMotionPresentation(basePolicy, req);
     const res2 = resolveMotionPresentation(basePolicy, req);
     expect(res1).toEqual(res2);
+  });
+
+  it("immutability check", () => {
+    const policyCopy = JSON.parse(JSON.stringify(basePolicy));
+    const reqCopy = JSON.parse(JSON.stringify(createRequest({ essential: true, flashing: true, fallbackPresentation: "fade" })));
+    Object.freeze(policyCopy);
+    Object.freeze(reqCopy);
+    resolveMotionPresentation(policyCopy, reqCopy);
+    expect(policyCopy).toEqual(basePolicy);
   });
 });

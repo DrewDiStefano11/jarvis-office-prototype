@@ -39,7 +39,7 @@ The motion policy is a configurable set of rules (found in `src/accessibility/re
 - **Decorative Motion:** Immediately disabled if the policy prefers reduced motion.
 - **Flashing & Parallax:** Strictly suppressed.
 - **Continuous Movement:** Replaced with static indicators or periodic discrete updates.
-- **Essential Progress Feedback:** Must be preserved, either by significantly simplifying the transition (keeping it under max duration limits) or using a non-motion fallback (text update).
+- **Essential Progress Feedback:** Must be preserved, either by significantly simplifying the transition (keeping it under max duration limits) or using a non-motion fallback (text update). Validation rejects essential requests without safe fallback presentations (e.g. `fallbackPresentation: "none"`). The resolver independently remains safe when invalid input bypasses validation. `replacementAllowed` is true only when a concrete safe fallback exists, and `ESSENTIAL_FEEDBACK_PRESERVED` means that a safe replacement is actually available, not merely requested by policy.
 
 ## High-Contrast Expectations & Status Communication
 

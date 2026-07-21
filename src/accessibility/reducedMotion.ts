@@ -1,5 +1,12 @@
 import type { ReducedMotionPolicy, MotionRequest, ResolvedMotionPresentation, ReducedMotionReason } from "./types";
 
+function hasSafeFallback(fallback: MotionRequest["fallbackPresentation"]): boolean {
+  if (fallback === "instant" || fallback === "fade" || fallback === "static-indicator" || fallback === "text-update") {
+    return true;
+  }
+  return false;
+}
+
 export function resolveMotionPresentation(
   policy: ReducedMotionPolicy,
   request: MotionRequest
@@ -53,16 +60,26 @@ export function resolveMotionPresentation(
     appliedReasons.push("CONTINUOUS_MOTION_REPLACED");
   }
 
+  let replacementAllowed = false;
+
   if (request.essential && policy.preserveEssentialProgressFeedback) {
-    // We do not let essential re-enable original decorative motion, but we can preserve essential feedback.
     if (policy.simplifyTransitions && durationMs > policy.maximumTransitionDurationMs) {
       durationMs = policy.maximumTransitionDurationMs;
-      appliedReasons.push("ESSENTIAL_FEEDBACK_PRESERVED");
-    } else if (!originalMotionAllowed) {
-      appliedReasons.push("ESSENTIAL_FEEDBACK_PRESERVED");
+      // We simplified the transition, so we preserved essential feedback.
+      // If original motion is allowed, replacement is false, but we add TRANSITION_SIMPLIFIED below instead of ESSENTIAL_FEEDBACK_PRESERVED to avoid false positives.
     }
-  } else if (policy.simplifyTransitions && durationMs > policy.maximumTransitionDurationMs) {
+
+    if (!originalMotionAllowed && hasSafeFallback(request.fallbackPresentation)) {
+      appliedReasons.push("ESSENTIAL_FEEDBACK_PRESERVED");
+      replacementAllowed = true;
+    }
+  }
+
+  if (policy.simplifyTransitions && durationMs > policy.maximumTransitionDurationMs) {
     durationMs = policy.maximumTransitionDurationMs;
+    appliedReasons.push("TRANSITION_SIMPLIFIED");
+  } else if (request.essential && policy.preserveEssentialProgressFeedback && policy.simplifyTransitions && request.durationMs > policy.maximumTransitionDurationMs) {
+    // If it was already set to max duration above by the essential block
     appliedReasons.push("TRANSITION_SIMPLIFIED");
   }
 
@@ -70,9 +87,6 @@ export function resolveMotionPresentation(
     appliedReasons.push("FULL_MOTION_ALLOWED");
     fallbackPresentation = "none";
   }
-
-  // Set replacementAllowed to true if originalMotionAllowed is false AND we are preserving essential feedback
-  const replacementAllowed = !originalMotionAllowed && appliedReasons.includes("ESSENTIAL_FEEDBACK_PRESERVED");
 
   return {
     originalMotionAllowed,
