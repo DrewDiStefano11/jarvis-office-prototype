@@ -84,7 +84,7 @@ export const ShowcaseApp: React.FC = () => {
                     </div>
                     <div>
                         <Button onClick={() => setIsModalOpen(true)}>Open Modal</Button>
-                        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Example Modal">
+                        <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title="Example Modal">
                             <p>This is a modal. Press ESC or the close button to dismiss.</p>
                             <Button onClick={() => setIsModalOpen(false)}>Confirm</Button>
                         </Modal>
@@ -94,13 +94,22 @@ export const ShowcaseApp: React.FC = () => {
 
             <section style={{ marginBottom: 'var(--spacing-8)' }}>
                 <h2>Tabs</h2>
-                <div style={{ maxWidth: '600px' }}>
+                <div style={{ maxWidth: '600px', marginBottom: 'var(--spacing-4)' }}>
                     <Tabs
-                        aria-label="Example tabs"
+                        aria-label="Example tabs 1"
                         items={[
                             { id: 'tab1', label: 'Details', content: <p>Details content here.</p> },
                             { id: 'tab2', label: 'Settings', content: <p>Settings content here.</p> },
                             { id: 'tab3', label: 'Logs', content: <p>Logs content here.</p> }
+                        ]}
+                    />
+                </div>
+                <div style={{ maxWidth: '600px' }}>
+                    <Tabs
+                        aria-label="Example tabs 2"
+                        items={[
+                            { id: 'tabA', label: 'Overview', content: <p>Overview content.</p> },
+                            { id: 'tabB', label: 'Metrics', content: <p>Metrics content.</p> }
                         ]}
                     />
                 </div>

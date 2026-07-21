@@ -15,6 +15,9 @@ export interface ModalProps {
 
 const TABBABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
+// Global state to manage modal locks
+const modalLocks = new Map<HTMLElement, { count: number, originalInert: string | null, originalAriaHidden: string | null }>();
+
 export const Modal: React.FC<ModalProps> = ({
     open,
     onClose,
@@ -28,55 +31,105 @@ export const Modal: React.FC<ModalProps> = ({
     const titleId = useId();
     const descriptionId = useId();
     const [mounted, setMounted] = useState(false);
+
+    // Store previous focus to restore when THIS modal instance closes
     const previousFocus = useRef<HTMLElement | null>(null);
+
+    const hasLock = useRef(false);
 
     useEffect(() => {
         setMounted(true);
         return () => setMounted(false);
     }, []);
 
+    // Handling open state, locks, and focus entry
     useEffect(() => {
         const root = document.querySelector(appRootSelector) as HTMLElement;
-        let originalInert: string | null = null;
-        let originalAriaHidden: string | null = null;
 
         if (open) {
             previousFocus.current = document.activeElement as HTMLElement;
 
-            if (root && !root.contains(dialogRef.current)) {
-                originalInert = root.getAttribute('inert');
-                originalAriaHidden = root.getAttribute('aria-hidden');
-
-                root.setAttribute('inert', '');
-                root.setAttribute('aria-hidden', 'true');
-            }
-
-            // Handle focus entry
-            if (initialFocusRef?.current) {
-                initialFocusRef.current.focus();
-            } else if (dialogRef.current) {
-                const tabbables = Array.from(
-                    dialogRef.current.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)
-                ).filter(el => !el.hasAttribute('disabled') && !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true');
-
-                if (tabbables.length > 0) {
-                    tabbables[0].focus();
-                } else {
-                    dialogRef.current.focus();
+            if (root && !hasLock.current) {
+                let lockData = modalLocks.get(root);
+                if (!lockData) {
+                    lockData = {
+                        count: 0,
+                        originalInert: root.getAttribute('inert'),
+                        originalAriaHidden: root.getAttribute('aria-hidden')
+                    };
+                    modalLocks.set(root, lockData);
+                    root.setAttribute('inert', '');
+                    root.setAttribute('aria-hidden', 'true');
                 }
+                lockData.count += 1;
+                hasLock.current = true;
             }
 
-            const handleKeyDown = (e: KeyboardEvent) => {
-                if (e.key === 'Escape') {
-                    onClose();
-                } else if (e.key === 'Tab' && dialogRef.current) {
+            // Focus entry delay to ensure render
+            requestAnimationFrame(() => {
+                if (initialFocusRef?.current) {
+                    initialFocusRef.current.focus();
+                } else if (dialogRef.current) {
                     const tabbables = Array.from(
                         dialogRef.current.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)
                     ).filter(el => !el.hasAttribute('disabled') && !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true');
 
+                    if (tabbables.length > 0) {
+                        tabbables[0].focus();
+                    } else {
+                        dialogRef.current.focus();
+                    }
+                }
+            });
+        }
+
+        // When modal closes (open becomes false), OR when unmounting
+        return () => {
+            if (open) {
+                 const currentRoot = document.querySelector(appRootSelector) as HTMLElement;
+                 if (hasLock.current && currentRoot) {
+                     const lockData = modalLocks.get(currentRoot);
+                     if (lockData) {
+                         lockData.count -= 1;
+                         if (lockData.count <= 0) {
+                             if (lockData.originalInert !== null) {
+                                 currentRoot.setAttribute('inert', lockData.originalInert);
+                             } else {
+                                 currentRoot.removeAttribute('inert');
+                             }
+                             if (lockData.originalAriaHidden !== null) {
+                                 currentRoot.setAttribute('aria-hidden', lockData.originalAriaHidden);
+                             } else {
+                                 currentRoot.removeAttribute('aria-hidden');
+                             }
+                             modalLocks.delete(currentRoot);
+                         }
+                     }
+                     hasLock.current = false;
+                 }
+                 if (previousFocus.current && document.body.contains(previousFocus.current)) {
+                    previousFocus.current.focus();
+                    previousFocus.current = null;
+                }
+            }
+        };
+    }, [open, appRootSelector, initialFocusRef]);
+
+    // Handle keydown trapping (Escape, Tab)
+    useEffect(() => {
+        if (open) {
+            const handleKeyDown = (e: KeyboardEvent) => {
+                const currentDialog = dialogRef.current;
+                if (e.key === 'Escape') {
+                    onClose();
+                } else if (e.key === 'Tab' && currentDialog) {
+                    const tabbables = Array.from(
+                        currentDialog.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)
+                    ).filter(el => !el.hasAttribute('disabled') && !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true');
+
                     if (tabbables.length === 0) {
                         e.preventDefault();
-                        dialogRef.current.focus();
+                        currentDialog.focus();
                         return;
                     }
 
@@ -89,7 +142,7 @@ export const Modal: React.FC<ModalProps> = ({
                     } else if (!e.shiftKey && document.activeElement === lastTabbable) {
                         e.preventDefault();
                         firstTabbable.focus();
-                    } else if (!dialogRef.current.contains(document.activeElement)) {
+                    } else if (!currentDialog.contains(document.activeElement)) {
                         e.preventDefault();
                         firstTabbable.focus();
                     }
@@ -97,29 +150,9 @@ export const Modal: React.FC<ModalProps> = ({
             };
 
             document.addEventListener('keydown', handleKeyDown);
-
-            return () => {
-                document.removeEventListener('keydown', handleKeyDown);
-                if (root && !root.contains(dialogRef.current)) {
-                    if (originalInert !== null) {
-                        root.setAttribute('inert', originalInert);
-                    } else {
-                        root.removeAttribute('inert');
-                    }
-
-                    if (originalAriaHidden !== null) {
-                        root.setAttribute('aria-hidden', originalAriaHidden);
-                    } else {
-                        root.removeAttribute('aria-hidden');
-                    }
-                }
-
-                if (previousFocus.current && document.body.contains(previousFocus.current)) {
-                    previousFocus.current.focus();
-                }
-            };
+            return () => document.removeEventListener('keydown', handleKeyDown);
         }
-    }, [open, onClose, appRootSelector, initialFocusRef]);
+    }, [open, onClose]);
 
     if (!open || !mounted) return null;
 

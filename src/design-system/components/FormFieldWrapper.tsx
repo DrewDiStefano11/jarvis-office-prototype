@@ -17,24 +17,33 @@ export const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
     children
 }) => {
     const generatedId = useId();
-    const actualId = id || `field-${generatedId}`;
+
+    const child = React.isValidElement(children) ? children as React.ReactElement<Record<string, unknown>> : null;
+
+    // Preserve child ID unless wrapper explicit ID is given
+    const childId = child?.props.id ? String(child.props.id) : undefined;
+    const actualId = id || childId || `field-${generatedId}`;
 
     const descriptionId = description ? `${actualId}-description` : undefined;
     const errorId = error ? `${actualId}-error` : undefined;
 
-    let ariaDescribedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
+    // Build the wrapper's aria-describedby list
+    const wrapperDescribedBy = [descriptionId, errorId].filter(Boolean);
 
-    const child = React.isValidElement(children) ? children as React.ReactElement<any> : null;
+    let ariaDescribedBy: string | undefined = wrapperDescribedBy.join(' ') || undefined;
 
     if (child && child.props['aria-describedby']) {
-        ariaDescribedBy = ariaDescribedBy ? `${child.props['aria-describedby']} ${ariaDescribedBy}` : child.props['aria-describedby'];
+        const childDescribedBy = String(child.props['aria-describedby']).split(' ');
+        // Combine, deduplicate
+        const combined = Array.from(new Set([...childDescribedBy, ...wrapperDescribedBy])).filter(Boolean);
+        ariaDescribedBy = combined.join(' ') || undefined;
     }
 
     const clonedChild = child
         ? React.cloneElement(child, {
             id: actualId,
             'aria-describedby': ariaDescribedBy,
-            'aria-invalid': !!error
+            'aria-invalid': error ? true : child.props['aria-invalid']
         })
         : children;
 

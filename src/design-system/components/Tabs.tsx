@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useId, useRef } from 'react';
 import styles from './Tabs.module.css';
 
 export interface TabItem {
@@ -16,9 +16,17 @@ export interface TabsProps {
 
 export const Tabs: React.FC<TabsProps> = ({ items, defaultActiveId, 'aria-label': ariaLabel }) => {
     const instanceId = useId();
-    const [activeId, setActiveId] = useState(defaultActiveId || items.find(i => !i.disabled)?.id || items[0]?.id);
+    const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+    // Determine the initial active tab
+    const initialActiveId = defaultActiveId || items.find(i => !i.disabled)?.id;
+    const [activeId, setActiveId] = useState<string | undefined>(initialActiveId);
+
+    const allDisabled = items.every(i => i.disabled);
 
     const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+        if (allDisabled) return;
+
         const focusableItems = items.map((item, idx) => ({ ...item, idx })).filter(i => !i.disabled);
         const currentIndex = focusableItems.findIndex(i => i.idx === index);
 
@@ -39,7 +47,11 @@ export const Tabs: React.FC<TabsProps> = ({ items, defaultActiveId, 'aria-label'
             e.preventDefault();
             const nextItem = items[nextIndex];
             setActiveId(nextItem.id);
-            document.getElementById(`tab-${instanceId}-${nextItem.id}`)?.focus();
+            // Focus using ref
+            const tabEl = tabsRef.current[nextIndex];
+            if (tabEl) {
+                tabEl.focus();
+            }
         }
     };
 
@@ -47,19 +59,20 @@ export const Tabs: React.FC<TabsProps> = ({ items, defaultActiveId, 'aria-label'
         <div>
             <div className={styles.tabList} role="tablist" aria-label={ariaLabel}>
                 {items.map((item, index) => {
-                    const isSelected = activeId === item.id;
+                    const isSelected = !allDisabled && activeId === item.id;
                     const tabId = `tab-${instanceId}-${item.id}`;
                     const panelId = `panel-${instanceId}-${item.id}`;
                     return (
                         <button
                             key={item.id}
+                            ref={el => { tabsRef.current[index] = el; }}
                             role="tab"
                             aria-selected={isSelected}
                             aria-controls={panelId}
                             aria-disabled={item.disabled}
                             disabled={item.disabled}
                             id={tabId}
-                            tabIndex={isSelected ? 0 : -1}
+                            tabIndex={isSelected && !item.disabled ? 0 : -1}
                             className={`${styles.tab} ${isSelected ? styles.active : ''}`}
                             onClick={() => !item.disabled && setActiveId(item.id)}
                             onKeyDown={(e) => handleKeyDown(e, index)}
@@ -70,7 +83,7 @@ export const Tabs: React.FC<TabsProps> = ({ items, defaultActiveId, 'aria-label'
                 })}
             </div>
             {items.map(item => {
-                const isSelected = activeId === item.id;
+                const isSelected = !allDisabled && activeId === item.id;
                 const tabId = `tab-${instanceId}-${item.id}`;
                 const panelId = `panel-${instanceId}-${item.id}`;
                 return (

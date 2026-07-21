@@ -69,3 +69,7 @@ To keep the scope of this additive PR focused, the following work has been delib
 - Global dark mode toggle (tokens default to a light semantic theme).
 - Any backend, websocket, or persistence hooks.
 - Task-domain dependencies have been scrubbed from components.
+
+### Tooltips & Disabled Controls
+Native HTML elements that are `disabled` (like `<button disabled>`) do not fire pointer or focus events. Because tooltips rely on these events to show and hide, attaching a `<Tooltip>` directly to a disabled element will result in the tooltip never appearing.
+When providing a tooltip for a disabled control, you **must** wrap the disabled control in an interactive container (like a focusable `<span>` or `<div>`) and apply the tooltip to that wrapper instead.

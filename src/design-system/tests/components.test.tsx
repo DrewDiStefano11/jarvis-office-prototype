@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import {
     Button,
     ProgressBar,
@@ -107,10 +106,10 @@ describe('Design System Components', () => {
 
         it('assigns unique IDs to multiple modals', () => {
             const { baseElement } = render(
-                <>
+                <div>
                     <Modal open={true} onClose={() => {}} title="Modal 1" description="Desc 1">Content 1</Modal>
                     <Modal open={true} onClose={() => {}} title="Modal 2" description="Desc 2">Content 2</Modal>
-                </>
+                </div>
             );
 
             const dialogs = baseElement.querySelectorAll('[role="dialog"]');
@@ -121,6 +120,129 @@ describe('Design System Components', () => {
             expect(id1).not.toBe(id2);
             expect(id1).not.toBeNull();
             expect(id2).not.toBeNull();
+        });
+
+        it('manages multiple modal locks properly', () => {
+            const root = document.createElement('div');
+            root.id = 'root';
+            document.body.appendChild(root);
+
+            const { rerender } = render(
+                <Modal open={true} onClose={() => {}} title="Modal 1" appRootSelector="#root">Content 1</Modal>
+            );
+
+            expect(root.hasAttribute('inert')).toBe(true);
+
+            rerender(
+                <div>
+                    <Modal open={true} onClose={() => {}} title="Modal 1" appRootSelector="#root">Content 1</Modal>
+                    <Modal open={true} onClose={() => {}} title="Modal 2" appRootSelector="#root">Content 2</Modal>
+                </div>
+            );
+
+            expect(root.hasAttribute('inert')).toBe(true);
+
+            rerender(
+                <div>
+                    <Modal open={false} onClose={() => {}} title="Modal 1" appRootSelector="#root">Content 1</Modal>
+                    <Modal open={true} onClose={() => {}} title="Modal 2" appRootSelector="#root">Content 2</Modal>
+                </div>
+            );
+
+            // Still inert because Modal 2 is open
+            expect(root.hasAttribute('inert')).toBe(true);
+
+            rerender(
+                <div>
+                    <Modal open={false} onClose={() => {}} title="Modal 1" appRootSelector="#root">Content 1</Modal>
+                    <Modal open={false} onClose={() => {}} title="Modal 2" appRootSelector="#root">Content 2</Modal>
+                </div>
+            );
+
+            // Now fully released
+            expect(root.hasAttribute('inert')).toBe(false);
+            document.body.removeChild(root);
+        });
+
+        it('restores focus when modal is closed', async () => {
+            const root = document.createElement('div');
+            root.id = 'root';
+            document.body.appendChild(root);
+
+            render(
+                <div id="root">
+                    <button id="trigger">Trigger</button>
+                </div>,
+                { container: root }
+            );
+
+            const trigger = document.getElementById('trigger');
+            trigger?.focus();
+
+            const { rerender } = render(
+                <div id="root">
+                    <button id="trigger">Trigger</button>
+                    <Modal open={true} onClose={() => {}} title="Modal" appRootSelector="#root">Content</Modal>
+                </div>,
+                { container: root }
+            );
+
+            // Wait for RAF inside Modal
+            await waitFor(() => {
+                expect(document.activeElement?.id).not.toBe('trigger');
+            });
+
+            rerender(
+                <div id="root">
+                    <button id="trigger">Trigger</button>
+                    <Modal open={false} onClose={() => {}} title="Modal" appRootSelector="#root">Content</Modal>
+                </div>
+            );
+
+            expect(document.activeElement?.id).toBe('trigger');
+            document.body.removeChild(root);
+        });
+
+        it('calls onClose when Escape is pressed', async () => {
+            const onClose = vi.fn();
+            render(<Modal open={true} onClose={onClose} title="Modal">Content</Modal>);
+
+            await userEvent.keyboard('[Escape]');
+            expect(onClose).toHaveBeenCalledTimes(1);
+        });
+
+        it('traps focus with Tab and Shift+Tab', async () => {
+            const user = userEvent.setup();
+            render(
+                <Modal open={true} onClose={() => {}} title="Modal">
+                    <button id="first">First</button>
+                    <button id="second">Second</button>
+                    <button id="last">Last</button>
+                </Modal>
+            );
+
+            // Wait until the modal's internal requestAnimationFrame focuses the close button
+            // The close button is rendered FIRST inside Modal.tsx
+            const closeBtn = await screen.findByRole('button', { name: 'Close modal' });
+
+            // By default Modal will focus the first tabbable element, which is the close button
+            expect(document.activeElement).toBe(closeBtn);
+
+            // Tab from Close Button -> First
+            await user.tab();
+            expect(document.activeElement?.id).toBe('first');
+
+            // Shift + Tab from First -> Close Button
+            await user.keyboard('{Shift>}{Tab}{/Shift}');
+            expect(document.activeElement).toBe(closeBtn);
+
+            // Shift + Tab from Close Button (first tabbable) -> Last
+            await user.keyboard('{Shift>}{Tab}{/Shift}');
+            expect(document.activeElement?.id).toBe('last');
+
+            // Tab from Last -> Close Button
+            await user.tab();
+            expect(document.activeElement).toBe(closeBtn);
         });
     });
 
@@ -143,15 +265,73 @@ describe('Design System Components', () => {
 
         it('generates unique instance IDs for different tab groups', () => {
             render(
-                <>
+                <div>
                     <Tabs items={[{ id: '1', label: 'T1', content: 'C1' }]} />
                     <Tabs items={[{ id: '1', label: 'T2', content: 'C2' }]} />
-                </>
+                </div>
             );
 
             const panels = screen.getAllByRole('tabpanel', { hidden: true });
             expect(panels.length).toBe(2);
             expect(panels[0].id).not.toBe(panels[1].id);
+        });
+
+        it('handles all disabled tabs correctly', () => {
+            render(
+                <Tabs items={[
+                    { id: '1', label: 'T1', content: 'C1', disabled: true },
+                    { id: '2', label: 'T2', content: 'C2', disabled: true }
+                ]} />
+            );
+
+            const tabs = screen.getAllByRole('tab');
+            expect(tabs[0].getAttribute('aria-selected')).toBe('false');
+            expect(tabs[1].getAttribute('aria-selected')).toBe('false');
+            expect(tabs[0].getAttribute('tabIndex')).toBe('-1');
+            expect(tabs[1].getAttribute('tabIndex')).toBe('-1');
+        });
+
+        it('navigates with ArrowRight and ArrowLeft', async () => {
+            const user = userEvent.setup();
+            render(
+                <Tabs items={[
+                    { id: '1', label: 'Tab 1', content: 'C1' },
+                    { id: '2', label: 'Tab 2', content: 'C2' },
+                    { id: '3', label: 'Tab 3', content: 'C3' }
+                ]} />
+            );
+
+            const tabs = screen.getAllByRole('tab');
+            tabs[0].focus();
+
+            await user.keyboard('{ArrowRight}');
+            expect(document.activeElement).toBe(tabs[1]);
+
+            await user.keyboard('{ArrowLeft}');
+            expect(document.activeElement).toBe(tabs[0]);
+
+            await user.keyboard('{ArrowLeft}'); // wrap around
+            expect(document.activeElement).toBe(tabs[2]);
+        });
+
+        it('navigates with Home and End', async () => {
+            const user = userEvent.setup();
+            render(
+                <Tabs items={[
+                    { id: '1', label: 'Tab 1', content: 'C1' },
+                    { id: '2', label: 'Tab 2', content: 'C2' },
+                    { id: '3', label: 'Tab 3', content: 'C3' }
+                ]} />
+            );
+
+            const tabs = screen.getAllByRole('tab');
+            tabs[1].focus();
+
+            await user.keyboard('{Home}');
+            expect(document.activeElement).toBe(tabs[0]);
+
+            await user.keyboard('{End}');
+            expect(document.activeElement).toBe(tabs[2]);
         });
     });
 
@@ -168,6 +348,92 @@ describe('Design System Components', () => {
 
             expect(trigger.getAttribute('aria-describedby')).toContain(tooltipContent.id);
         });
+
+        it('preserves existing aria-describedby', () => {
+            render(
+                <Tooltip content="Tooltip message">
+                    <button aria-describedby="existing-desc">Trigger</button>
+                </Tooltip>
+            );
+
+            const trigger = screen.getByRole('button', { name: 'Trigger' });
+            expect(trigger.getAttribute('aria-describedby')).toContain('existing-desc');
+        });
+
+        it('opens on hover and closes on mouse leave', async () => {
+            const user = userEvent.setup();
+            render(
+                <Tooltip content="Tooltip message">
+                    <button>Trigger</button>
+                </Tooltip>
+            );
+
+            const trigger = screen.getByRole('button', { name: 'Trigger' });
+            const tooltipContent = screen.getByRole('tooltip', { hidden: true });
+
+            await user.hover(trigger);
+            expect(tooltipContent.style.visibility).toBe('visible');
+
+            await user.unhover(trigger);
+            expect(tooltipContent.style.visibility).toBe('hidden');
+        });
+
+        it('opens on focus and closes on blur', async () => {
+            render(
+                <Tooltip content="Tooltip message">
+                    <button>Trigger</button>
+                </Tooltip>
+            );
+
+            const trigger = screen.getByRole('button', { name: 'Trigger' });
+            const tooltipContent = screen.getByRole('tooltip', { hidden: true });
+
+            await act(async () => {
+                trigger.focus();
+            });
+            expect(tooltipContent.style.visibility).toBe('visible');
+
+            await act(async () => {
+                trigger.blur();
+            });
+            expect(tooltipContent.style.visibility).toBe('hidden');
+        });
+
+        it('closes on Escape', async () => {
+            const user = userEvent.setup();
+            render(
+                <Tooltip content="Tooltip message">
+                    <button>Trigger</button>
+                </Tooltip>
+            );
+
+            const trigger = screen.getByRole('button', { name: 'Trigger' });
+            const tooltipContent = screen.getByRole('tooltip', { hidden: true });
+
+            await act(async () => {
+                trigger.focus();
+            });
+            expect(tooltipContent.style.visibility).toBe('visible');
+
+            await user.keyboard('[Escape]');
+            expect(tooltipContent.style.visibility).toBe('hidden');
+        });
+
+        it('preserves original handlers', async () => {
+            const onFocus = vi.fn();
+            render(
+                <Tooltip content="Tooltip message">
+                    <button onFocus={onFocus}>Trigger</button>
+                </Tooltip>
+            );
+
+            const trigger = screen.getByRole('button', { name: 'Trigger' });
+
+            await act(async () => {
+                trigger.focus();
+            });
+            expect(onFocus).toHaveBeenCalled();
+        });
     });
 
     describe('IconButton', () => {
@@ -175,6 +441,19 @@ describe('Design System Components', () => {
             render(<IconButton iconId="play" aria-label="Play Action" />);
             const button = screen.getByRole('button', { name: 'Play Action' });
             expect(button).toBeDefined();
+        });
+
+        it('preserves caller style', () => {
+            const { baseElement } = render(<IconButton iconId="play" aria-label="Play Action" style={{ backgroundColor: 'red' }} />);
+            const button = baseElement.querySelector('button');
+            expect(button?.style.backgroundColor).toBe('red');
+        });
+
+        it('warns when missing aria-label', () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(<IconButton iconId="play" aria-label="" />);
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('aria-label'));
+            warnSpy.mockRestore();
         });
     });
 
@@ -190,12 +469,35 @@ describe('Design System Components', () => {
             const describedBy = input.getAttribute('aria-describedby');
             expect(describedBy).toBeDefined();
 
-            // Check that parts of aria-describedby map to elements in the DOM
             const parts = describedBy!.split(' ');
             expect(parts.length).toBe(2);
             expect(document.getElementById(parts[0])).toBeDefined();
             expect(document.getElementById(parts[1])).toBeDefined();
             expect(input.getAttribute('aria-invalid')).toBe('true');
+        });
+
+        it('preserves child ID if no explicit wrapper ID is given', () => {
+            render(
+                <FormFieldWrapper label="Name">
+                    <input type="text" id="custom-child-id" />
+                </FormFieldWrapper>
+            );
+
+            const input = screen.getByRole('textbox');
+            expect(input.id).toBe('custom-child-id');
+        });
+
+        it('preserves child aria-describedby without duplication', () => {
+            render(
+                <FormFieldWrapper label="Name" description="desc">
+                    <input type="text" id="custom-child-id" aria-describedby="existing-desc" />
+                </FormFieldWrapper>
+            );
+
+            const input = screen.getByRole('textbox');
+            const describedBy = input.getAttribute('aria-describedby');
+            expect(describedBy).toContain('existing-desc');
+            expect(describedBy).toContain('custom-child-id-description');
         });
     });
 });
