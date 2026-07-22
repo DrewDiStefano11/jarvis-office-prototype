@@ -4,7 +4,6 @@ export interface VisualLabValidationResult {
     readonly valid: boolean;
     readonly errors: readonly string[];
 }
-
 export function validateVisualLabProfiles(profiles: readonly VisualLabProfile[]): VisualLabValidationResult {
     const errors: string[] = [];
     const ids = new Set<string>();
@@ -20,4 +19,3 @@ export function validateVisualLabProfiles(profiles: readonly VisualLabProfile[])
     });
     return { valid: errors.length === 0, errors };
 }
-

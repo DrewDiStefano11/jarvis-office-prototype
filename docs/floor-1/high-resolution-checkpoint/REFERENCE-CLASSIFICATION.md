@@ -26,4 +26,3 @@ No separate illustrated/vector furniture collection was supplied in this checkpo
 ## Art-direction conclusion
 
 The candidates will retain the project's current isometric projection, hard edges, nearest-neighbor rendering, interaction model, and data architecture. They will test original higher-resolution Jarvis HQ characters and furniture, larger authored room geometry, warm directional lighting, functional object detail, department-specific material systems, and non-obstructive label behavior. None of the supplied artwork will be traced, recolored, cropped into production textures, or committed as an asset.
-

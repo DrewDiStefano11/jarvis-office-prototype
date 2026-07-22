@@ -42,4 +42,3 @@ The comparison lab is isolated behind `?visualLab=high-resolution-checkpoint`; t
 - No supplied reference artwork is included in runtime code or production textures.
 - The final evidence commit may be newer than `795ba49`; `795ba49` is the implementation tree rendered by every scripted capture.
 - The complete authoritative before-state remains in the sibling `baseline/` directory and was captured at verified starting PR #9 SHA `694521d71aa64450dcec2921e524c6aa47468d7f` before candidate implementation.
-

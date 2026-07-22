@@ -26,4 +26,3 @@ This directory is the authoritative before-state for the high-resolution visual-
 `capture-metadata.json` records the verified SHA, viewport, exact camera zoom, camera scroll, effects mode, label mode, area, purpose, and console-error count for every screenshot. `baseline-measurements.json` records the current scene geometry, source and rendered asset sizes, canvas configuration, camera limits, texture estimates, object counts, and animation counts.
 
 The reference-only artwork supplied by the user is not copied into this repository and is not used as a production texture.
-

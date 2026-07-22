@@ -5,8 +5,6 @@ const safe = (value: string): string => value.replace(/[^a-z0-9-]/gi, '-').toLow
 export function labCharacterTextureKey(profile: VisualLabProfile, role: VisualLabRole, facing: VisualLabFacing): string {
     return safe(`visual-lab-${profile.id}-character-${role}-${facing}`);
 }
-
 export function labFurnitureTextureKey(profile: VisualLabProfile, type: VisualLabFurnitureType, paletteKey: string): string {
     return safe(`visual-lab-${profile.id}-furniture-${type}-${paletteKey}`);
 }
-

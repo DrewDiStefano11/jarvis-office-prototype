@@ -69,4 +69,3 @@ Candidate C establishes a useful upper boundary. Its characters and props have t
 ## Scope boundary
 
 This checkpoint does not authorize or perform the full Floor 1 conversion. The current production floor remains unchanged by default. Production conversion should begin only after the user approves A, B, C, the recommended hybrid, a revision, or rejects all directions.
-

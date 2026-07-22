@@ -15,7 +15,6 @@ interface HighResolutionLabPanelProps {
     readonly onClearSelection: () => void;
     readonly onPresentation: () => void;
 }
-
 const nextLabels = (value: VisualLabPreferences['labels']): VisualLabPreferences['labels'] => value === 'auto' ? 'minimal' : value === 'minimal' ? 'on' : 'auto';
 const nextEffects = (value: VisualLabPreferences['effects']): VisualLabPreferences['effects'] => value === 'on' ? 'reduced' : value === 'reduced' ? 'off' : 'on';
 
@@ -88,4 +87,3 @@ export function HighResolutionLabPanel({ mode, zoom, preferences, selection, obj
         </aside>
     );
 }
-

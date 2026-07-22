@@ -19,7 +19,6 @@ export interface VisualLabDimensions {
     readonly circulationWidth: number;
     readonly wallThickness: number;
 }
-
 export interface VisualLabAssetProfile {
     readonly standing: { readonly width: number; readonly height: number };
     readonly seated: { readonly width: number; readonly height: number };
@@ -68,4 +67,3 @@ export interface VisualLabSelection {
     readonly title: string;
     readonly subtitle: string;
 }
-

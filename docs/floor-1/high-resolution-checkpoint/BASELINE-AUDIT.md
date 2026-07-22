@@ -71,4 +71,3 @@ The complete per-room and per-zone measurement record is in `docs/visual-evidenc
 ## Checkpoint implication
 
 The candidate laboratory must change authored geometry and source-detail density together. Camera zoom alone cannot solve the issue. Candidate A should establish the smallest credible improvement, Candidate B should target clearly readable medium-zoom characters and furniture, and Candidate C should establish the practical upper boundary without replacing production Floor 1.
-
