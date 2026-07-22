@@ -1,6 +1,6 @@
 import { GameObjects, Geom, Input, Math as PhaserMath, Scene, Tweens } from 'phaser';
 import { EventBus } from '../EventBus';
-import { DEFAULT_VISUAL_LAB_PREFERENCES, LAB_PALETTES, VISUAL_LAB_PROFILE_BY_ID, VISUAL_LAB_PROFILES } from '../../visual-lab/profiles';
+import { DEFAULT_VISUAL_LAB_PREFERENCES, EXPANSIVE_LAB_PROFILES, LAB_PALETTES, VISUAL_LAB_PROFILE_BY_ID } from '../../visual-lab/profiles';
 import { ensureLabCharacterTexture, ensureLabFurnitureTexture } from '../../visual-lab/textures';
 import type { VisualLabCandidateId, VisualLabEffectsMode, VisualLabFacing, VisualLabFurnitureType, VisualLabMode, VisualLabPreferences, VisualLabProfile, VisualLabRole, VisualLabSelection } from '../../visual-lab/types';
 
@@ -25,15 +25,23 @@ interface SuiteContext {
     readonly container: GameObjects.Container;
     readonly scaleX: number;
     readonly scaleY: number;
+    readonly rooms: readonly LabRoom[];
     readonly comparison: boolean;
     readonly titleTexts: Map<string, GameObjects.Text>;
     readonly dimensionObjects: GameObjects.Text[];
     readonly anchorObjects: Array<GameObjects.Rectangle | GameObjects.Ellipse>;
     readonly boundObjects: GameObjects.Graphics[];
     readonly ambientObjects: GameObjects.Rectangle[];
+    readonly movementObjects: GameObjects.Graphics[];
+    readonly circulationObjects: GameObjects.Graphics[];
+    readonly furnitureBoundObjects: GameObjects.Rectangle[];
+    readonly interactionBoundObjects: GameObjects.Graphics[];
+    readonly particleObjects: GameObjects.Rectangle[];
+    readonly lightingObjects: GameObjects.Rectangle[];
 }
 
 const BASE_SUITE = { width: 840, depth: 500 } as const;
+const EXPANSIVE_SUITE = { width: 1000, depth: 700 } as const;
 const MIN_ZOOM = 0.38;
 const MAX_ZOOM = 2.8;
 const ZOOM_STEP = 0.16;
@@ -45,6 +53,17 @@ const BASE_ROOMS: readonly LabRoom[] = [
     { id: 'meeting-area', title: 'Project Review Room', sign: 'PROJECT REVIEW', subtitle: 'Meeting area · four chairs, presenter, display, and documents', palette: 'meeting', material: 'carpet', x: 0, y: 230, width: 390, depth: 210 },
     { id: 'secure-glass-area', title: 'Security Containment Review', sign: 'SECURE REVIEW', subtitle: 'Secure glass · reader, sensor, restricted threshold, and visitor', palette: 'security', material: 'secure', x: 410, y: 230, width: 250, depth: 210 },
     { id: 'transition-corridor', title: 'Knowledge Transition Corridor', sign: 'KNOWLEDGE', subtitle: 'Circulation · floor transition, sign, lighting, and plant', palette: 'corridor', material: 'transition', x: 680, y: 230, width: 160, depth: 210 },
+] as const;
+
+const EXPANSIVE_ROOMS: readonly LabRoom[] = [
+    { id: 'engineering-open-work', title: 'Software Engineering Studio', sign: 'ENGINEERING', subtitle: 'Four workstations, collaboration, storage, and movement-ready desk access', palette: 'engineering', material: 'carpet', x: 0, y: 0, width: 390, depth: 270 },
+    { id: 'executive-private-office', title: 'Executive Command Office', sign: 'EXECUTIVE', subtitle: 'Premium private office with full desk circulation and visitor zone', palette: 'executive', material: 'wood', x: 420, y: 0, width: 260, depth: 270 },
+    { id: 'operations-console-area', title: 'Reliability Operations Center', sign: 'OPERATIONS', subtitle: 'Multi-console technical area with operator and supervisor aisles', palette: 'operations', material: 'technical', x: 710, y: 0, width: 290, depth: 270 },
+    { id: 'meeting-area', title: 'Project Review Boardroom', sign: 'PROJECT REVIEW', subtitle: 'Presenter zone, detailed table, varied seating, and perimeter circulation', palette: 'meeting', material: 'carpet', x: 0, y: 300, width: 360, depth: 240 },
+    { id: 'secure-glass-area', title: 'Security Containment Review', sign: 'SECURE REVIEW', subtitle: 'Contained secure route, observation lane, reader, camera, and privacy glass', palette: 'security', material: 'secure', x: 390, y: 300, width: 290, depth: 240 },
+    { id: 'reception-waiting', title: 'Reception and Controlled Intake', sign: 'RECEPTION', subtitle: 'Public waiting, intake, escort, and visible checkpoint approach', palette: 'reception', material: 'transition', x: 710, y: 300, width: 290, depth: 240 },
+    { id: 'knowledge-archive', title: 'Knowledge and Archive Corner', sign: 'KNOWLEDGE', subtitle: 'Search, reading, shelving, documents, and clear archive access', palette: 'knowledge', material: 'wood', x: 0, y: 570, width: 460, depth: 130 },
+    { id: 'primary-circulation', title: 'Primary Movement Spine', sign: 'MOVEMENT SPINE', subtitle: 'Two-way circulation with future path anchors and no furniture encroachment', palette: 'corridor', material: 'transition', x: 490, y: 570, width: 510, depth: 130 },
 ] as const;
 
 const iso = (x: number, y: number) => ({ x: (x - y) * 0.5, y: (x + y) * 0.25, depth: x + y });
@@ -126,14 +145,13 @@ export class HighResolutionLabScene extends Scene {
 
         if (this.mode === 'comparison') {
             const placements = [
-                { profile: VISUAL_LAB_PROFILES[0], x: -360, y: -190 },
-                { profile: VISUAL_LAB_PROFILES[1], x: 360, y: -190 },
-                { profile: VISUAL_LAB_PROFILES[2], x: -360, y: 190 },
-                { profile: VISUAL_LAB_PROFILES[3], x: 360, y: 190 },
+                { profile: EXPANSIVE_LAB_PROFILES[0], x: 0, y: -250 },
+                { profile: EXPANSIVE_LAB_PROFILES[1], x: -420, y: 230 },
+                { profile: EXPANSIVE_LAB_PROFILES[2], x: 420, y: 230 },
             ];
             placements.forEach(({ profile, x, y }) => {
                 const suite = this.renderSuite(profile, true);
-                suite.container.setPosition(x, y).setScale(0.60);
+                suite.container.setPosition(x, y).setScale(0.43);
                 this.root?.add(suite.container);
                 const header = this.add.text(x, y - 152, `${profile.shortName.toUpperCase()}  ·  ${profile.assets.standing.width}×${profile.assets.standing.height} CHAR  ·  ${profile.assets.furniture} PX FURNITURE  ·  +${profile.dimensions.usableAreaIncrease}% AREA`, {
                     fontFamily: 'monospace', fontSize: '15px', fontStyle: 'bold', color: profile.id === 'baseline' ? '#d8c4a6' : '#fff0cb', backgroundColor: '#161310f2', padding: { x: 8, y: 5 },
@@ -152,22 +170,34 @@ export class HighResolutionLabScene extends Scene {
 
     private renderSuite(profile: VisualLabProfile, comparison: boolean): SuiteContext {
         const container = this.add.container(0, 0);
+        const expansive = profile.id === 'candidate-d' || profile.id === 'candidate-e';
+        const layout = expansive ? EXPANSIVE_SUITE : BASE_SUITE;
+        const rooms = expansive ? EXPANSIVE_ROOMS : BASE_ROOMS;
         const context: SuiteContext = {
             profile,
             container,
-            scaleX: profile.dimensions.suiteWidth / BASE_SUITE.width,
-            scaleY: profile.dimensions.suiteDepth / BASE_SUITE.depth,
+            scaleX: profile.dimensions.suiteWidth / layout.width,
+            scaleY: profile.dimensions.suiteDepth / layout.depth,
+            rooms,
             comparison,
             titleTexts: new Map(),
             dimensionObjects: [],
             anchorObjects: [],
             boundObjects: [],
             ambientObjects: [],
+            movementObjects: [],
+            circulationObjects: [],
+            furnitureBoundObjects: [],
+            interactionBoundObjects: [],
+            particleObjects: [],
+            lightingObjects: [],
         };
         this.suiteContexts.push(context);
-        BASE_ROOMS.forEach((room) => this.drawRoom(context, room));
-        this.drawFurnitureAndOccupants(context);
+        rooms.forEach((room) => this.drawRoom(context, room));
+        if (expansive) this.drawExpansiveFurnitureAndOccupants(context);
+        else this.drawFurnitureAndOccupants(context);
         this.drawGlassAndAccess(context);
+        this.drawMovementValidation(context);
         this.drawAmbientDetail(context);
         container.sort('depth');
         return context;
@@ -237,6 +267,9 @@ export class HighResolutionLabScene extends Scene {
         const bounds = this.add.graphics().setDepth(center.depth + 9050).lineStyle(2, 0xffca66, 0.8).strokePoints(points.map((point) => new PhaserMath.Vector2(point.x, point.y)), true);
         context.boundObjects.push(bounds);
         container.add(bounds);
+        const interactionBounds = this.add.graphics().setDepth(center.depth + 9060).lineStyle(3, 0x4ee7f0, 0.78).strokePoints(points.map((point) => new PhaserMath.Vector2(point.x, point.y)), true).setVisible(false);
+        context.interactionBoundObjects.push(interactionBounds);
+        container.add(interactionBounds);
     }
 
     private drawWall(context: SuiteContext, start: { readonly x: number; readonly y: number }, end: { readonly x: number; readonly y: number }, palette: typeof LAB_PALETTES[RoomPaletteKey], profile: VisualLabProfile): void {
@@ -268,6 +301,9 @@ export class HighResolutionLabScene extends Scene {
         const anchor = this.add.rectangle(Math.round(point.x), Math.round(point.y), 4, 4, 0xffd05f).setDepth(point.depth + 9500);
         context.anchorObjects.push(anchor);
         context.container.add(anchor);
+        const footprint = this.add.rectangle(Math.round(point.x), Math.round(point.y), Math.max(18, context.profile.assets.furniture * scale * 0.62), Math.max(10, context.profile.assets.furniture * scale * 0.28), 0x000000, 0).setStrokeStyle(1, 0xff9e4f, 0.9).setDepth(point.depth + 9400).setVisible(false);
+        context.furnitureBoundObjects.push(footprint);
+        context.container.add(footprint);
         return image;
     }
 
@@ -337,11 +373,117 @@ export class HighResolutionLabScene extends Scene {
         this.addCharacter(context, 'temporary', 'front-left', 790, 400, detailScale);
     }
 
+    private drawExpansiveFurnitureAndOccupants(context: SuiteContext): void {
+        const scale = context.profile.id === 'candidate-e' ? 0.72 : 0.82;
+        const compact = scale * 0.78;
+
+        // Engineering: four accessible desks, one vacant, one temporary/shared, collaboration and storage.
+        [[72, 72], [205, 72], [72, 190], [205, 190]].forEach(([x, y], index) => {
+            this.addFurniture(context, index === 3 ? 'temporary-desk' : 'engineering-desk', 'engineering', x, y, scale);
+            this.addFurniture(context, 'monitor', 'engineering', x, y - 18, compact, 560);
+            this.addFurniture(context, 'ergonomic-chair', 'engineering', x, y + 38, compact, 470);
+            if (index === 0) this.addCharacter(context, 'engineering', 'front-right', x, y + 30, scale);
+            if (index === 1) this.addCharacter(context, 'platform', 'front-left', x, y + 30, scale);
+            if (index === 3) this.addCharacter(context, 'temporary', 'front-right', x + 28, y + 34, scale);
+        });
+        this.addFurniture(context, 'planning-table', 'engineering', 320, 135, scale * 0.95);
+        this.addFurniture(context, 'shelf', 'engineering', 345, 45, compact);
+        this.addFurniture(context, 'storage', 'engineering', 340, 230, compact);
+        this.addFurniture(context, 'plant', 'engineering', 300, 225, compact);
+        this.addFurniture(context, 'monitor', 'engineering', 36, 132, compact);
+
+        // Executive: full circulation around desk and two visitor seats.
+        this.addFurniture(context, 'executive-desk', 'executive', 520, 95, scale * 1.05);
+        this.addFurniture(context, 'monitor', 'executive', 520, 72, compact, 560);
+        this.addFurniture(context, 'executive-chair', 'executive', 520, 140, compact, 470);
+        this.addCharacter(context, 'executive', 'front-left', 520, 128, scale);
+        this.addFurniture(context, 'meeting-chair', 'executive', 465, 205, compact);
+        this.addFurniture(context, 'meeting-chair', 'executive', 580, 205, compact);
+        this.addFurniture(context, 'side-table', 'executive', 620, 190, compact);
+        this.addFurniture(context, 'shelf', 'executive', 635, 55, compact);
+        this.addFurniture(context, 'storage', 'executive', 450, 55, compact);
+        this.addFurniture(context, 'plant', 'executive', 630, 230, compact);
+
+        // Operations: three consoles, two active operators, one visibly vacant, rear access and equipment.
+        [[760, 85], [855, 85], [950, 85]].forEach(([x, y], index) => {
+            this.addFurniture(context, 'console', 'operations', x, y, scale);
+            this.addFurniture(context, 'technical-chair', 'operations', x, y + 52, compact, 470);
+            if (index < 2) this.addCharacter(context, 'operations', index === 0 ? 'front-right' : 'front-left', x, y + 38, scale);
+        });
+        this.addFurniture(context, 'equipment-rack', 'operations', 965, 220, compact);
+        this.addFurniture(context, 'equipment-rack', 'operations', 735, 220, compact);
+        this.addCharacter(context, 'quality', 'front-right', 860, 220, scale);
+
+        // Boardroom: six chairs, three participants, presenter zone, documents and display.
+        this.addFurniture(context, 'meeting-table', 'meeting', 175, 405, scale * 1.18);
+        [[82, 355], [175, 345], [268, 355], [82, 475], [175, 485], [268, 475]].forEach(([x, y], index) => {
+            this.addFurniture(context, 'meeting-chair', 'meeting', x, y, compact, 470);
+            if (index < 3) this.addCharacter(context, index === 2 ? 'project' : 'meeting', index % 2 === 0 ? 'front-right' : 'front-left', x, y - 10, scale);
+        });
+        this.addCharacter(context, 'presenter', 'front-right', 325, 420, scale);
+        this.addFurniture(context, 'monitor', 'meeting', 38, 355, compact);
+        this.addFurniture(context, 'side-table', 'meeting', 320, 500, compact);
+
+        // Security: observation lane, independent audit, contained occupant, hardware and storage.
+        this.addFurniture(context, 'security-desk', 'security', 450, 380, scale);
+        this.addFurniture(context, 'monitor', 'security', 450, 360, compact, 560);
+        this.addFurniture(context, 'technical-chair', 'security', 450, 425, compact, 470);
+        this.addCharacter(context, 'security', 'front-right', 450, 413, scale);
+        this.addCharacter(context, 'audit', 'front-left', 525, 440, scale);
+        this.addCharacter(context, 'sandbox', 'front-right', 625, 435, scale);
+        this.addFurniture(context, 'archive-cabinet', 'security', 640, 340, compact);
+        this.addFurniture(context, 'equipment-rack', 'security', 625, 500, compact);
+
+        // Reception: desk, intake, visitor/escort and waiting zone.
+        this.addFurniture(context, 'reception-desk', 'reception', 800, 385, scale * 1.05);
+        this.addFurniture(context, 'monitor', 'reception', 800, 365, compact, 560);
+        this.addCharacter(context, 'project', 'front-left', 800, 420, scale);
+        [[905, 380], [950, 420], [905, 470]].forEach(([x, y]) => this.addFurniture(context, 'waiting-chair', 'reception', x, y, compact));
+        this.addCharacter(context, 'visitor', 'front-right', 905, 445, scale);
+        this.addCharacter(context, 'escort', 'front-left', 970, 500, scale);
+        this.addFurniture(context, 'plant', 'reception', 745, 500, compact);
+        this.addFurniture(context, 'side-table', 'reception', 940, 495, compact);
+
+        // Knowledge/archive: searchable storage, reading desk, printer and clear shelf access.
+        this.addFurniture(context, 'shelf', 'knowledge', 55, 625, compact);
+        this.addFurniture(context, 'shelf', 'knowledge', 125, 625, compact);
+        this.addFurniture(context, 'archive-cabinet', 'knowledge', 200, 625, compact);
+        this.addFurniture(context, 'research-desk', 'knowledge', 315, 625, scale);
+        this.addFurniture(context, 'research-chair', 'knowledge', 315, 665, compact, 470);
+        this.addCharacter(context, 'knowledge', 'front-left', 315, 652, scale);
+        this.addFurniture(context, 'printer', 'knowledge', 400, 625, compact);
+
+        // Primary circulation remains intentionally open; signs, plant and future path anchor only.
+        this.addFurniture(context, 'plant', 'corridor', 535, 640, compact);
+        this.addFurniture(context, 'monitor', 'corridor', 930, 620, compact);
+        this.addCharacter(context, 'escort', 'front-right', 760, 650, scale);
+    }
+
+    private drawMovementValidation(context: SuiteContext): void {
+        if (!['candidate-d', 'candidate-e'].includes(context.profile.id)) return;
+        context.rooms.forEach((room) => {
+            const inset = room.id === 'primary-circulation' ? 12 : 26;
+            const inner: LabRoom = { ...room, x: room.x + inset, y: room.y + inset, width: Math.max(20, room.width - inset * 2), depth: Math.max(20, room.depth - inset * 2) };
+            const points = roomPoints(inner, context.scaleX, context.scaleY);
+            const walkable = this.add.graphics().setDepth(points[0].depth + 8800);
+            polygon(walkable, room.id === 'secure-glass-area' ? 0xa56ad4 : 0x67c889, points, 0.17);
+            walkable.lineStyle(2, room.id === 'secure-glass-area' ? 0xd2a3f2 : 0x9ee0aa, 0.72).strokePoints(points.map((point) => new PhaserMath.Vector2(point.x, point.y)), true).setVisible(false);
+            context.movementObjects.push(walkable);
+            context.container.add(walkable);
+        });
+        const routeStart = iso(515 * context.scaleX, 635 * context.scaleY);
+        const routeEnd = iso(970 * context.scaleX, 635 * context.scaleY);
+        const route = this.add.graphics().setDepth(routeStart.depth + 9000).lineStyle(10, 0x72dca0, 0.34).lineBetween(routeStart.x, routeStart.y, routeEnd.x, routeEnd.y).setVisible(false);
+        context.circulationObjects.push(route);
+        context.container.add(route);
+    }
+
     private drawGlassAndAccess(context: SuiteContext): void {
         const profile = context.profile;
         const palette = LAB_PALETTES.security;
-        const start = iso(410 * context.scaleX, 315 * context.scaleY);
-        const end = iso(660 * context.scaleX, 315 * context.scaleY);
+        const expansive = profile.id === 'candidate-d' || profile.id === 'candidate-e';
+        const start = iso((expansive ? 390 : 410) * context.scaleX, (expansive ? 420 : 315) * context.scaleY);
+        const end = iso((expansive ? 680 : 660) * context.scaleX, (expansive ? 420 : 315) * context.scaleY);
         const height = 46 + profile.detailLevel * 8;
         const glass = this.add.graphics().setDepth(start.depth + 760);
         polygon(glass, 0x7fd8e2, [start, end, { x: end.x, y: end.y - height }, { x: start.x, y: start.y - height }], profile.id === 'baseline' ? 0.25 : 0.34);
@@ -356,28 +498,40 @@ export class HighResolutionLabScene extends Scene {
         }
         context.container.add(glass);
         this.renderedObjectCount += 1;
-        this.addFurniture(context, 'door', 'security', 575, 315, profile.id === 'baseline' ? 0.72 : 0.82, 820);
-        this.addFurniture(context, 'secure-reader', 'security', 600, 320, profile.id === 'baseline' ? 0.46 : 0.54, 840);
-        const thresholdA = iso(560 * context.scaleX, 330 * context.scaleY);
-        const thresholdB = iso(625 * context.scaleX, 330 * context.scaleY);
+        this.addFurniture(context, 'door', 'security', expansive ? 565 : 575, expansive ? 420 : 315, profile.id === 'baseline' ? 0.72 : expansive ? 0.68 : 0.82, 820);
+        this.addFurniture(context, 'secure-reader', 'security', expansive ? 600 : 600, expansive ? 425 : 320, profile.id === 'baseline' ? 0.46 : expansive ? 0.44 : 0.54, 840);
+        const thresholdA = iso((expansive ? 535 : 560) * context.scaleX, (expansive ? 440 : 330) * context.scaleY);
+        const thresholdB = iso((expansive ? 625 : 625) * context.scaleX, (expansive ? 440 : 330) * context.scaleY);
         const threshold = this.add.graphics().setDepth(thresholdA.depth + 200).lineStyle(3 + profile.detailLevel, palette.accent, 0.88).lineBetween(thresholdA.x, thresholdA.y, thresholdB.x, thresholdB.y);
         context.container.add(threshold);
         this.renderedObjectCount += 1;
     }
 
     private drawAmbientDetail(context: SuiteContext): void {
-        const operations = iso(710 * context.scaleX, 62 * context.scaleY);
+        const expansive = context.profile.id === 'candidate-d' || context.profile.id === 'candidate-e';
+        const operations = iso((expansive ? 835 : 710) * context.scaleX, 62 * context.scaleY);
         const lights: GameObjects.Rectangle[] = [];
         const count = context.profile.id === 'baseline' ? 3 : 4 + context.profile.detailLevel * 2;
         for (let index = 0; index < count; index += 1) {
             const light = this.add.rectangle(operations.x - 34 + index * 11, operations.y - 22 - (index % 2) * 4, 3 + Math.min(2, context.profile.detailLevel), 2 + Math.min(2, context.profile.detailLevel), 0x52eff5, 0.78).setDepth(operations.depth + 900);
             context.ambientObjects.push(light);
+            context.lightingObjects.push(light);
             context.container.add(light);
             lights.push(light);
             this.renderedObjectCount += 1;
         }
         if (lights.length > 0 && !context.comparison) {
             this.ambientTweens.push(this.tweens.add({ targets: lights, alpha: { from: 0.82, to: 0.25 }, duration: 900, repeat: -1, yoyo: true, stagger: 75, ease: 'Stepped' }));
+        }
+        if (expansive) {
+            const particleCount = context.profile.particleProfileCount;
+            for (let index = 0; index < particleCount; index += 1) {
+                const point = iso((120 + index * 93) * context.scaleX, (610 + (index % 2) * 34) * context.scaleY);
+                const particle = this.add.rectangle(point.x, point.y - 22 - index % 3 * 4, 2 + index % 2, 2 + index % 2, index % 3 === 0 ? 0x79dca5 : 0x74cfe0, 0.54).setDepth(point.depth + 880);
+                context.particleObjects.push(particle);
+                context.container.add(particle);
+                this.renderedObjectCount += 1;
+            }
         }
     }
 
@@ -420,14 +574,19 @@ export class HighResolutionLabScene extends Scene {
             context.dimensionObjects.forEach((object) => object.setVisible(this.preferences.showDimensions));
             context.anchorObjects.forEach((object) => object.setVisible(this.preferences.showAnchors));
             context.boundObjects.forEach((object) => object.setVisible(this.preferences.showBounds));
-            context.ambientObjects.forEach((object) => object.setVisible(this.preferences.effects !== 'off').setAlpha(this.preferences.effects === 'reduced' ? 0.35 : 0.78));
+            context.movementObjects.forEach((object) => object.setVisible(this.preferences.showMovementClearance));
+            context.circulationObjects.forEach((object) => object.setVisible(this.preferences.showCirculationRoutes));
+            context.furnitureBoundObjects.forEach((object) => object.setVisible(this.preferences.showFurnitureBounds));
+            context.interactionBoundObjects.forEach((object) => object.setVisible(this.preferences.showInteractionBounds));
+            context.ambientObjects.forEach((object) => object.setVisible(this.preferences.effects !== 'off' && this.preferences.lighting).setAlpha(this.preferences.effects === 'reduced' ? 0.35 : 0.78));
+            context.particleObjects.forEach((object) => object.setVisible(this.preferences.effects !== 'off' && this.preferences.particles !== 'off').setAlpha(this.preferences.particles === 'reduced' ? 0.25 : 0.54));
         });
         this.ambientTweens.forEach((tween) => this.preferences.effects === 'on' ? tween.resume() : tween.pause());
         this.updateRoomTitles();
     }
 
     private handleCandidate(mode: VisualLabMode): void {
-        if (!['baseline', 'candidate-a', 'candidate-b', 'candidate-c', 'comparison'].includes(mode)) {
+        if (!['baseline', 'candidate-a', 'candidate-b', 'candidate-c', 'candidate-d', 'candidate-e', 'comparison'].includes(mode)) {
             EventBus.emit('visual-lab-error', `Unknown visual-lab profile: ${String(mode)}`);
             return;
         }
@@ -528,6 +687,8 @@ export class HighResolutionLabScene extends Scene {
             objectCount: this.renderedObjectCount,
             generatedTextureCount: this.generatedTextureKeys.size,
             activeAnimationCount: this.ambientTweens.length,
+            particleCount: this.suiteContexts.reduce((sum, context) => sum + context.particleObjects.length, 0),
+            lightingCount: this.suiteContexts.reduce((sum, context) => sum + context.lightingObjects.length, 0),
         };
     }
 

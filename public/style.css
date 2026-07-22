@@ -153,6 +153,12 @@ button { font: inherit; }
     scrollbar-width: thin;
     scrollbar-color: #4b91a1 #10191e;
 }
+.visual-lab-panel.is-compact { width: 250px; }
+.visual-lab-panel.is-compact .visual-lab-metadata p, .visual-lab-panel.is-compact .visual-lab-runtime, .visual-lab-panel.is-compact .visual-lab-intro { display: none; }
+.visual-lab-panel.is-collapsed { top: 14px; bottom: auto; width: auto; padding: 6px; overflow: visible; }
+.visual-lab-panel.is-collapsed button { min-height: 32px; color: #ffe7a6; border: 1px solid #8e6b32; background: #14252b; font: 8px/1 monospace; text-transform: uppercase; }
+.visual-lab-card-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+.visual-lab-card-modes button { min-height: 24px; padding: 3px; color: #96cbd0; border: 1px solid #31515a; background: #111d21; font: 6px/1 monospace; text-transform: uppercase; }
 .visual-lab-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .visual-lab-header h1 { max-width: 205px; margin: 4px 0 0; color: #f0b34d; font-size: 15px; line-height: 1.08; letter-spacing: .04em; }
 .visual-lab-kicker { color: #78dce7; font-size: 7px; letter-spacing: .12em; }

@@ -40,8 +40,15 @@ const ROLE_PALETTES: Readonly<Record<VisualLabRole, RolePalette>> = {
     operations: { skin: 0x9a6044, skinShadow: 0x694131, hair: 0x16191d, hairLight: 0x343c43, primary: 0x203a50, primaryLight: 0x355e7c, secondary: 0x28343d, accent: 0x36e2ee, shoe: 0x151b20 },
     executive: { skin: 0xd89a68, skinShadow: 0x945c40, hair: 0x5b321f, hairLight: 0x915638, primary: 0x2b364c, primaryLight: 0x465775, secondary: 0xede2ca, accent: 0xdca944, shoe: 0x1e1d22 },
     security: { skin: 0x764b3b, skinShadow: 0x4d3028, hair: 0x141519, hairLight: 0x31343b, primary: 0x303237, primaryLight: 0x50545b, secondary: 0x682f36, accent: 0xdc6157, shoe: 0x17191d },
+    audit: { skin: 0xb97956, skinShadow: 0x784836, hair: 0x4b3528, hairLight: 0x7b5a43, primary: 0x403b45, primaryLight: 0x655d6c, secondary: 0xe0d7c8, accent: 0xc9806e, shoe: 0x211f25 },
+    engineering: { skin: 0xd99b6c, skinShadow: 0x955f44, hair: 0x2d231f, hairLight: 0x5d4638, primary: 0x34556f, primaryLight: 0x557f9e, secondary: 0xcbd7df, accent: 0x5ecdf0, shoe: 0x202830 },
+    platform: { skin: 0x8c5b44, skinShadow: 0x5c3a2e, hair: 0x241d2e, hairLight: 0x59466c, primary: 0x51466d, primaryLight: 0x756692, secondary: 0xd9d2df, accent: 0xb688e6, shoe: 0x221f2b },
+    project: { skin: 0xf0b582, skinShadow: 0xa66f4e, hair: 0x70432b, hairLight: 0xa76b42, primary: 0x586878, primaryLight: 0x7d91a3, secondary: 0xf0e4d1, accent: 0xe1b34c, shoe: 0x26282b },
+    knowledge: { skin: 0xc48762, skinShadow: 0x83533f, hair: 0x34291f, hairLight: 0x65513b, primary: 0x4d6546, primaryLight: 0x718e68, secondary: 0xe2d8bd, accent: 0xa8bf68, shoe: 0x25271f },
+    quality: { skin: 0x9d664d, skinShadow: 0x684133, hair: 0x171922, hairLight: 0x363b4a, primary: 0x665279, primaryLight: 0x89709e, secondary: 0xe2dceb, accent: 0xca8ee5, shoe: 0x211f29 },
     temporary: { skin: 0xf0b57f, skinShadow: 0xa86b49, hair: 0xb46a38, hairLight: 0xe39958, primary: 0x59656a, primaryLight: 0x78878b, secondary: 0x30383b, accent: 0xe5b74e, shoe: 0x292b2c },
     visitor: { skin: 0xbd7a57, skinShadow: 0x7c4c39, hair: 0x40271d, hairLight: 0x75503a, primary: 0x6a574a, primaryLight: 0x8e7562, secondary: 0xd6c6ac, accent: 0x79b86e, shoe: 0x282421 },
+    escort: { skin: 0xe0a173, skinShadow: 0x965f45, hair: 0x252525, hairLight: 0x505050, primary: 0x36484c, primaryLight: 0x587176, secondary: 0xd6d9cf, accent: 0xa56ad4, shoe: 0x1c2324 },
     sandbox: { skin: 0xb87959, skinShadow: 0x754838, hair: 0x3c2055, hairLight: 0x74458e, primary: 0x51345e, primaryLight: 0x77518a, secondary: 0x272a38, accent: 0xe38b3f, shoe: 0x20202a },
     meeting: { skin: 0xd49a72, skinShadow: 0x936249, hair: 0x57412f, hairLight: 0x8a684c, primary: 0x4b5369, primaryLight: 0x6e7895, secondary: 0xe3d7c4, accent: 0x9f79c7, shoe: 0x25262d },
     presenter: { skin: 0x8a5943, skinShadow: 0x5c392d, hair: 0x22252a, hairLight: 0x474d56, primary: 0x3c5e58, primaryLight: 0x5d867e, secondary: 0xd7e0d4, accent: 0xf0a64c, shoe: 0x1d2423 },
@@ -74,7 +81,9 @@ export function ensureLabCharacterTexture(scene: Scene, profile: VisualLabProfil
         graphics.fillStyle(palette.shoe).fillRect(leftLeg - unit, shoeY, legWidth + unit * 2, Math.max(2, px(height * 0.07))).fillRect(rightLeg - unit, shoeY, legWidth + unit * 2, Math.max(2, px(height * 0.07)));
 
         const torsoY = px(height * 0.30);
-        const torsoWidth = px(width * (role === 'security' ? 0.58 : 0.50));
+        const broadRole = ['security', 'escort', 'operations'].includes(role);
+        const narrowRole = ['audit', 'knowledge', 'quality'].includes(role);
+        const torsoWidth = px(width * (broadRole ? 0.58 : narrowRole ? 0.46 : 0.50));
         const torsoHeight = Math.max(5, legTop - torsoY + (seated ? px(height * 0.07) : 0));
         const torsoX = center - Math.floor(torsoWidth / 2);
         graphics.fillStyle(0x15191d).fillRect(torsoX - unit, torsoY + unit, torsoWidth + unit * 2, torsoHeight);
@@ -124,12 +133,28 @@ export function ensureLabCharacterTexture(scene: Scene, profile: VisualLabProfil
             graphics.fillStyle(palette.skinShadow).fillRect(looksRight ? headX : headX + headWidth - unit, headY + headHeight - unit * 2, unit, unit * 2);
         }
         if (detail > 2) graphics.fillStyle(0xf1c58f).fillRect(headX + unit, headY + unit * 2, unit * 2, unit);
+        if (detail > 3) {
+            graphics.fillStyle(palette.skinShadow).fillRect(headX + unit, headY + headHeight - unit * 2, headWidth - unit * 2, unit);
+            graphics.fillStyle(palette.hairLight).fillRect(looksRight ? headX + headWidth - unit * 3 : headX + unit, headY - unit, unit * 2, hairHeight + unit);
+            graphics.fillStyle(palette.primaryLight).fillRect(torsoX + unit * 2, torsoY + torsoHeight - unit * 4, torsoWidth - unit * 4, unit);
+        }
+        if (detail > 4) {
+            graphics.fillStyle(0xf5cf9f).fillRect(looksRight ? center + unit * 2 : center - unit * 3, headY + px(headHeight * 0.47), unit, unit);
+            graphics.fillStyle(0x111317).fillRect(leftLeg + unit, legTop + px(legHeight * 0.55), legWidth - unit, unit).fillRect(rightLeg, legTop + px(legHeight * 0.55), legWidth - unit, unit);
+        }
 
         if (role === 'operations') {
             graphics.fillStyle(0x1b232a).fillRect(headX - unit * 2, headY + unit, unit * 2, headHeight - unit);
             graphics.fillStyle(palette.accent).fillRect(headX - unit * 3, headY + px(headHeight * 0.55), unit * 3, unit);
         }
         if (role === 'visitor') graphics.fillStyle(0xe8d595).fillRect(torsoX + torsoWidth - unit * 3, torsoY + unit * 2, unit * 2, unit * 3);
+        if (role === 'audit') graphics.fillStyle(0xd7ebf0).fillRect(looksRight ? torsoX + torsoWidth : torsoX - unit * 5, armY + armHeight, unit * 5, unit * 7);
+        if (role === 'engineering') graphics.fillStyle(0x89dff2).fillRect(looksRight ? torsoX + torsoWidth : torsoX - unit * 4, armY + armHeight + unit, unit * 4, unit * 3);
+        if (role === 'platform') graphics.fillStyle(0xb988e8, 0.9).fillRect(torsoX - unit, torsoY - unit, torsoWidth + unit * 2, unit);
+        if (role === 'project') graphics.fillStyle(0xf0d68c).fillRect(looksRight ? torsoX + torsoWidth : torsoX - unit * 5, armY + armHeight, unit * 5, unit * 6);
+        if (role === 'knowledge') graphics.fillStyle(0xd8c99c).fillRect(looksRight ? torsoX + torsoWidth : torsoX - unit * 5, armY + armHeight, unit * 5, unit * 4);
+        if (role === 'quality') graphics.fillStyle(0xca8ee5).fillRect(torsoX + unit, torsoY + torsoHeight - unit * 3, torsoWidth - unit * 2, unit);
+        if (role === 'escort') graphics.fillStyle(0xa56ad4).fillRect(torsoX + torsoWidth - unit * 3, torsoY + unit * 2, unit * 2, unit * 4);
         if (role === 'sandbox') graphics.fillStyle(palette.accent, 0.9).fillRect(torsoX - unit, torsoY + torsoHeight - unit * 2, torsoWidth + unit * 2, unit);
         if (detail > 1 && ['executive', 'permanent', 'temporary'].includes(role)) {
             const accessoryX = looksRight ? torsoX + torsoWidth + armWidth : torsoX - armWidth * 2;
@@ -171,9 +196,15 @@ export function ensureLabFurnitureTexture(scene: Scene, profile: VisualLabProfil
             }
             if (detail > 2) graphics.fillStyle(0x9f6e3f).fillRect(px(s * 0.13), px(s * 0.42), px(s * 0.26), u);
         };
-        if (type === 'desk' || type === 'executive-desk') drawDesk(type === 'executive-desk');
-        else if (type === 'chair' || type === 'technical-chair' || type === 'meeting-chair') {
-            const chairColor = type === 'technical-chair' ? 0x304b5d : type === 'meeting-chair' ? 0x65516d : upholstery;
+        if (['desk', 'temporary-desk', 'engineering-desk', 'research-desk', 'security-desk', 'reception-desk', 'executive-desk'].includes(type)) {
+            drawDesk(type === 'executive-desk' || type === 'reception-desk');
+            if (type === 'engineering-desk') graphics.fillStyle(screen).fillRect(px(s * 0.28), px(s * 0.30), px(s * 0.34), u * 2);
+            if (type === 'research-desk') graphics.fillStyle(0xe7d6a8).fillRect(px(s * 0.18), px(s * 0.33), px(s * 0.18), u * 3).fillRect(px(s * 0.60), px(s * 0.29), px(s * 0.16), u * 2);
+            if (type === 'security-desk') graphics.fillStyle(0xd86158).fillRect(px(s * 0.13), px(s * 0.47), px(s * 0.10), u * 2);
+            if (type === 'temporary-desk') graphics.fillStyle(0xe8b74f).fillRect(px(s * 0.72), px(s * 0.48), u * 2, u * 2);
+            if (type === 'reception-desk') graphics.fillStyle(0xd9b365).fillRect(px(s * 0.18), px(s * 0.54), px(s * 0.55), u * 2);
+        } else if (['chair', 'ergonomic-chair', 'technical-chair', 'executive-chair', 'meeting-chair', 'waiting-chair', 'research-chair'].includes(type)) {
+            const chairColor = type === 'technical-chair' ? 0x304b5d : type === 'meeting-chair' ? 0x65516d : type === 'executive-chair' ? 0x263b55 : type === 'waiting-chair' ? 0x6a574a : type === 'research-chair' ? 0x4f654a : upholstery;
             polygon(graphics, dark, [{ x: px(s * 0.26), y: px(s * 0.42) }, { x: px(s * 0.51), y: px(s * 0.31) }, { x: px(s * 0.75), y: px(s * 0.42) }, { x: px(s * 0.51), y: px(s * 0.56) }]);
             polygon(graphics, chairColor, [{ x: px(s * 0.29), y: px(s * 0.40) }, { x: px(s * 0.51), y: px(s * 0.31) }, { x: px(s * 0.72), y: px(s * 0.41) }, { x: px(s * 0.51), y: px(s * 0.52) }]);
             polygon(graphics, chairColor, [{ x: px(s * 0.27), y: px(s * 0.38) }, { x: px(s * 0.28), y: px(s * 0.13) }, { x: px(s * 0.49), y: px(s * 0.24) }, { x: px(s * 0.49), y: px(s * 0.50) }]);
@@ -181,6 +212,10 @@ export function ensureLabFurnitureTexture(scene: Scene, profile: VisualLabProfil
             graphics.fillStyle(mid).fillRect(px(s * 0.31), px(s * 0.69), px(s * 0.42), u * 2);
             if (detail > 0) graphics.fillStyle(accent).fillRect(px(s * 0.31), px(s * 0.19), u * 2, px(s * 0.16));
             if (detail > 1) graphics.fillStyle(light).fillRect(px(s * 0.24), px(s * 0.47), u * 2, u * 2).fillRect(px(s * 0.72), px(s * 0.43), u * 2, u * 2);
+            if (detail > 3) {
+                graphics.fillStyle(0x191d21).fillRect(px(s * 0.38), px(s * 0.73), u * 2, px(s * 0.10)).fillRect(px(s * 0.60), px(s * 0.73), u * 2, px(s * 0.10));
+                graphics.fillStyle(chairColor).fillRect(px(s * 0.31), px(s * 0.28), u * 2, px(s * 0.13));
+            }
         } else if (type === 'monitor') {
             polygon(graphics, dark, [{ x: px(s * 0.12), y: px(s * 0.28) }, { x: px(s * 0.55), y: px(s * 0.10) }, { x: px(s * 0.87), y: px(s * 0.25) }, { x: px(s * 0.47), y: px(s * 0.46) }]);
             polygon(graphics, screen, [{ x: px(s * 0.18), y: px(s * 0.29) }, { x: px(s * 0.55), y: px(s * 0.14) }, { x: px(s * 0.80), y: px(s * 0.26) }, { x: px(s * 0.47), y: px(s * 0.42) }]);
@@ -198,21 +233,25 @@ export function ensureLabFurnitureTexture(scene: Scene, profile: VisualLabProfil
             }
             graphics.fillStyle(accent).fillRect(px(s * 0.20), px(s * 0.48), u * 2, u * 2).fillRect(px(s * 0.74), px(s * 0.48), u * 2, u * 2);
             graphics.fillStyle(dark).fillRect(px(s * 0.16), px(s * 0.67), px(s * 0.12), px(s * 0.22)).fillRect(px(s * 0.72), px(s * 0.67), px(s * 0.12), px(s * 0.22));
-        } else if (type === 'meeting-table') {
+        } else if (type === 'meeting-table' || type === 'planning-table' || type === 'side-table') {
             polygon(graphics, dark, top.map((point) => ({ x: point.x, y: point.y + u * 3 })));
             polygon(graphics, wood, top);
             polygon(graphics, 0x54301f, [top[0], top[3], { x: top[3].x, y: frontY }, { x: top[0].x, y: px(s * 0.49) }]);
             polygon(graphics, 0x663a22, [top[3], top[2], { x: top[2].x, y: px(s * 0.49) }, { x: top[3].x, y: frontY }]);
             graphics.fillStyle(light).fillRect(px(s * 0.28), px(s * 0.34), px(s * 0.13), u * 2).fillRect(px(s * 0.55), px(s * 0.29), px(s * 0.12), u * 2);
             if (detail > 1) graphics.fillStyle(0xa56f40).fillRect(px(s * 0.18), px(s * 0.39), px(s * 0.55), u);
-        } else if (type === 'shelf') {
+            if (type === 'planning-table') graphics.fillStyle(0xe7d9b8).fillRect(px(s * 0.33), px(s * 0.30), px(s * 0.23), u * 3);
+            if (type === 'side-table') graphics.fillStyle(accent).fillRect(px(s * 0.44), px(s * 0.30), u * 3, u * 3);
+        } else if (type === 'shelf' || type === 'archive-cabinet' || type === 'storage' || type === 'equipment-rack' || type === 'printer') {
             graphics.fillStyle(dark).fillRect(px(s * 0.14), px(s * 0.10), px(s * 0.72), px(s * 0.76));
-            graphics.fillStyle(wood).fillRect(px(s * 0.18), px(s * 0.13), px(s * 0.64), px(s * 0.68));
+            graphics.fillStyle(type === 'equipment-rack' ? 0x34434a : type === 'archive-cabinet' ? 0x4d514d : wood).fillRect(px(s * 0.18), px(s * 0.13), px(s * 0.64), px(s * 0.68));
             for (let row = 0; row < 3; row += 1) {
                 const y = px(s * (0.28 + row * 0.20));
                 graphics.fillStyle(0x3f291d).fillRect(px(s * 0.20), y, px(s * 0.60), u * 2);
-                for (let book = 0; book < 5; book += 1) graphics.fillStyle([accent, 0x8b4e43, 0x6c8d5a, 0xc39a51, 0x607f9a][book]).fillRect(px(s * (0.23 + book * 0.10)), y - px(s * 0.10), u * 2, px(s * 0.10));
+                if (type === 'shelf') for (let book = 0; book < 5; book += 1) graphics.fillStyle([accent, 0x8b4e43, 0x6c8d5a, 0xc39a51, 0x607f9a][book]).fillRect(px(s * (0.23 + book * 0.10)), y - px(s * 0.10), u * 2, px(s * 0.10));
+                else graphics.fillStyle(type === 'equipment-rack' ? screen : 0x9b8b75).fillRect(px(s * 0.27), y - px(s * 0.08), px(s * 0.42), u * 2);
             }
+            if (type === 'printer') graphics.fillStyle(0xd8e0df).fillRect(px(s * 0.27), px(s * 0.18), px(s * 0.46), px(s * 0.25));
         } else if (type === 'plant') {
             polygon(graphics, 0x6e3f27, [{ x: px(s * 0.31), y: px(s * 0.62) }, { x: px(s * 0.68), y: px(s * 0.62) }, { x: px(s * 0.61), y: px(s * 0.87) }, { x: px(s * 0.39), y: px(s * 0.87) }]);
             graphics.fillStyle(0x315d3c).fillEllipse(px(s * 0.50), px(s * 0.40), px(s * 0.28), px(s * 0.46));

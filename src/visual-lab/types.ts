@@ -1,10 +1,11 @@
-export type VisualLabCandidateId = 'baseline' | 'candidate-a' | 'candidate-b' | 'candidate-c';
+export type VisualLabCandidateId = 'baseline' | 'candidate-a' | 'candidate-b' | 'candidate-c' | 'candidate-d' | 'candidate-e';
 export type VisualLabMode = VisualLabCandidateId | 'comparison';
 export type VisualLabLabelMode = 'auto' | 'minimal' | 'on';
 export type VisualLabEffectsMode = 'on' | 'reduced' | 'off';
-export type VisualLabRole = 'permanent' | 'seated' | 'operations' | 'executive' | 'security' | 'temporary' | 'visitor' | 'sandbox' | 'meeting' | 'presenter';
+export type VisualLabParticleMode = 'on' | 'reduced' | 'off';
+export type VisualLabRole = 'permanent' | 'seated' | 'operations' | 'executive' | 'security' | 'audit' | 'engineering' | 'platform' | 'project' | 'knowledge' | 'quality' | 'temporary' | 'visitor' | 'escort' | 'sandbox' | 'meeting' | 'presenter';
 export type VisualLabFacing = 'front-left' | 'front-right';
-export type VisualLabFurnitureType = 'desk' | 'executive-desk' | 'chair' | 'technical-chair' | 'meeting-chair' | 'meeting-table' | 'console' | 'shelf' | 'plant' | 'monitor' | 'secure-reader' | 'door';
+export type VisualLabFurnitureType = 'desk' | 'temporary-desk' | 'engineering-desk' | 'research-desk' | 'security-desk' | 'reception-desk' | 'executive-desk' | 'chair' | 'ergonomic-chair' | 'technical-chair' | 'executive-chair' | 'meeting-chair' | 'waiting-chair' | 'research-chair' | 'meeting-table' | 'planning-table' | 'side-table' | 'console' | 'equipment-rack' | 'shelf' | 'archive-cabinet' | 'storage' | 'printer' | 'plant' | 'monitor' | 'secure-reader' | 'door';
 
 export interface VisualLabDimensions {
     readonly suiteWidth: number;
@@ -17,6 +18,10 @@ export interface VisualLabDimensions {
     readonly chairClearance: number;
     readonly personSpacing: number;
     readonly circulationWidth: number;
+    readonly mainCorridorWidth: number;
+    readonly secondaryCorridorWidth: number;
+    readonly secureCorridorWidth: number;
+    readonly movementClearanceArea: number;
     readonly wallThickness: number;
 }
 export interface VisualLabAssetProfile {
@@ -45,21 +50,31 @@ export interface VisualLabProfile {
     readonly shortName: string;
     readonly title: string;
     readonly description: string;
-    readonly detailLevel: 0 | 1 | 2 | 3;
+    readonly detailLevel: 0 | 1 | 2 | 3 | 4 | 5;
     readonly dimensions: VisualLabDimensions;
     readonly assets: VisualLabAssetProfile;
     readonly lightingDepth: number;
     readonly propDensity: number;
+    readonly materialProfileCount: number;
+    readonly departmentThemeCount: number;
+    readonly particleProfileCount: number;
+    readonly lightingProfileCount: number;
     readonly migrationEffort: 'existing' | 'low' | 'medium' | 'high';
-    readonly performanceRisk: 'existing' | 'low' | 'moderate' | 'higher';
+    readonly performanceRisk: 'existing' | 'low' | 'moderate' | 'higher' | 'premium';
 }
 
 export interface VisualLabPreferences {
     readonly labels: VisualLabLabelMode;
     readonly effects: VisualLabEffectsMode;
+    readonly particles: VisualLabParticleMode;
+    readonly lighting: boolean;
     readonly showDimensions: boolean;
     readonly showAnchors: boolean;
     readonly showBounds: boolean;
+    readonly showMovementClearance: boolean;
+    readonly showCirculationRoutes: boolean;
+    readonly showFurnitureBounds: boolean;
+    readonly showInteractionBounds: boolean;
 }
 
 export interface VisualLabSelection {

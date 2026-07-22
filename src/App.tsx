@@ -6,7 +6,7 @@ import { EventBus } from './game/EventBus';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import type { InspectionDetails } from './domain/building/inspection';
 import { DEFAULT_VIEW_PREFERENCES, type ViewPreferences } from './rendering/viewState';
-import { HighResolutionLabPanel } from './components/HighResolutionLabPanel';
+import { HighResolutionLabPanel, type VisualLabCardMode } from './components/HighResolutionLabPanel';
 import { DEFAULT_VISUAL_LAB_PREFERENCES } from './visual-lab/profiles';
 import type { VisualLabMode, VisualLabPreferences, VisualLabSelection } from './visual-lab/types';
 import { isHighResolutionVisualLab } from './visual-lab/route';
@@ -155,6 +155,7 @@ function HighResolutionLabApplication() {
     const [selection, setSelection] = useState<VisualLabSelection>();
     const [hover, setHover] = useState<(VisualLabSelection & { readonly x: number; readonly y: number })>();
     const [presentation, setPresentation] = useState(false);
+    const [cardMode, setCardMode] = useState<VisualLabCardMode>('expanded');
     const [runtime, setRuntime] = useState<VisualLabRuntimeSummary>({ objectCount: 0, generatedTextureCount: 0, activeAnimationCount: 0 });
 
     useEffect(() => {
@@ -189,8 +190,9 @@ function HighResolutionLabApplication() {
 
     useEffect(() => {
         if (!ready) return;
-        EventBus.emit('visual-lab-safe-area', presentation ? { top: 18, right: 18, bottom: 18, left: 18 } : { top: 18, right: 18, bottom: 18, left: 326 });
-    }, [presentation, ready]);
+        const left = cardMode === 'collapsed' ? 132 : cardMode === 'compact' ? 270 : 326;
+        EventBus.emit('visual-lab-safe-area', presentation ? { top: 18, right: 18, bottom: 18, left: 18 } : { top: 18, right: 18, bottom: 18, left });
+    }, [cardMode, presentation, ready]);
 
     const cameraCommand = (command: 'fit' | 'reset' | 'zoom-in' | 'zoom-out') => EventBus.emit('visual-lab-camera-command', command);
     const clearSelection = () => EventBus.emit('visual-lab-clear-selection');
@@ -203,6 +205,7 @@ function HighResolutionLabApplication() {
                 {error && <div className="error-screen" role="alert"><div className="loading-title">VISUAL LAB FAILED</div><p>{error}</p><button type="button" onClick={() => window.location.reload()}>Retry</button></div>}
                 {ready && !presentation && <HighResolutionLabPanel
                     mode={mode}
+                    cardMode={cardMode}
                     zoom={cameraState.zoom}
                     preferences={preferences}
                     selection={selection}
@@ -210,6 +213,7 @@ function HighResolutionLabApplication() {
                     textureCount={runtime.generatedTextureCount}
                     animationCount={runtime.activeAnimationCount}
                     onModeChange={setMode}
+                    onCardModeChange={setCardMode}
                     onCameraCommand={cameraCommand}
                     onPreferencesChange={setPreferences}
                     onClearSelection={clearSelection}
@@ -218,7 +222,7 @@ function HighResolutionLabApplication() {
                 {ready && hover && !presentation && <div className="pixel-tooltip visual-lab-tooltip" style={{ left: hover.x + 16, top: hover.y + 14 }} role="tooltip"><strong>{hover.title}</strong><span>{hover.subtitle}</span></div>}
                 {!presentation && <><a className="visual-lab-return" href="/">Return to Floor 1</a><div className="camera-help">DRAG TO PAN · WHEEL TO POINTER-ZOOM · F TO FIT · 0 TO RESET</div></>}
                 {presentation && <button className="presentation-exit" type="button" onClick={() => setPresentation(false)}>Exit Presentation</button>}
-                <p className="screen-reader-summary">High-resolution visual checkpoint comparing the current baseline with Candidate A, Candidate B, and Candidate C. This laboratory does not modify production Floor 1 data.</p>
+                <p className="screen-reader-summary">High-resolution visual checkpoint comparing Candidate C, Candidate D, and Candidate E. This laboratory does not modify production Floor 1 data.</p>
             </section>
         </main>
     );

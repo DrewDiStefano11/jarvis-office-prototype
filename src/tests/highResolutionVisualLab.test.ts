@@ -12,13 +12,25 @@ describe('high-resolution visual laboratory', () => {
         expect(isHighResolutionVisualLab('?visualLab=high-resolution-checkpoint')).toBe(true);
     });
 
-    it('defines four unique, valid, deliberately different profiles', () => {
+    it('defines six unique, valid, deliberately different profiles', () => {
         const validation = validateVisualLabProfiles(VISUAL_LAB_PROFILES);
         expect(validation).toEqual({ valid: true, errors: [] });
-        expect(new Set(VISUAL_LAB_PROFILES.map((profile) => profile.id)).size).toBe(4);
-        expect(VISUAL_LAB_PROFILES.map((profile) => profile.assets.standing.width)).toEqual([24, 32, 48, 64]);
-        expect(VISUAL_LAB_PROFILES.map((profile) => profile.assets.furniture)).toEqual([32, 48, 64, 80]);
-        expect(VISUAL_LAB_PROFILES.map((profile) => profile.dimensions.usableAreaIncrease)).toEqual([0, 25.3, 44.8, 70]);
+        expect(new Set(VISUAL_LAB_PROFILES.map((profile) => profile.id)).size).toBe(6);
+        expect(VISUAL_LAB_PROFILES.map((profile) => profile.assets.standing.width)).toEqual([24, 32, 48, 64, 80, 112]);
+        expect(VISUAL_LAB_PROFILES.map((profile) => profile.assets.furniture)).toEqual([32, 48, 64, 80, 112, 160]);
+        expect(VISUAL_LAB_PROFILES.map((profile) => profile.dimensions.usableAreaIncrease)).toEqual([0, 25.3, 44.8, 70, 125.5, 214.3]);
+    });
+
+    it('keeps Candidates D and E movement-ready and materially larger than Candidate C', () => {
+        const c = VISUAL_LAB_PROFILES[3];
+        const d = VISUAL_LAB_PROFILES[4];
+        const e = VISUAL_LAB_PROFILES[5];
+        expect(d.dimensions.mainCorridorWidth).toBeGreaterThanOrEqual(136);
+        expect(e.dimensions.secureCorridorWidth).toBeGreaterThanOrEqual(140);
+        expect(d.dimensions.usableAreaIncrease - c.dimensions.usableAreaIncrease).toBeGreaterThanOrEqual(25);
+        expect(e.dimensions.usableAreaIncrease - c.dimensions.usableAreaIncrease).toBeGreaterThanOrEqual(60);
+        expect(e.materialProfileCount).toBe(15);
+        expect(e.departmentThemeCount).toBe(10);
     });
 
     it('uses stable, profile-scoped texture keys', () => {
