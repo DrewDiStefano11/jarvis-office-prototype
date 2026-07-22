@@ -11,6 +11,6 @@ export class Preloader extends Scene {
     }
 
     create() {
-        this.scene.start('OfficeScene');
+        this.scene.start(this.registry.get('scene-mode') === 'high-resolution-lab' ? 'HighResolutionLabScene' : 'OfficeScene');
     }
 }

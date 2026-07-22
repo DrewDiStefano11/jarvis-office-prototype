@@ -135,6 +135,79 @@ button { font: inherit; }
 }
 .presentation-exit:focus-visible { outline: 3px solid #f0a62f; outline-offset: 2px; }
 
+.visual-lab-root { background: #12100f; }
+.visual-lab-panel {
+    position: absolute;
+    z-index: 30;
+    top: 14px;
+    bottom: 14px;
+    left: 14px;
+    width: 294px;
+    padding: 13px;
+    overflow: auto;
+    color: #e8e2d6;
+    background: #10191ef5;
+    border: 3px solid #4b91a1;
+    box-shadow: 0 0 0 2px #071014, 7px 8px 0 #0008, inset 0 0 0 2px #1c3f49;
+    text-transform: uppercase;
+    scrollbar-width: thin;
+    scrollbar-color: #4b91a1 #10191e;
+}
+.visual-lab-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.visual-lab-header h1 { max-width: 205px; margin: 4px 0 0; color: #f0b34d; font-size: 15px; line-height: 1.08; letter-spacing: .04em; }
+.visual-lab-kicker { color: #78dce7; font-size: 7px; letter-spacing: .12em; }
+.visual-lab-state { padding: 3px 4px; color: #f3bd63; border: 1px solid #705a31; font-size: 6px; white-space: nowrap; }
+.visual-lab-intro { margin: 9px 0 0; color: #b9c6c5; font-size: 7px; line-height: 1.4; text-transform: none; }
+.visual-lab-section { padding-top: 9px; margin-top: 9px; border-top: 1px solid #31515a; }
+.visual-lab-section h2 { margin: 0 0 6px; color: #d8b77b; font-size: 8px; letter-spacing: .08em; }
+.candidate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.candidate-grid button:first-child { grid-column: 1 / -1; }
+.candidate-grid button, .visual-lab-control-grid button, .visual-lab-layers button, .visual-lab-presentation, .visual-lab-section-heading button {
+    min-height: 28px;
+    padding: 5px 6px;
+    color: #dfe6e3;
+    background: #18272d;
+    border: 1px solid #3d6976;
+    box-shadow: inset 0 0 0 1px #0a1114;
+    text-transform: uppercase;
+    font-size: 7px;
+    cursor: pointer;
+}
+.candidate-grid button:hover, .visual-lab-control-grid button:hover, .visual-lab-layers button:hover, .visual-lab-presentation:hover { color: #fff2cd; background: #26444e; }
+.candidate-grid button.is-active { color: #172025; background: #e7b34f; border-color: #ffe0a0; box-shadow: inset 0 0 0 1px #8b6220; font-weight: 900; }
+.candidate-grid button:focus-visible, .visual-lab-control-grid button:focus-visible, .visual-lab-layers button:focus-visible, .visual-lab-presentation:focus-visible, .visual-lab-return:focus-visible { outline: 3px solid #f0a62f; outline-offset: 2px; }
+.visual-lab-metadata p { margin: 0 0 7px; color: #b8c8c7; font-size: 7px; line-height: 1.4; text-transform: none; }
+.visual-lab-metadata dl, .visual-lab-runtime dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; margin: 0; font-size: 7px; }
+.visual-lab-metadata dt, .visual-lab-metadata dd, .visual-lab-runtime dt, .visual-lab-runtime dd { margin: 0; }
+.visual-lab-metadata dd, .visual-lab-runtime dd { color: #fff0ca; text-align: right; }
+.visual-lab-inspector strong, .visual-lab-inspector span { display: block; }
+.visual-lab-inspector strong { color: #ffe3a5; font-size: 9px; }
+.visual-lab-inspector span { padding-top: 3px; color: #83d2dd; font-size: 7px; line-height: 1.35; text-transform: none; }
+.visual-lab-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.visual-lab-section-heading button { min-height: 0; padding: 2px 4px; font-size: 6px; }
+.visual-lab-control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.visual-lab-layers { display: grid; gap: 4px; }
+.visual-lab-layers h2 { margin-bottom: 2px; }
+.visual-lab-layers button { text-align: left; }
+.visual-lab-layers button[aria-pressed="true"] { color: #fff2cd; border-color: #d6a947; }
+.visual-lab-presentation { width: 100%; margin-top: 10px; color: #ffe7a6; border-color: #8e6b32; }
+.visual-lab-return {
+    position: absolute;
+    z-index: 25;
+    top: 14px;
+    right: 14px;
+    padding: 6px 9px;
+    color: #bcd9d9;
+    background: #111b20e8;
+    border: 2px solid #3c7280;
+    box-shadow: 3px 3px 0 #0008;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-size: 8px;
+}
+.visual-lab-return:hover { color: #fff0c7; background: #1b333c; }
+.visual-lab-tooltip { max-width: 250px; }
+
 .loading-screen, .error-screen {
     position: absolute;
     inset: 0;
@@ -178,6 +251,8 @@ button { font: inherit; }
     .floor-status-panel.is-expanded { width: 226px; }
     .floor-status-panel.is-compact { width: 210px; }
     .camera-help { right: 8px; bottom: 8px; font-size: 7px; }
+    .visual-lab-panel { top: 8px; bottom: 8px; left: 8px; width: 248px; }
+    .visual-lab-return { top: 8px; right: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

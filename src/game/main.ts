@@ -2,6 +2,9 @@ import { AUTO, Game, Types, Scale } from 'phaser';
 import type { FloorDefinition } from '../domain/building/types';
 import { Preloader } from './scenes/Preloader';
 import { OfficeScene } from './scenes/OfficeScene';
+import { HighResolutionLabScene } from './scenes/HighResolutionLabScene';
+
+export type SceneMode = 'floor' | 'high-resolution-lab';
 
 const config: Types.Core.GameConfig = {
     type: AUTO,
@@ -18,16 +21,20 @@ const config: Types.Core.GameConfig = {
     },
     scene: [
         Preloader,
-        OfficeScene
+        OfficeScene,
+        HighResolutionLabScene,
     ]
 };
 
-const StartGame = (parent: string, floor: FloorDefinition) => {
+const StartGame = (parent: string, floor: FloorDefinition, sceneMode: SceneMode = 'floor') => {
     return new Game({
         ...config,
         parent,
         callbacks: {
-            preBoot: (game) => game.registry.set('active-floor', floor),
+            preBoot: (game) => {
+                game.registry.set('active-floor', floor);
+                game.registry.set('scene-mode', sceneMode);
+            },
         },
     });
 }

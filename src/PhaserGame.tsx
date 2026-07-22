@@ -3,6 +3,7 @@ import { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
 import StartGame from './game/main';
 import { EventBus } from './game/EventBus';
 import type { FloorDefinition } from './domain/building/types';
+import type { SceneMode } from './game/main';
 
 export interface IRefPhaserGame
 {
@@ -13,10 +14,11 @@ export interface IRefPhaserGame
 interface IProps
 {
     floor: FloorDefinition;
+    mode?: SceneMode;
     currentActiveScene?: (scene_instance: Scene) => void
 }
 
-export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame({ floor, currentActiveScene }, ref)
+export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame({ floor, mode = 'floor', currentActiveScene }, ref)
 {
     const game = useRef<Game | null>(null!);
 
@@ -25,7 +27,7 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
         if (game.current === null)
         {
 
-            game.current = StartGame("game-container", floor);
+            game.current = StartGame("game-container", floor, mode);
 
             if (typeof ref === 'function')
             {
@@ -48,7 +50,7 @@ export const PhaserGame = forwardRef<IRefPhaserGame, IProps>(function PhaserGame
                 }
             }
         }
-    }, [floor, ref]);
+    }, [floor, mode, ref]);
 
     useEffect(() =>
     {
