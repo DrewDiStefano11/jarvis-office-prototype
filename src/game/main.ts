@@ -3,8 +3,9 @@ import type { FloorDefinition } from '../domain/building/types';
 import { Preloader } from './scenes/Preloader';
 import { OfficeScene } from './scenes/OfficeScene';
 import { HighResolutionLabScene } from './scenes/HighResolutionLabScene';
+import { ApprovedFloorProofScene } from './scenes/ApprovedFloorProofScene';
 
-export type SceneMode = 'floor' | 'high-resolution-lab';
+export type SceneMode = 'floor' | 'high-resolution-lab' | 'approved-proof';
 
 const config: Types.Core.GameConfig = {
     type: AUTO,
@@ -23,6 +24,7 @@ const config: Types.Core.GameConfig = {
         Preloader,
         OfficeScene,
         HighResolutionLabScene,
+        ApprovedFloorProofScene,
     ]
 };
 

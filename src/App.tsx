@@ -10,6 +10,10 @@ import { HighResolutionLabPanel, type VisualLabCardMode } from './components/Hig
 import { DEFAULT_VISUAL_LAB_PREFERENCES } from './visual-lab/profiles';
 import type { VisualLabMode, VisualLabPreferences, VisualLabSelection } from './visual-lab/types';
 import { isHighResolutionVisualLab } from './visual-lab/route';
+import { isApprovedFloorProof } from './visual-lab/route';
+import { ApprovedProofPanel, type ApprovedProofCardMode } from './components/ApprovedProofPanel';
+import { DEFAULT_APPROVED_PROOF_PREFERENCES } from './approved-proof/data';
+import type { ApprovedProofPreferences, ApprovedProofSelection } from './approved-proof/types';
 
 const defaultPreferences: ViewPreferences = {
     ...DEFAULT_VIEW_PREFERENCES,
@@ -228,7 +232,46 @@ function HighResolutionLabApplication() {
     );
 }
 
+interface ApprovedProofRuntime { readonly objectCount: number; readonly textureCount: number; readonly roomCount: number; readonly characterCount: number }
+function ApprovedFloorProofApplication() {
+    const phaserRef = useRef<IRefPhaserGame | null>(null);
+    const floor = useMemo(() => getApplicationFloor(), []);
+    const [ready, setReady] = useState(false);
+    const [error, setError] = useState<string>();
+    const [preferences, setPreferences] = useState<ApprovedProofPreferences>({ ...DEFAULT_APPROVED_PROOF_PREFERENCES });
+    const [cameraState, setCameraState] = useState({ zoom: 1, view: 'Fit Floor', scrollX: 0, scrollY: 0 });
+    const [selection, setSelection] = useState<ApprovedProofSelection>();
+    const [hover, setHover] = useState<(ApprovedProofSelection & { readonly x: number; readonly y: number })>();
+    const [presentation, setPresentation] = useState(false);
+    const [cardMode, setCardMode] = useState<ApprovedProofCardMode>('expanded');
+    const [runtime, setRuntime] = useState<ApprovedProofRuntime>({ objectCount: 0, textureCount: 0, roomCount: 0, characterCount: 0 });
+
+    useEffect(() => {
+        const onRendered = (summary: ApprovedProofRuntime) => { setReady(true); setRuntime(summary); };
+        const onError = (message: string) => { setError(message); setReady(false); };
+        const onCamera = (state: typeof cameraState) => setCameraState(state);
+        const onSelection = (details?: ApprovedProofSelection) => setSelection(details);
+        const onHover = (details?: ApprovedProofSelection & { readonly x: number; readonly y: number }) => setHover(details);
+        EventBus.on('approved-proof-rendered', onRendered); EventBus.on('approved-proof-error', onError); EventBus.on('approved-proof-camera-state', onCamera); EventBus.on('approved-proof-selection', onSelection); EventBus.on('approved-proof-hover', onHover);
+        return () => { EventBus.off('approved-proof-rendered', onRendered); EventBus.off('approved-proof-error', onError); EventBus.off('approved-proof-camera-state', onCamera); EventBus.off('approved-proof-selection', onSelection); EventBus.off('approved-proof-hover', onHover); };
+    }, []);
+    useEffect(() => { if (ready) EventBus.emit('approved-proof-preferences', preferences); }, [preferences, ready]);
+    useEffect(() => { if (!ready) return; const left = presentation ? 18 : cardMode === 'collapsed' ? 132 : cardMode === 'compact' ? 270 : 326; EventBus.emit('approved-proof-safe-area', { top: 18, right: 18, bottom: 18, left }); }, [cardMode, presentation, ready]);
+    const cameraCommand = (command: 'fit' | 'reset' | 'zoom-in' | 'zoom-out') => EventBus.emit('approved-proof-camera-command', command);
+    return <main id="app-root" className="visual-lab-root approved-proof-root"><section className="office-canvas-pane" aria-label="Interactive approved Floor 1 architecture proof">
+        <PhaserGame ref={phaserRef} floor={floor} mode="approved-proof" />
+        {!ready && !error && <div className="loading-screen" role="status"><div className="loading-title">JARVIS HQ</div><div>INITIALIZING APPROVED FLOOR 1 PROOF</div><div className="loading-track"><span /></div></div>}
+        {error && <div className="error-screen" role="alert"><div className="loading-title">FLOOR PROOF FAILED</div><p>{error}</p><button type="button" onClick={() => window.location.reload()}>Retry</button></div>}
+        {ready && !presentation && <ApprovedProofPanel cardMode={cardMode} zoom={cameraState.zoom} preferences={preferences} selection={selection} runtime={runtime} onCardModeChange={setCardMode} onCameraCommand={cameraCommand} onPreferencesChange={setPreferences} onClearSelection={() => EventBus.emit('approved-proof-clear-selection')} onPresentation={() => setPresentation(true)} />}
+        {ready && hover && !presentation && <div className="pixel-tooltip visual-lab-tooltip" style={{ left: hover.x + 16, top: hover.y + 14 }} role="tooltip"><strong>{hover.title}</strong><span>{hover.subtitle}</span></div>}
+        {!presentation && <><a className="visual-lab-return" href="/">Return to current Floor 1</a><div className="camera-help">DRAG TO PAN · WHEEL TO POINTER-ZOOM · F TO FIT · 0 TO RESET</div></>}
+        {presentation && <button className="presentation-exit" type="button" onClick={() => setPresentation(false)}>Exit Presentation</button>}
+        <p className="screen-reader-summary">Isolated twenty-five percent Floor 1 proof. Eight rooms and ten representative permanent occupants. Awaiting user approval before replication.</p>
+    </section></main>;
+}
+
 function App() {
+    if (isApprovedFloorProof(window.location.search)) return <ApprovedFloorProofApplication />;
     const visualLab = isHighResolutionVisualLab(window.location.search);
     return visualLab ? <HighResolutionLabApplication /> : <FloorApplication />;
 }
