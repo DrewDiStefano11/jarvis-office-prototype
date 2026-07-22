@@ -36,6 +36,10 @@ This repository is the visual office prototype for the standalone Jarvis Agent E
 - `npm run lint` (using eslint, if configured).
 - `tsc` - Run TypeScript compiler checks.
 
+## High-resolution visual checkpoint
+
+PR #9 includes an isolated Baseline/A/B/C comparison at `?visualLab=high-resolution-checkpoint`. It uses the real Phaser camera and rendering path while leaving the normal Floor 1 route unchanged. The checkpoint candidates are complete, full-floor conversion is not authorized, and visual-direction selection is pending user review. See `docs/floor-1/high-resolution-checkpoint/FINAL-CHECKPOINT.md` and `docs/visual-evidence/high-resolution-checkpoint/final/README.md`.
+
 ## Interacting with the prototype
 1. Click an agent in the canvas (left) or select them in the React dropdown (right).
 2. Use the "Send to..." buttons or the dropdown to dispatch the selected agent.

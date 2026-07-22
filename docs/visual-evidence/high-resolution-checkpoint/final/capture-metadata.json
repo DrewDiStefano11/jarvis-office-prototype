@@ -1,0 +1,705 @@
+{
+  "repository": "DrewDiStefano11/jarvis-office-prototype",
+  "branch": "feature/floor-1-visual-foundation-v2",
+  "implementationSha": "795ba49",
+  "httpStatus": 200,
+  "capturedAt": "2026-07-22T00:48:42.261Z",
+  "screenshotCount": 40,
+  "consoleErrors": [],
+  "interactions": [
+    {
+      "action": "enter-visual-lab",
+      "durationMs": 1791.2334
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 573.3760000000002
+    },
+    {
+      "action": "switch-baseline",
+      "durationMs": 573.7196000000004
+    },
+    {
+      "action": "switch-candidate-a",
+      "durationMs": 563.1796000000013
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 566.1836999999996
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 569.9717
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 567.1143999999986
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 561.6358
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 552.2088000000003
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 593.5334999999977
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 561.3870999999999
+    },
+    {
+      "action": "switch-candidate-a",
+      "durationMs": 559.4199000000008
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 562.1679999999978
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 553.3291999999965
+    },
+    {
+      "action": "switch-candidate-a",
+      "durationMs": 553.9850000000006
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 559.5053000000007
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 558.4435999999987
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 556.0162999999993
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 566.3761000000013
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 559.3682000000044
+    }
+  ],
+  "dprChecks": [
+    {
+      "deviceScaleFactor": 1,
+      "httpStatus": 200,
+      "loadMs": 1249.5747000000047,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    },
+    {
+      "deviceScaleFactor": 1.25,
+      "httpStatus": 200,
+      "loadMs": 1170.8800999999949,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    },
+    {
+      "deviceScaleFactor": 1.5,
+      "httpStatus": 200,
+      "loadMs": 1527.506300000001,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    },
+    {
+      "deviceScaleFactor": 2,
+      "httpStatus": 200,
+      "loadMs": 960.1382999999987,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    }
+  ],
+  "captures": [
+    {
+      "filename": "01-current-full-floor-baseline-1920x1080.png",
+      "candidate": "normal-floor",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 0.9683500347256672,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Production Floor 1 before-state at the final implementation tree",
+      "requirement": "Current full-floor baseline at 1920×1080",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "02-current-close-character-baseline.png",
+      "candidate": "normal-floor",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 2.34,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Current standing character at close zoom",
+      "requirement": "Current close character baseline",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "03-visual-lab-full-prototype-overview.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.12,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Query-gated real Phaser visual-lab overview",
+      "requirement": "Visual-lab full prototype overview",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "04-four-way-baseline-a-b-c-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.12,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Matched Baseline/A/B/C room-function comparison",
+      "requirement": "Four-way Baseline/A/B/C comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "05-baseline-full-prototype.png",
+      "candidate": "baseline",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Representative suite at current source density and room scale",
+      "requirement": "Baseline full prototype view",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "06-candidate-a-full-prototype.png",
+      "candidate": "candidate-a",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate A full representative suite",
+      "requirement": "Candidate A full prototype view",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "07-candidate-b-full-prototype.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate B full representative suite",
+      "requirement": "Candidate B full prototype view",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "08-candidate-c-full-prototype.png",
+      "candidate": "candidate-c",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate C full representative suite",
+      "requirement": "Candidate C full prototype view",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "09-four-way-medium-zoom.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Matched four-way comparison at medium zoom",
+      "requirement": "Four-way medium-zoom comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "10-four-way-close-zoom.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.44,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Matched four-way comparison at close zoom",
+      "requirement": "Four-way close-zoom comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "11-standing-character-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.44,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Standing roles across all four source-resolution profiles",
+      "requirement": "Standing character comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "12-seated-desk-character-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.44,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Seated desk integration across profiles",
+      "requirement": "Seated desk character comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "13-operations-console-character-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.44,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Operations console operators and display banks across profiles",
+      "requirement": "Operations console character comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "14-executive-and-security-character-comparison.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 2.39,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Executive and Security role silhouettes in the balanced profile",
+      "requirement": "Executive and Security character comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "15-temporary-and-visitor-comparison.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 2.39,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Temporary badge/accent and visitor clothing differentiation",
+      "requirement": "Temporary and visitor comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "16-sandbox-character-comparison.png",
+      "candidate": "candidate-c",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 2.446,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Sandbox occupant behind framed containment glass",
+      "requirement": "Sandbox character comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "17-desk-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Standard and executive desk construction across profiles",
+      "requirement": "Desk comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "18-chair-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Standard, technical, meeting, and executive seating across profiles",
+      "requirement": "Chair comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "19-console-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Operations consoles across source resolutions",
+      "requirement": "Console comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "20-meeting-table-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Meeting-table planes, front edge, documents, and chairs",
+      "requirement": "Meeting table comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "21-wall-and-door-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Wall caps, side faces, base trim, and secure door construction",
+      "requirement": "Wall and door comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "22-glass-and-secure-access-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Glass frames, transparency, threshold, reader, and occupant depth",
+      "requirement": "Glass and secure-access comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "23-floor-material-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Wood, carpet, technical tile, secure flooring, and transition treatment",
+      "requirement": "Floor-material comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "24-lighting-and-shadow-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Hard-edged material shading, contact shadows, and equipment lights",
+      "requirement": "Lighting and shadow comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "25-department-color-theme-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.28,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Engineering, Executive, Operations, Security, Meeting, and Knowledge palettes",
+      "requirement": "Department color-theme comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "26-department-hover-title-hidden.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Auto labels with no room hovered or selected",
+      "requirement": "Department hover title hidden state",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "27-department-hover-title-visible.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Auto label revealed from a real Phaser room hover region",
+      "requirement": "Department hover title visible state",
+      "consoleErrorCount": 0,
+      "hoverVisible": true
+    },
+    {
+      "filename": "28-selected-department-title-state.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Selected room holds its title and populates the inspector",
+      "requirement": "Selected-department title state",
+      "consoleErrorCount": 0,
+      "inspectorVisible": true
+    },
+    {
+      "filename": "29-labels-minimal-mode.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "minimal",
+      "purpose": "Only physical signs and selected title remain",
+      "requirement": "Labels Minimal mode",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "30-labels-on-mode.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "on",
+      "purpose": "Optional concise floating titles enabled",
+      "requirement": "Labels On mode",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "31-candidate-a-1366x768.png",
+      "candidate": "candidate-a",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1366x768",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.521829521829522,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate A responsive fit",
+      "requirement": "Candidate A at 1366×768",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "32-candidate-b-1366x768.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1366x768",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.4338883447600392,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate B responsive fit",
+      "requirement": "Candidate B at 1366×768",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "33-candidate-c-1366x768.png",
+      "candidate": "candidate-c",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1366x768",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.327969726596761,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate C responsive fit",
+      "requirement": "Candidate C at 1366×768",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "34-candidate-a-close-pixel-clarity.png",
+      "candidate": "candidate-a",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 2.63,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate A authored source pixels at close zoom",
+      "requirement": "Candidate A close pixel clarity",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "35-candidate-b-close-pixel-clarity.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 2.63,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate B authored source pixels at close zoom",
+      "requirement": "Candidate B close pixel clarity",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "36-candidate-c-close-pixel-clarity.png",
+      "candidate": "candidate-c",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 2.63,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate C authored source pixels at close zoom",
+      "requirement": "Candidate C close pixel clarity",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "37-dimensions-scale-anchor-overlay.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Candidate B geometry, room bounds, source anchors, and measurements",
+      "requirement": "Dimensions and scale overlay",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "38-presentation-mode-comparison.png",
+      "candidate": "comparison",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.12,
+      "effects": "on",
+      "labels": "auto",
+      "purpose": "Four-way comparison without panel obstruction",
+      "requirement": "Presentation-mode comparison",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "39-reduced-motion-state.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "reduced",
+      "labels": "auto",
+      "purpose": "Optional ambient animation paused with restrained effects visible",
+      "requirement": "Reduced-motion state",
+      "consoleErrorCount": 0
+    },
+    {
+      "filename": "40-effects-off-state.png",
+      "candidate": "candidate-b",
+      "implementationSha": "795ba49",
+      "branch": "feature/floor-1-visual-foundation-v2",
+      "viewport": "1920x1080",
+      "devicePixelRatio": 1,
+      "cameraZoom": 1.55,
+      "effects": "off",
+      "labels": "auto",
+      "purpose": "Core scene remains legible with optional effects hidden",
+      "requirement": "Effects-off state",
+      "consoleErrorCount": 0
+    }
+  ]
+}

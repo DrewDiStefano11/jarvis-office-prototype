@@ -1,0 +1,135 @@
+{
+  "interactions": [
+    {
+      "action": "enter-visual-lab",
+      "durationMs": 1791.2334
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 573.3760000000002
+    },
+    {
+      "action": "switch-baseline",
+      "durationMs": 573.7196000000004
+    },
+    {
+      "action": "switch-candidate-a",
+      "durationMs": 563.1796000000013
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 566.1836999999996
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 569.9717
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 567.1143999999986
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 561.6358
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 552.2088000000003
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 593.5334999999977
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 561.3870999999999
+    },
+    {
+      "action": "switch-candidate-a",
+      "durationMs": 559.4199000000008
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 562.1679999999978
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 553.3291999999965
+    },
+    {
+      "action": "switch-candidate-a",
+      "durationMs": 553.9850000000006
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 559.5053000000007
+    },
+    {
+      "action": "switch-candidate-c",
+      "durationMs": 558.4435999999987
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 556.0162999999993
+    },
+    {
+      "action": "switch-comparison",
+      "durationMs": 566.3761000000013
+    },
+    {
+      "action": "switch-candidate-b",
+      "durationMs": 559.3682000000044
+    }
+  ],
+  "dprChecks": [
+    {
+      "deviceScaleFactor": 1,
+      "httpStatus": 200,
+      "loadMs": 1249.5747000000047,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    },
+    {
+      "deviceScaleFactor": 1.25,
+      "httpStatus": 200,
+      "loadMs": 1170.8800999999949,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    },
+    {
+      "deviceScaleFactor": 1.5,
+      "httpStatus": 200,
+      "loadMs": 1527.506300000001,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    },
+    {
+      "deviceScaleFactor": 2,
+      "httpStatus": 200,
+      "loadMs": 960.1382999999987,
+      "canvas": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "clientHeight": 900
+      },
+      "consoleErrors": []
+    }
+  ],
+  "consoleErrors": []
+}

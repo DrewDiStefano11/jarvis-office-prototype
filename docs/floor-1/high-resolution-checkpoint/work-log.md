@@ -39,4 +39,18 @@ Implementation checkpoints 2–7 will be appended after each candidate is run an
 - Confirmed a genuine upper boundary: 64×80 characters, 80 px furniture, +70% area, the largest material pixels, and the strongest close-zoom potential.
 - Confirmed the tradeoff is visible without metadata: larger source assets and room geometry make the suite more expansive, but project a materially larger full-floor footprint and higher migration cost.
 
-The next checkpoint is matched evidence capture, detailed interaction verification, performance measurement, and final design QA.
+## Checkpoint 6 - Evidence, interaction, and performance
+
+- Captured 40 scripted running-app screenshots at implementation SHA `795ba49`, plus two source/implementation QA comparison sheets and one interaction video.
+- Verified hover and inspector states programmatically and recorded zero console errors across the complete capture set.
+- Exercised pan, pointer-centered zoom, Fit Prototype, Reset View, candidate switching, hover, selection, inspector, label modes, effects modes, dimensions, anchors, bounds, and presentation mode.
+- Verified fresh 1440x900 loads at DPR 1, 1.25, 1.5, and 2; all returned HTTP 200 with zero console errors.
+- Recorded 355 display objects and 132 cached textures after visiting all profiles in the four-way mode; a Candidate B-only view contained 87 display objects and one optional ambient tween.
+
+## Checkpoint 7 - Final design QA and recommendation
+
+- Placed the detailed room reference beside Candidate B/C close views and the original whole-office target beside the four-way comparison, then judged them as combined visual inputs.
+- Rechecked full, close, 1366x768, hover, selection, label, presentation, reduced-motion, and effects-off states.
+- Found no P0, P1, or P2 visual or interaction defect within checkpoint scope.
+- Selected Candidate B as the strongest production base, with selective Candidate C spacing/detail in showcase rooms and Candidate A restraint for repeated/support content.
+- Confirmed the production Floor 1 route remains unchanged and the full conversion remains pending user authorization.
