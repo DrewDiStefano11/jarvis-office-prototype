@@ -1,6 +1,8 @@
 import { AUTO, Game, Types, Scale } from 'phaser';
 import { Preloader } from './scenes/Preloader';
 import { OfficeScene } from './scenes/OfficeScene';
+import { FloorOneScene } from './scenes/FloorOneScene';
+import { MapEditorScene } from './scenes/MapEditorScene';
 
 const config: Types.Core.GameConfig = {
     type: AUTO,
@@ -15,7 +17,9 @@ const config: Types.Core.GameConfig = {
     },
     scene: [
         Preloader,
-        OfficeScene
+        OfficeScene,
+        FloorOneScene,
+        MapEditorScene
     ]
 };
 

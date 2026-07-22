@@ -1,0 +1,1033 @@
+{
+  "map": {
+    "id": "jarvis-floor-1",
+    "name": "Jarvis Agent Headquarters Floor 1",
+    "image": "/assets/maps/jarvis-floor-1-clean.png",
+    "width": 1536,
+    "height": 1024,
+    "version": 1
+  },
+  "rooms": [
+    {
+      "id": "executive-command",
+      "name": "Executive Command",
+      "department": "executive-command",
+      "category": "department",
+      "description": "Upper-center warm gold and brown room.",
+      "polygon": [
+        {
+          "x": 600,
+          "y": 80
+        },
+        {
+          "x": 930,
+          "y": 80
+        },
+        {
+          "x": 930,
+          "y": 320
+        },
+        {
+          "x": 600,
+          "y": 320
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "executive-boardroom",
+      "name": "Executive Boardroom",
+      "department": "executive-command",
+      "category": "support",
+      "description": "Boardroom adjacent to Executive Command.",
+      "polygon": [
+        {
+          "x": 940,
+          "y": 80
+        },
+        {
+          "x": 1150,
+          "y": 80
+        },
+        {
+          "x": 1150,
+          "y": 320
+        },
+        {
+          "x": 940,
+          "y": 320
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "security-and-governance",
+      "name": "Security and Governance",
+      "department": "security-and-governance",
+      "category": "department",
+      "description": "Upper-left red room.",
+      "polygon": [
+        {
+          "x": 100,
+          "y": 100
+        },
+        {
+          "x": 550,
+          "y": 100
+        },
+        {
+          "x": 550,
+          "y": 400
+        },
+        {
+          "x": 100,
+          "y": 400
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "reliability-and-operations",
+      "name": "Reliability and Operations",
+      "department": "reliability-and-operations",
+      "category": "department",
+      "description": "Upper-right cyan room.",
+      "polygon": [
+        {
+          "x": 1180,
+          "y": 100
+        },
+        {
+          "x": 1450,
+          "y": 100
+        },
+        {
+          "x": 1450,
+          "y": 450
+        },
+        {
+          "x": 1180,
+          "y": 450
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "agent-platform-and-models",
+      "name": "Agent Platform and Models",
+      "department": "agent-platform-and-models",
+      "category": "department",
+      "description": "Middle-left purple room.",
+      "polygon": [
+        {
+          "x": 100,
+          "y": 420
+        },
+        {
+          "x": 400,
+          "y": 420
+        },
+        {
+          "x": 400,
+          "y": 680
+        },
+        {
+          "x": 100,
+          "y": 680
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "software-engineering",
+      "name": "Software Engineering",
+      "department": "software-engineering",
+      "category": "department",
+      "description": "Middle-right blue room.",
+      "polygon": [
+        {
+          "x": 1120,
+          "y": 470
+        },
+        {
+          "x": 1450,
+          "y": 470
+        },
+        {
+          "x": 1450,
+          "y": 720
+        },
+        {
+          "x": 1120,
+          "y": 720
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "plugins-and-automation",
+      "name": "Plugins and Automation",
+      "department": "plugins-and-automation",
+      "category": "department",
+      "description": "Lower-left green room.",
+      "polygon": [
+        {
+          "x": 100,
+          "y": 700
+        },
+        {
+          "x": 400,
+          "y": 700
+        },
+        {
+          "x": 400,
+          "y": 950
+        },
+        {
+          "x": 100,
+          "y": 950
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "project-and-release-management",
+      "name": "Project and Release Management",
+      "department": "project-and-release-management",
+      "category": "department",
+      "description": "Lower-right amber room.",
+      "polygon": [
+        {
+          "x": 1120,
+          "y": 740
+        },
+        {
+          "x": 1450,
+          "y": 740
+        },
+        {
+          "x": 1450,
+          "y": 950
+        },
+        {
+          "x": 1120,
+          "y": 950
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "data-memory-and-knowledge",
+      "name": "Data, Memory and Knowledge",
+      "department": "data-memory-and-knowledge",
+      "category": "department",
+      "description": "Lower-center teal and brown department.",
+      "polygon": [
+        {
+          "x": 600,
+          "y": 750
+        },
+        {
+          "x": 930,
+          "y": 750
+        },
+        {
+          "x": 930,
+          "y": 950
+        },
+        {
+          "x": 600,
+          "y": 950
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "central-nexus",
+      "name": "Central Nexus",
+      "department": "central-nexus",
+      "category": "department",
+      "description": "The circular room in the center.",
+      "polygon": [
+        {
+          "x": 600,
+          "y": 400
+        },
+        {
+          "x": 930,
+          "y": 400
+        },
+        {
+          "x": 930,
+          "y": 680
+        },
+        {
+          "x": 600,
+          "y": 680
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "reception-and-navigation",
+      "name": "Reception and Navigation",
+      "department": "support",
+      "category": "support",
+      "description": "Reception at the bottom center.",
+      "polygon": [
+        {
+          "x": 650,
+          "y": 960
+        },
+        {
+          "x": 880,
+          "y": 960
+        },
+        {
+          "x": 880,
+          "y": 1010
+        },
+        {
+          "x": 650,
+          "y": 1010
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "public-entrance",
+      "name": "Public Entrance",
+      "department": "support",
+      "category": "support",
+      "description": "Public entrance area.",
+      "polygon": [
+        {
+          "x": 700,
+          "y": 1010
+        },
+        {
+          "x": 830,
+          "y": 1010
+        },
+        {
+          "x": 830,
+          "y": 1024
+        },
+        {
+          "x": 700,
+          "y": 1024
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "left-security-checkpoint",
+      "name": "Left Security Checkpoint",
+      "department": "security",
+      "category": "support",
+      "description": "Security checkpoint.",
+      "polygon": [
+        {
+          "x": 450,
+          "y": 900
+        },
+        {
+          "x": 550,
+          "y": 900
+        },
+        {
+          "x": 550,
+          "y": 950
+        },
+        {
+          "x": 450,
+          "y": 950
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "right-security-checkpoint",
+      "name": "Right Security Checkpoint",
+      "department": "security",
+      "category": "support",
+      "description": "Security checkpoint.",
+      "polygon": [
+        {
+          "x": 950,
+          "y": 900
+        },
+        {
+          "x": 1050,
+          "y": 900
+        },
+        {
+          "x": 1050,
+          "y": 950
+        },
+        {
+          "x": 950,
+          "y": 950
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "elevator",
+      "name": "Elevator",
+      "department": "support",
+      "category": "support",
+      "description": "Main elevator.",
+      "polygon": [
+        {
+          "x": 700,
+          "y": 10
+        },
+        {
+          "x": 830,
+          "y": 10
+        },
+        {
+          "x": 830,
+          "y": 70
+        },
+        {
+          "x": 700,
+          "y": 70
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "upper-left-stairs",
+      "name": "Upper-Left Stairs",
+      "department": "support",
+      "category": "support",
+      "description": "Stairs to upper level.",
+      "polygon": [
+        {
+          "x": 20,
+          "y": 20
+        },
+        {
+          "x": 100,
+          "y": 20
+        },
+        {
+          "x": 100,
+          "y": 100
+        },
+        {
+          "x": 20,
+          "y": 100
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "upper-right-stairs",
+      "name": "Upper-Right Stairs",
+      "department": "support",
+      "category": "support",
+      "description": "Stairs to upper level.",
+      "polygon": [
+        {
+          "x": 1430,
+          "y": 20
+        },
+        {
+          "x": 1510,
+          "y": 20
+        },
+        {
+          "x": 1510,
+          "y": 100
+        },
+        {
+          "x": 1430,
+          "y": 100
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "conference-room-2",
+      "name": "Conference Room 2",
+      "department": "plugins-and-automation",
+      "category": "support",
+      "description": "Meeting room.",
+      "polygon": [
+        {
+          "x": 420,
+          "y": 750
+        },
+        {
+          "x": 520,
+          "y": 750
+        },
+        {
+          "x": 520,
+          "y": 850
+        },
+        {
+          "x": 420,
+          "y": 850
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "conference-room-3",
+      "name": "Conference Room 3",
+      "department": "project-and-release-management",
+      "category": "support",
+      "description": "Meeting room.",
+      "polygon": [
+        {
+          "x": 980,
+          "y": 750
+        },
+        {
+          "x": 1080,
+          "y": 750
+        },
+        {
+          "x": 1080,
+          "y": 850
+        },
+        {
+          "x": 980,
+          "y": 850
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "focus-room-a",
+      "name": "Focus Room A",
+      "department": "agent-platform-and-models",
+      "category": "support",
+      "description": "Quiet room.",
+      "polygon": [
+        {
+          "x": 420,
+          "y": 450
+        },
+        {
+          "x": 520,
+          "y": 450
+        },
+        {
+          "x": 520,
+          "y": 520
+        },
+        {
+          "x": 420,
+          "y": 520
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "focus-room-b",
+      "name": "Focus Room B",
+      "department": "agent-platform-and-models",
+      "category": "support",
+      "description": "Quiet room.",
+      "polygon": [
+        {
+          "x": 420,
+          "y": 540
+        },
+        {
+          "x": 520,
+          "y": 540
+        },
+        {
+          "x": 520,
+          "y": 610
+        },
+        {
+          "x": 420,
+          "y": 610
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "focus-room-e",
+      "name": "Focus Room E",
+      "department": "software-engineering",
+      "category": "support",
+      "description": "Quiet room.",
+      "polygon": [
+        {
+          "x": 980,
+          "y": 450
+        },
+        {
+          "x": 1080,
+          "y": 450
+        },
+        {
+          "x": 1080,
+          "y": 520
+        },
+        {
+          "x": 980,
+          "y": 520
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "focus-room-f",
+      "name": "Focus Room F",
+      "department": "software-engineering",
+      "category": "support",
+      "description": "Quiet room.",
+      "polygon": [
+        {
+          "x": 980,
+          "y": 540
+        },
+        {
+          "x": 1080,
+          "y": 540
+        },
+        {
+          "x": 1080,
+          "y": 610
+        },
+        {
+          "x": 980,
+          "y": 610
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "sandbox-cell-2",
+      "name": "Sandbox Cell 2",
+      "department": "security-and-governance",
+      "category": "support",
+      "description": "Secure cell.",
+      "polygon": [
+        {
+          "x": 420,
+          "y": 150
+        },
+        {
+          "x": 520,
+          "y": 150
+        },
+        {
+          "x": 520,
+          "y": 250
+        },
+        {
+          "x": 420,
+          "y": 250
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "sandbox-cell-3",
+      "name": "Sandbox Cell 3",
+      "department": "reliability-and-operations",
+      "category": "support",
+      "description": "Secure cell.",
+      "polygon": [
+        {
+          "x": 980,
+          "y": 150
+        },
+        {
+          "x": 1080,
+          "y": 150
+        },
+        {
+          "x": 1080,
+          "y": 250
+        },
+        {
+          "x": 980,
+          "y": 250
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "policy-and-compliance",
+      "name": "Policy and Compliance",
+      "department": "security-and-governance",
+      "category": "department",
+      "description": "Compliance area near security.",
+      "polygon": [
+        {
+          "x": 100,
+          "y": 250
+        },
+        {
+          "x": 400,
+          "y": 250
+        },
+        {
+          "x": 400,
+          "y": 400
+        },
+        {
+          "x": 100,
+          "y": 400
+        }
+      ],
+      "enabled": true
+    }
+  ],
+  "walkableAreas": [
+    {
+      "id": "walkable-entrance",
+      "name": "Entrance Walkable",
+      "polygon": [
+        {
+          "x": 700,
+          "y": 980
+        },
+        {
+          "x": 830,
+          "y": 980
+        },
+        {
+          "x": 830,
+          "y": 1020
+        },
+        {
+          "x": 700,
+          "y": 1020
+        }
+      ],
+      "enabled": true
+    }
+  ],
+  "blockedAreas": [
+    {
+      "id": "blocked-nexus-center",
+      "name": "Nexus Machinery",
+      "polygon": [
+        {
+          "x": 720,
+          "y": 500
+        },
+        {
+          "x": 810,
+          "y": 500
+        },
+        {
+          "x": 810,
+          "y": 590
+        },
+        {
+          "x": 720,
+          "y": 590
+        }
+      ],
+      "enabled": true
+    }
+  ],
+  "doors": [
+    {
+      "id": "door-public-entrance",
+      "name": "Main Entrance Door",
+      "x": 768,
+      "y": 1015,
+      "roomA": "public-entrance",
+      "roomB": "reception-and-navigation",
+      "accessType": "public",
+      "enabled": true
+    }
+  ],
+  "interactionPoints": [],
+  "navigationNodes": [
+    {
+      "id": "nav-public-entrance",
+      "name": "Public Entrance",
+      "x": 768,
+      "y": 1000,
+      "roomId": "public-entrance",
+      "nodeType": "spawn",
+      "enabled": true
+    },
+    {
+      "id": "nav-reception",
+      "name": "Reception",
+      "x": 768,
+      "y": 970,
+      "roomId": "reception-and-navigation",
+      "nodeType": "corridor",
+      "enabled": true
+    },
+    {
+      "id": "nav-central-nexus",
+      "name": "Central Nexus",
+      "x": 768,
+      "y": 620,
+      "roomId": "central-nexus",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-exec-command",
+      "name": "Exec Command",
+      "x": 768,
+      "y": 200,
+      "roomId": "executive-command",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-security",
+      "name": "Security",
+      "x": 300,
+      "y": 250,
+      "roomId": "security-and-governance",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-reliability",
+      "name": "Reliability",
+      "x": 1300,
+      "y": 250,
+      "roomId": "reliability-and-operations",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-agent-platform",
+      "name": "Agent Platform",
+      "x": 250,
+      "y": 550,
+      "roomId": "agent-platform-and-models",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-software",
+      "name": "Software Eng",
+      "x": 1280,
+      "y": 590,
+      "roomId": "software-engineering",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-plugins",
+      "name": "Plugins",
+      "x": 250,
+      "y": 800,
+      "roomId": "plugins-and-automation",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-project",
+      "name": "Project",
+      "x": 1280,
+      "y": 840,
+      "roomId": "project-and-release-management",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-data",
+      "name": "Data",
+      "x": 768,
+      "y": 850,
+      "roomId": "data-memory-and-knowledge",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-conf-2",
+      "name": "Conf 2",
+      "x": 470,
+      "y": 800,
+      "roomId": "conference-room-2",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-conf-3",
+      "name": "Conf 3",
+      "x": 1030,
+      "y": 800,
+      "roomId": "conference-room-3",
+      "nodeType": "room-center",
+      "enabled": true
+    },
+    {
+      "id": "nav-policy",
+      "name": "Policy and Compliance",
+      "x": 250,
+      "y": 325,
+      "roomId": "policy-and-compliance",
+      "nodeType": "room-center",
+      "enabled": true
+    }
+  ],
+  "navigationEdges": [
+    {
+      "id": "edge-entrance-reception",
+      "from": "nav-public-entrance",
+      "to": "nav-reception",
+      "movementCost": 10,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-reception-nexus",
+      "from": "nav-reception",
+      "to": "nav-central-nexus",
+      "movementCost": 50,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-exec",
+      "from": "nav-central-nexus",
+      "to": "nav-exec-command",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-security",
+      "from": "nav-central-nexus",
+      "to": "nav-security",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-reliability",
+      "from": "nav-central-nexus",
+      "to": "nav-reliability",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-agent",
+      "from": "nav-central-nexus",
+      "to": "nav-agent-platform",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-software",
+      "from": "nav-central-nexus",
+      "to": "nav-software",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-plugins",
+      "from": "nav-central-nexus",
+      "to": "nav-plugins",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-project",
+      "from": "nav-central-nexus",
+      "to": "nav-project",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-data",
+      "from": "nav-central-nexus",
+      "to": "nav-data",
+      "movementCost": 200,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-plugins-conf2",
+      "from": "nav-plugins",
+      "to": "nav-conf-2",
+      "movementCost": 50,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-project-conf3",
+      "from": "nav-project",
+      "to": "nav-conf-3",
+      "movementCost": 50,
+      "bidirectional": true,
+      "enabled": true
+    },
+    {
+      "id": "edge-nexus-policy",
+      "from": "nav-central-nexus",
+      "to": "nav-policy",
+      "movementCost": 150,
+      "bidirectional": true,
+      "enabled": true
+    }
+  ],
+  "foregroundMasks": [
+    {
+      "id": "mask-nexus-console",
+      "name": "Central Nexus Front Console",
+      "rect": {
+        "x": 700,
+        "y": 550,
+        "width": 140,
+        "height": 60
+      },
+      "enabled": true,
+      "purpose": "Hide character when behind front central nexus desk."
+    },
+    {
+      "id": "mask-exec-front-wall",
+      "name": "Executive Command Front Wall",
+      "rect": {
+        "x": 600,
+        "y": 300,
+        "width": 330,
+        "height": 40
+      },
+      "enabled": true,
+      "purpose": "Hide character when walking behind the lower exec wall."
+    },
+    {
+      "id": "mask-reception-desk",
+      "name": "Reception Desk",
+      "rect": {
+        "x": 720,
+        "y": 980,
+        "width": 100,
+        "height": 30
+      },
+      "enabled": true,
+      "purpose": "Hide character behind front reception counter."
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-entrance",
+      "name": "Entrance Spawn",
+      "x": 768,
+      "y": 1000,
+      "roomAssociation": "public-entrance",
+      "facingDirection": "up"
+    }
+  ]
+}

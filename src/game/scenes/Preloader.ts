@@ -6,11 +6,14 @@ export class Preloader extends Scene {
     }
 
     preload() {
-        // We will procedurally generate assets, so no external assets to load right now.
-        // If we needed fonts or base UI elements, we'd load them here.
+        // Load the new canonical map
+        this.load.image('jarvis-floor-1-clean', '/assets/maps/jarvis-floor-1-clean.png');
     }
 
     create() {
-        this.scene.start('OfficeScene');
+        // We defer starting the scene to the React App via an Event,
+        // or we default to FloorOneScene. App.tsx will tell us what to do if needed,
+        // but let's default to FloorOneScene as requested.
+        this.scene.start('FloorOneScene');
     }
 }
