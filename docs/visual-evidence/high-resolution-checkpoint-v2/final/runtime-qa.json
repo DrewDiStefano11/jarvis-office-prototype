@@ -1,0 +1,78 @@
+{
+  "measuredAt": "2026-07-22T02:21:23.412Z",
+  "note": "Timing is wall-clock interaction latency, not FPS.",
+  "results": [
+    {
+      "viewport": "1920x1080",
+      "dpr": 1,
+      "startupMs": 1406,
+      "candidateSwitchMs": {
+        "Candidate C": 188,
+        "Candidate D": 155,
+        "Candidate E": 155
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "horizontalOverflow": false,
+      "errors": []
+    },
+    {
+      "viewport": "1600x900",
+      "dpr": 1.25,
+      "startupMs": 1005,
+      "candidateSwitchMs": {
+        "Candidate C": 172,
+        "Candidate D": 170,
+        "Candidate E": 155
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "width": 1600,
+        "height": 900
+      },
+      "horizontalOverflow": false,
+      "errors": []
+    },
+    {
+      "viewport": "1440x900",
+      "dpr": 1.5,
+      "startupMs": 948,
+      "candidateSwitchMs": {
+        "Candidate C": 187,
+        "Candidate D": 173,
+        "Candidate E": 172
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": false,
+      "errors": []
+    },
+    {
+      "viewport": "1366x768",
+      "dpr": 2,
+      "startupMs": 926,
+      "candidateSwitchMs": {
+        "Candidate C": 185,
+        "Candidate D": 160,
+        "Candidate E": 171
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "width": 1366,
+        "height": 768
+      },
+      "horizontalOverflow": false,
+      "errors": []
+    }
+  ]
+}

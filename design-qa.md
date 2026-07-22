@@ -1,97 +1,35 @@
-# Final Design QA - Floor 1
+# Design QA — high-resolution checkpoint v2
 
-Result: **PASS**
+- source visual truth: supplied detailed room reference `codex-clipboard-d71644ad-2db9-45fb-962c-2ba960501243.png` (211×212) plus the original 1536×1024 Jarvis HQ office target
+- implementation: `docs/visual-evidence/high-resolution-checkpoint-v2/final/03-candidate-e-overview.png` (1920×1080, CSS viewport 1920×1080, DPR 1)
+- normalized comparison: `docs/visual-evidence/high-resolution-checkpoint-v2/final/55-primary-room-reference-beside-d.png` and `56-primary-room-reference-beside-e.png`; source is shown without resampling and implementation remains pixel-sharp at its capture density
+- state: final Candidate D and E checkpoint, clean overlays, expanded status card
+- focused evidence: images 7–40 cover rooms, characters, furniture, architecture, materials, and department palettes
 
-The original target and the final 1920x1080 application overview were reviewed together in one side-by-side comparison. The written floor/security specification remains authoritative where it intentionally differs from the reference. The final app retains the warm isometric management-game character, cutaway hierarchy, dark cyan Nexus, populated rooms, department identity, and crisp pixel scale. The target still has hand-painted environmental micro-detail and much denser display art; those differences are documented as primitive-prototype limitations, not omitted required rooms or occupants.
+## Findings
 
-## Defect review
+No actionable P0/P1/P2 issue remains for this direction-checkpoint scope. The implementation intentionally adapts the source's readable pixel density and warm office material cues to the existing Jarvis HQ projection; it does not copy the source layout or assets.
 
-- P0: none
-- P1: none
-- P2: none after correcting repeated sprites, seated composition, camera framing, label hierarchy, responsive card modes, and drag-to-select suppression
-- P3: detail labels can become visually dense at extreme zoom; Labels Minimal is a normal persistent product control. Monitor text remains iconographic at overview scale.
+Required fidelity surfaces:
 
-## Final sprite rubric
+- Fonts/typography: the established crisp monospace UI and pixel labels remain consistent. Physical signs are deliberately terse; floating titles remain hover/selection driven.
+- Spacing/layout rhythm: D and E use genuine data-backed suite growth, wider corridor classes, and explicit walkable overlays. Controls remain usable at 1920×1080, 1600×900, 1440×900, and 1366×768 with no horizontal overflow.
+- Colors/tokens: ten department themes preserve the existing cyan/amber Jarvis language while adding reception, knowledge, executive wood, security, and Operations identities.
+- Image/asset quality: production content consists of original profile-generated nearest-neighbor textures. Supplied references are used only in evidence comparisons and are not committed as production assets.
+- Copy/content: candidate names, measurements, risk, and unapproved status are explicit; the route clearly states that production Floor 1 is unchanged.
+- States/interactions: C/D/E switch, pointer zoom, pan, fit/reset, hover, selection/inspector, card modes, overlays, label modes, particles, effects, reduced motion, and presentation mode were exercised.
+- Accessibility: semantic buttons, pressed states, visible focus styles, reduced-motion behavior, and non-obstructive labels remain present.
 
-| Category | Score | Evidence |
-| --- | ---: | --- |
-| Pixel-art consistency | 5 | Nearest-neighbor layered textures at every zoom |
-| Scale consistency | 5 | Shared standing/seated dimensions and anchors |
-| Character variety | 5 | 38 deterministic appearances, 38 texture keys |
-| Hair variety | 5 | 11 visible styles |
-| Clothing variety | 5 | 11 structural categories |
-| Skin-tone variety | 5 | 6 respectful shaded palettes |
-| Role identity | 4 | Pose, badge, clothing, accessory, inspector |
-| Department identity | 4 | Restrained accent panels and context props |
-| Pose variety | 5 | All 13 pose families represented |
-| Facing-direction accuracy | 4 | All four directions authored by activity context |
-| Seated integration | 4 | Dedicated anatomy/anchors and furniture depth |
-| Meeting composition | 4 | Boardroom, Strategy, Incident, review groups audited |
-| Sandbox differentiation | 5 | Four unique pose/accent/device/facing treatments |
-| Depth ordering | 4 | Seated/standing contact-depth strategy visually checked |
-| Placement accuracy | 4 | Automated geometry plus 38-person visual audit |
-| Hover usability | 4 | Delayed full-body hit target and viewport tooltip |
-| Selection usability | 5 | Clear floor ring, persistent selection, drag suppression |
-| Inspector accuracy | 5 | Domain-sourced role/location/pose/facing/appearance/access |
-| Animation restraint | 5 | Five occupants, one shared one-pixel tween, reduced/off support |
-| Performance and cleanup | 5 | Static geometry, cached textures, shared tween, shutdown cleanup |
+## Comparison history
 
-No category scores below 4 and no major sprite defect is knowingly deferred.
+Initial inspection found the previous Candidate C too compact and insufficiently detailed for the requested direction. Candidate D introduced +125.5% production area, 80×112 characters, 112 px furniture, and movement-ready geometry. Candidate E introduced +214.3% production area, 112×128 characters, 160 px furniture, deeper lighting, and premium close detail. Post-fix evidence is the final 60-image set captured from `d574a8b9732760cf84e37b8719615bab4c6ec20e`.
 
----
+## Residual P3 polish
 
-# Design QA - High-Resolution Visual Checkpoint
+- A full-floor conversion would need walking/idle sprite animation frames beyond this static direction checkpoint.
+- Candidate E should be selectively applied so its larger furniture and ambience do not reduce overview clarity.
+- The final production pass should add more hair-construction families and seated pose variants while preserving the approved scale.
 
-## Source truth
+Browser evidence: 60 screenshots and one WebM interaction recording. Console errors: 0. Runtime QA: four viewport/DPR combinations, 0 overflow, 0 errors.
 
-- Original whole-office target: user-supplied `codex-clipboard-75aa89e1-ffba-4cdc-a683-fecc14244f30.png` (1536x1024).
-- Primary detailed isometric room reference: user-supplied `codex-clipboard-d71644ad-2db9-45fb-962c-2ba960501243.png` (211x212).
-- Verified production baseline: `docs/visual-evidence/high-resolution-checkpoint/baseline/` at PR #9 starting SHA `694521d71aa64450dcec2921e524c6aa47468d7f`.
-- Candidate implementation: branch `feature/floor-1-visual-foundation-v2`, implementation SHA `795ba49`.
-
-## Comparison inputs
-
-- Full-context comparison: `docs/visual-evidence/high-resolution-checkpoint/final/42-source-floor-vs-four-way.png`.
-- Focused detail comparison: `docs/visual-evidence/high-resolution-checkpoint/final/41-source-room-vs-candidates-b-c.png`.
-- Running-app full views: candidate A/B/C screenshots 06-08 at 1920x1080.
-- Running-app close views: candidate A/B/C screenshots 34-36 at 1920x1080 and camera zoom 2.63.
-- Responsive views: screenshots 31-33 at 1366x768.
-- Interaction states: screenshots 26-30 and the final WebM recording.
-
-The reference and implementation were inspected together in the same comparison canvases. Source images were not edited, traced, recolored, or used as runtime assets.
-
-## Fidelity surfaces reviewed
-
-| Surface | Result | Notes |
-| --- | --- | --- |
-| Isometric projection | Pass | Candidates preserve the established Jarvis HQ projection and hard-edged pixel geometry. |
-| Room spaciousness | Pass | A/B/C make measurable +25.3%/+44.8%/+70% authored-area changes. |
-| Character-to-furniture scale | Pass | B and C produce readable standing and seated integration without oversized people. |
-| Character structure | Pass | B/C visibly separate hair, face, torso layers, arms, legs, shoes, badges, and role accents. |
-| Furniture construction | Pass | Desks, chair types, tables, console banks, shelving, glass, doors, readers, monitors, and plants have distinct construction. |
-| Material treatment | Pass | Wood, carpet, technical tile, secure flooring, glass, wall caps, trim, and contact shadows are differentiated. |
-| Warm atmosphere | Pass | Executive/meeting/knowledge rooms retain warm wood and neutral surfaces while Operations remains controlled cyan. |
-| Label obstruction | Pass | Candidate default labels are hover/selection driven; persistent physical signs are small and wall-mounted. |
-| Core interactions | Pass | Pan, pointer-centered zoom, fit, reset, hover, selection, inspector, label modes, effects, and presentation mode work. |
-| Responsive layout | Pass | A/B/C remain usable at 1366x768; the panel does not cover the prototype. |
-| Reduced effects | Pass | Reduced and Off states preserve scene comprehension. |
-| Console stability | Pass | 40 scripted captures and DPR 1-2 checks recorded zero console errors. |
-
-## Review history
-
-1. First running inspection found the four-way candidates too small and the physical suite signs visually disconnected.
-2. The comparison layout was enlarged, dead space reduced, and physical signs moved onto walls.
-3. Candidate A, B, and C were re-run at overview, medium, close, responsive, hover, selection, and reduced-effects states.
-4. The detailed room reference was placed beside B/C close views; the whole-office target was placed beside the four-way view.
-5. Final review found no P0, P1, or P2 layout, interaction, rendering, or console defect inside checkpoint scope.
-
-## Residual deltas
-
-- The lab deliberately uses one representative functional suite; it does not reproduce the full office's quantity of unique rooms.
-- The source room reference contains more decorative wall art and small desktop clutter than the checkpoint suite. The recommended hybrid reserves that density for showcase rooms to avoid full-floor noise and texture growth.
-- Candidate C has the closest raw close-up scale, but B provides the better full-floor tradeoff.
-- Final production conversion, animation-sheet authoring for every facing, and whole-floor spacing changes remain blocked on the user's direction choice by design.
-
-## Final result
-
-**Passed.** The isolated visual checkpoint is ready for user direction selection. Candidate B with selective Candidate C showcase spacing/detail is the recommended direction.
+final result: passed
