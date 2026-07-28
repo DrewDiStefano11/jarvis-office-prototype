@@ -1,0 +1,211 @@
+.sprite-lab {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #dbe6f5;
+    background: #0b111c;
+    min-height: 100vh;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.sprite-lab__header h1 {
+    margin: 0 0 4px;
+    font-size: 20px;
+}
+
+.sprite-lab__header p {
+    margin: 0 0 20px;
+    color: #8fa4c0;
+    max-width: 70ch;
+    line-height: 1.5;
+}
+
+.sprite-lab__panel {
+    border: 1px solid #22304a;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+    background: #0f1725;
+}
+
+.sprite-lab__panel h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #7fd0ff;
+}
+
+.sprite-lab__panel h3 {
+    margin: 20px 0 8px;
+    font-size: 13px;
+    color: #a8bcd8;
+}
+
+.sprite-lab__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.sprite-lab__controls label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    color: #8fa4c0;
+}
+
+.sprite-lab__controls select,
+.sprite-lab__controls button {
+    background: #182338;
+    color: #dbe6f5;
+    border: 1px solid #2c3d5c;
+    border-radius: 4px;
+    padding: 5px 9px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.sprite-lab__controls button:hover {
+    background: #22314d;
+}
+
+.sprite-lab__stage {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border-radius: 4px;
+    border: 1px solid #22304a;
+    min-width: 160px;
+    min-height: 160px;
+}
+
+/* Checkerboard makes stray halos and non-transparent backgrounds obvious. */
+.sprite-lab__stage--checker,
+.sprite-lab__sheet.sprite-lab__stage--checker {
+    background-color: #cfcfcf;
+    background-image:
+        linear-gradient(45deg, #9a9a9a 25%, transparent 25%, transparent 75%, #9a9a9a 75%),
+        linear-gradient(45deg, #9a9a9a 25%, transparent 25%, transparent 75%, #9a9a9a 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 8px 8px;
+}
+
+.sprite-lab__stage--dark { background: #05070c; }
+.sprite-lab__stage--light { background: #f2f4f8; }
+.sprite-lab__stage--magenta { background: #ff00ff; }
+
+.sprite-lab__frame {
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+}
+
+.sprite-lab__sheet {
+    overflow: auto;
+    max-height: 640px;
+    border: 1px solid #22304a;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+.sprite-lab__sheet-inner {
+    position: relative;
+}
+
+.sprite-lab__sheet-inner img {
+    display: block;
+}
+
+.sprite-lab__cell {
+    position: absolute;
+    border: 1px solid rgba(0, 229, 255, 0.55);
+    box-sizing: border-box;
+}
+
+.sprite-lab__cell--active {
+    border-color: #ffd400;
+    box-shadow: 0 0 0 1px rgba(255, 212, 0, 0.5);
+}
+
+.sprite-lab__cell em {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 9px;
+    font-style: normal;
+    background: rgba(0, 0, 0, 0.7);
+    color: #7fd0ff;
+    padding: 0 2px;
+}
+
+.sprite-lab__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 6px 16px;
+    margin: 12px 0;
+    font-size: 12px;
+}
+
+.sprite-lab__meta div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px dotted #223049;
+    padding-bottom: 3px;
+}
+
+.sprite-lab__meta dt { color: #8fa4c0; }
+.sprite-lab__meta dd { margin: 0; color: #e8f0fb; }
+.mono { font-size: 11px; }
+
+.sprite-lab__issues {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    font-size: 11.5px;
+    max-height: 220px;
+    overflow: auto;
+}
+
+.sprite-lab__issues li {
+    padding: 4px 8px;
+    margin-bottom: 3px;
+    border-left: 3px solid #2c3d5c;
+    background: #131d2e;
+    line-height: 1.45;
+}
+
+.issue--error { border-left-color: #ff5c5c; }
+.issue--warning { border-left-color: #ffb340; }
+
+.status { font-weight: 700; }
+.status--ok { color: #4fd18b; }
+.status--bad { color: #ff5c5c; }
+.status--warn { color: #ffb340; }
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    margin-right: 6px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    background: #22314d;
+    color: #cfe0f5;
+}
+
+.badge--production_ready { background: #14512f; color: #79f0b0; }
+.badge--conditionally_usable { background: #4d3c10; color: #ffd47a; }
+.badge--reference_only { background: #33405c; color: #b9caea; }
+.badge--invalid { background: #5a1a1a; color: #ff9b9b; }
+.badge--ambiguous { background: #4a2a58; color: #e3b3ff; }
+
+.sprite-lab__hint {
+    color: #8fa4c0;
+    font-size: 12px;
+    margin: 4px 0 8px;
+}

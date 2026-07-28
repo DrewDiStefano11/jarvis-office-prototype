@@ -1,0 +1,204 @@
+{
+    "schemaVersion": 1,
+    "legacyRuntimePathIntentionallyAbsent": "assets/office/sprites/central-blue-tube-hologram.png",
+    "mappings": [
+        {
+            "source": "791eeb5a-09f5-4c81-b691-271f59b258d0.png",
+            "destination": "assets/office/sprites/agents/791eeb5a-09f5-4c81-b691-271f59b258d0.png",
+            "sha256": "514b2e3b830792b40f43a58a8a0415bfe46b4bbd2377d24f8f44b63435efc12c",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (1).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-1.png",
+            "sha256": "09ad9303f40cd49d1262d27803784b470b32005c15dbf7cc737a7662692137ba",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (10).png",
+            "destination": "assets/office/sprites/references/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-10.png",
+            "sha256": "b04570ccf864d2bcce5435b036471c059947b215f8b8c1008491e2c7ba200e5a",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (11).png",
+            "destination": "assets/office/sprites/references/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-11.png",
+            "sha256": "2ffd137cf1e0016c0a8d5f45c68602be7af2be81695311721868746e1dc8e38f",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (12).png",
+            "destination": "assets/office/sprites/references/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-12.png",
+            "sha256": "e8fdcb17954c60402db25f73f40fade971208411d99c02077f1e6054980f7315",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (13).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-13.png",
+            "sha256": "aa9ff8b2ddfc6c17ee6650003942bdadba3c79ef767ebfdbba97ce27e5fad49a",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (14).png",
+            "destination": "assets/office/sprites/references/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-14.png",
+            "sha256": "70f3f8759c57b524027691f08499f8b5df7ac77dc43f2385e80957b23b5b8a55",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (2).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-2.png",
+            "sha256": "3ef6c971c63adec462b1af59f8e92f1c77425d5136b209d25db7ae0b8349981d",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (3).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-3.png",
+            "sha256": "322b2d2141f288c7bc32a8e6ad725ba3a8feec1839320dd725c155bddf6921b7",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (4).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-4.png",
+            "sha256": "7e87267ef85a4c1b8a65d109eeae32cf0d15b9b354e0d83379a74e80e22b4004",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (5).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-5.png",
+            "sha256": "52e3f5ecc75c78df834b7ec9245964f1dec2832d41b640081df24d5aaf776967",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (6).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-6.png",
+            "sha256": "1f6a786a86ac07ce007c7ac7d80244dda4c2f8a3e73e5cf25e33c53dee447e82",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (7).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-7.png",
+            "sha256": "869ef5b61d0235593e8598480aa346aadc28b36d89e078557549aa1a96ebcb19",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (8).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-8.png",
+            "sha256": "18bc53e5d0b0a617883cd4f8b1ee47232acd1c6821f2f42ad03e70fea9fb003c",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (9).png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0-9.png",
+            "sha256": "d2eacd0339f6579b4794a02e5aaebc52ba3ec18c2e76fbbef1f3de52f1c6f74c",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0.png",
+            "destination": "assets/office/sprites/agents/d85660f4-dd62-4dbc-baa6-7ccd75361bf0.png",
+            "sha256": "f10878dc8a398eb927052269d265e900ac136705bedee43f4883a3c0984143c8",
+            "width": 1086,
+            "height": 1448,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        },
+        {
+            "source": "Nexus Tube Sprite.png",
+            "destination": "assets/office/sprites/holograms/candidates/central-nexus-pose-grid.png",
+            "sha256": "bf17e81c95cf3c54d4f972eafca980fe6af0958d476915f57e621a50593018d6",
+            "width": 1254,
+            "height": 1254,
+            "classification": "central_nexus_hologram",
+            "readiness": "conditionally_usable",
+            "productionAsset": false,
+            "approvalStatus": "candidate-unverified"
+        },
+        {
+            "source": "Sprite Jobs.png",
+            "destination": "assets/office/sprites/references/Sprite Jobs.png",
+            "sha256": "46c4bbbe72419a2c8f34a21ed7f38a13bfa7173a264bac79e68585e54976f335",
+            "width": 1536,
+            "height": 1024,
+            "classification": "role_reference",
+            "readiness": "reference_only",
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
+        }
+    ]
+}

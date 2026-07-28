@@ -1,0 +1,1697 @@
+{
+    "schemaVersion": 1,
+    "generator": "scripts/sprites/analyze-source-assets.mjs",
+    "inkAlphaThreshold": 128,
+    "totalAssets": 18,
+    "duplicateGroups": [],
+    "assets": [
+        {
+            "path": "791eeb5a-09f5-4c81-b691-271f59b258d0.png",
+            "fileSizeBytes": 1287527,
+            "sha256": "514b2e3b830792b40f43a58a8a0415bfe46b4bbd2377d24f8f44b63435efc12c",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1140310,
+            "partiallyTransparentPixels": 55047,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "Nexus Tube Sprite.png",
+            "fileSizeBytes": 2596931,
+            "sha256": "bf17e81c95cf3c54d4f972eafca980fe6af0958d476915f57e621a50593018d6",
+            "width": 1254,
+            "height": 1254,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 831513,
+            "partiallyTransparentPixels": 710503,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "central_nexus_hologram",
+            "readiness": "conditionally_usable",
+            "ambiguous": false,
+            "nexusGrid": {
+                "detectedColumns": 10,
+                "detectedRows": 9,
+                "totalCells": 90,
+                "columnBands": [
+                    [
+                        21,
+                        108
+                    ],
+                    [
+                        138,
+                        233
+                    ],
+                    [
+                        263,
+                        350
+                    ],
+                    [
+                        384,
+                        471
+                    ],
+                    [
+                        498,
+                        599
+                    ],
+                    [
+                        618,
+                        720
+                    ],
+                    [
+                        740,
+                        840
+                    ],
+                    [
+                        860,
+                        959
+                    ],
+                    [
+                        979,
+                        1079
+                    ],
+                    [
+                        1101,
+                        1200
+                    ]
+                ],
+                "rowBands": [
+                    [
+                        10,
+                        132
+                    ],
+                    [
+                        151,
+                        273
+                    ],
+                    [
+                        292,
+                        414
+                    ],
+                    [
+                        433,
+                        554
+                    ],
+                    [
+                        572,
+                        694
+                    ],
+                    [
+                        712,
+                        833
+                    ],
+                    [
+                        851,
+                        970
+                    ],
+                    [
+                        989,
+                        1108
+                    ],
+                    [
+                        1126,
+                        1223
+                    ]
+                ],
+                "frameRectangles": [
+                    {
+                        "index": 0,
+                        "row": 0,
+                        "column": 0,
+                        "x": 21,
+                        "y": 10,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 1,
+                        "row": 0,
+                        "column": 1,
+                        "x": 138,
+                        "y": 10,
+                        "width": 96,
+                        "height": 123
+                    },
+                    {
+                        "index": 2,
+                        "row": 0,
+                        "column": 2,
+                        "x": 263,
+                        "y": 10,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 3,
+                        "row": 0,
+                        "column": 3,
+                        "x": 384,
+                        "y": 10,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 4,
+                        "row": 0,
+                        "column": 4,
+                        "x": 498,
+                        "y": 10,
+                        "width": 102,
+                        "height": 123
+                    },
+                    {
+                        "index": 5,
+                        "row": 0,
+                        "column": 5,
+                        "x": 618,
+                        "y": 10,
+                        "width": 103,
+                        "height": 123
+                    },
+                    {
+                        "index": 6,
+                        "row": 0,
+                        "column": 6,
+                        "x": 740,
+                        "y": 10,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 7,
+                        "row": 0,
+                        "column": 7,
+                        "x": 860,
+                        "y": 10,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 8,
+                        "row": 0,
+                        "column": 8,
+                        "x": 979,
+                        "y": 10,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 9,
+                        "row": 0,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 10,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 10,
+                        "row": 1,
+                        "column": 0,
+                        "x": 21,
+                        "y": 151,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 11,
+                        "row": 1,
+                        "column": 1,
+                        "x": 138,
+                        "y": 151,
+                        "width": 96,
+                        "height": 123
+                    },
+                    {
+                        "index": 12,
+                        "row": 1,
+                        "column": 2,
+                        "x": 263,
+                        "y": 151,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 13,
+                        "row": 1,
+                        "column": 3,
+                        "x": 384,
+                        "y": 151,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 14,
+                        "row": 1,
+                        "column": 4,
+                        "x": 498,
+                        "y": 151,
+                        "width": 102,
+                        "height": 123
+                    },
+                    {
+                        "index": 15,
+                        "row": 1,
+                        "column": 5,
+                        "x": 618,
+                        "y": 151,
+                        "width": 103,
+                        "height": 123
+                    },
+                    {
+                        "index": 16,
+                        "row": 1,
+                        "column": 6,
+                        "x": 740,
+                        "y": 151,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 17,
+                        "row": 1,
+                        "column": 7,
+                        "x": 860,
+                        "y": 151,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 18,
+                        "row": 1,
+                        "column": 8,
+                        "x": 979,
+                        "y": 151,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 19,
+                        "row": 1,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 151,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 20,
+                        "row": 2,
+                        "column": 0,
+                        "x": 21,
+                        "y": 292,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 21,
+                        "row": 2,
+                        "column": 1,
+                        "x": 138,
+                        "y": 292,
+                        "width": 96,
+                        "height": 123
+                    },
+                    {
+                        "index": 22,
+                        "row": 2,
+                        "column": 2,
+                        "x": 263,
+                        "y": 292,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 23,
+                        "row": 2,
+                        "column": 3,
+                        "x": 384,
+                        "y": 292,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 24,
+                        "row": 2,
+                        "column": 4,
+                        "x": 498,
+                        "y": 292,
+                        "width": 102,
+                        "height": 123
+                    },
+                    {
+                        "index": 25,
+                        "row": 2,
+                        "column": 5,
+                        "x": 618,
+                        "y": 292,
+                        "width": 103,
+                        "height": 123
+                    },
+                    {
+                        "index": 26,
+                        "row": 2,
+                        "column": 6,
+                        "x": 740,
+                        "y": 292,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 27,
+                        "row": 2,
+                        "column": 7,
+                        "x": 860,
+                        "y": 292,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 28,
+                        "row": 2,
+                        "column": 8,
+                        "x": 979,
+                        "y": 292,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 29,
+                        "row": 2,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 292,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 30,
+                        "row": 3,
+                        "column": 0,
+                        "x": 21,
+                        "y": 433,
+                        "width": 88,
+                        "height": 122
+                    },
+                    {
+                        "index": 31,
+                        "row": 3,
+                        "column": 1,
+                        "x": 138,
+                        "y": 433,
+                        "width": 96,
+                        "height": 122
+                    },
+                    {
+                        "index": 32,
+                        "row": 3,
+                        "column": 2,
+                        "x": 263,
+                        "y": 433,
+                        "width": 88,
+                        "height": 122
+                    },
+                    {
+                        "index": 33,
+                        "row": 3,
+                        "column": 3,
+                        "x": 384,
+                        "y": 433,
+                        "width": 88,
+                        "height": 122
+                    },
+                    {
+                        "index": 34,
+                        "row": 3,
+                        "column": 4,
+                        "x": 498,
+                        "y": 433,
+                        "width": 102,
+                        "height": 122
+                    },
+                    {
+                        "index": 35,
+                        "row": 3,
+                        "column": 5,
+                        "x": 618,
+                        "y": 433,
+                        "width": 103,
+                        "height": 122
+                    },
+                    {
+                        "index": 36,
+                        "row": 3,
+                        "column": 6,
+                        "x": 740,
+                        "y": 433,
+                        "width": 101,
+                        "height": 122
+                    },
+                    {
+                        "index": 37,
+                        "row": 3,
+                        "column": 7,
+                        "x": 860,
+                        "y": 433,
+                        "width": 100,
+                        "height": 122
+                    },
+                    {
+                        "index": 38,
+                        "row": 3,
+                        "column": 8,
+                        "x": 979,
+                        "y": 433,
+                        "width": 101,
+                        "height": 122
+                    },
+                    {
+                        "index": 39,
+                        "row": 3,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 433,
+                        "width": 100,
+                        "height": 122
+                    },
+                    {
+                        "index": 40,
+                        "row": 4,
+                        "column": 0,
+                        "x": 21,
+                        "y": 572,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 41,
+                        "row": 4,
+                        "column": 1,
+                        "x": 138,
+                        "y": 572,
+                        "width": 96,
+                        "height": 123
+                    },
+                    {
+                        "index": 42,
+                        "row": 4,
+                        "column": 2,
+                        "x": 263,
+                        "y": 572,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 43,
+                        "row": 4,
+                        "column": 3,
+                        "x": 384,
+                        "y": 572,
+                        "width": 88,
+                        "height": 123
+                    },
+                    {
+                        "index": 44,
+                        "row": 4,
+                        "column": 4,
+                        "x": 498,
+                        "y": 572,
+                        "width": 102,
+                        "height": 123
+                    },
+                    {
+                        "index": 45,
+                        "row": 4,
+                        "column": 5,
+                        "x": 618,
+                        "y": 572,
+                        "width": 103,
+                        "height": 123
+                    },
+                    {
+                        "index": 46,
+                        "row": 4,
+                        "column": 6,
+                        "x": 740,
+                        "y": 572,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 47,
+                        "row": 4,
+                        "column": 7,
+                        "x": 860,
+                        "y": 572,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 48,
+                        "row": 4,
+                        "column": 8,
+                        "x": 979,
+                        "y": 572,
+                        "width": 101,
+                        "height": 123
+                    },
+                    {
+                        "index": 49,
+                        "row": 4,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 572,
+                        "width": 100,
+                        "height": 123
+                    },
+                    {
+                        "index": 50,
+                        "row": 5,
+                        "column": 0,
+                        "x": 21,
+                        "y": 712,
+                        "width": 88,
+                        "height": 122
+                    },
+                    {
+                        "index": 51,
+                        "row": 5,
+                        "column": 1,
+                        "x": 138,
+                        "y": 712,
+                        "width": 96,
+                        "height": 122
+                    },
+                    {
+                        "index": 52,
+                        "row": 5,
+                        "column": 2,
+                        "x": 263,
+                        "y": 712,
+                        "width": 88,
+                        "height": 122
+                    },
+                    {
+                        "index": 53,
+                        "row": 5,
+                        "column": 3,
+                        "x": 384,
+                        "y": 712,
+                        "width": 88,
+                        "height": 122
+                    },
+                    {
+                        "index": 54,
+                        "row": 5,
+                        "column": 4,
+                        "x": 498,
+                        "y": 712,
+                        "width": 102,
+                        "height": 122
+                    },
+                    {
+                        "index": 55,
+                        "row": 5,
+                        "column": 5,
+                        "x": 618,
+                        "y": 712,
+                        "width": 103,
+                        "height": 122
+                    },
+                    {
+                        "index": 56,
+                        "row": 5,
+                        "column": 6,
+                        "x": 740,
+                        "y": 712,
+                        "width": 101,
+                        "height": 122
+                    },
+                    {
+                        "index": 57,
+                        "row": 5,
+                        "column": 7,
+                        "x": 860,
+                        "y": 712,
+                        "width": 100,
+                        "height": 122
+                    },
+                    {
+                        "index": 58,
+                        "row": 5,
+                        "column": 8,
+                        "x": 979,
+                        "y": 712,
+                        "width": 101,
+                        "height": 122
+                    },
+                    {
+                        "index": 59,
+                        "row": 5,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 712,
+                        "width": 100,
+                        "height": 122
+                    },
+                    {
+                        "index": 60,
+                        "row": 6,
+                        "column": 0,
+                        "x": 21,
+                        "y": 851,
+                        "width": 88,
+                        "height": 120
+                    },
+                    {
+                        "index": 61,
+                        "row": 6,
+                        "column": 1,
+                        "x": 138,
+                        "y": 851,
+                        "width": 96,
+                        "height": 120
+                    },
+                    {
+                        "index": 62,
+                        "row": 6,
+                        "column": 2,
+                        "x": 263,
+                        "y": 851,
+                        "width": 88,
+                        "height": 120
+                    },
+                    {
+                        "index": 63,
+                        "row": 6,
+                        "column": 3,
+                        "x": 384,
+                        "y": 851,
+                        "width": 88,
+                        "height": 120
+                    },
+                    {
+                        "index": 64,
+                        "row": 6,
+                        "column": 4,
+                        "x": 498,
+                        "y": 851,
+                        "width": 102,
+                        "height": 120
+                    },
+                    {
+                        "index": 65,
+                        "row": 6,
+                        "column": 5,
+                        "x": 618,
+                        "y": 851,
+                        "width": 103,
+                        "height": 120
+                    },
+                    {
+                        "index": 66,
+                        "row": 6,
+                        "column": 6,
+                        "x": 740,
+                        "y": 851,
+                        "width": 101,
+                        "height": 120
+                    },
+                    {
+                        "index": 67,
+                        "row": 6,
+                        "column": 7,
+                        "x": 860,
+                        "y": 851,
+                        "width": 100,
+                        "height": 120
+                    },
+                    {
+                        "index": 68,
+                        "row": 6,
+                        "column": 8,
+                        "x": 979,
+                        "y": 851,
+                        "width": 101,
+                        "height": 120
+                    },
+                    {
+                        "index": 69,
+                        "row": 6,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 851,
+                        "width": 100,
+                        "height": 120
+                    },
+                    {
+                        "index": 70,
+                        "row": 7,
+                        "column": 0,
+                        "x": 21,
+                        "y": 989,
+                        "width": 88,
+                        "height": 120
+                    },
+                    {
+                        "index": 71,
+                        "row": 7,
+                        "column": 1,
+                        "x": 138,
+                        "y": 989,
+                        "width": 96,
+                        "height": 120
+                    },
+                    {
+                        "index": 72,
+                        "row": 7,
+                        "column": 2,
+                        "x": 263,
+                        "y": 989,
+                        "width": 88,
+                        "height": 120
+                    },
+                    {
+                        "index": 73,
+                        "row": 7,
+                        "column": 3,
+                        "x": 384,
+                        "y": 989,
+                        "width": 88,
+                        "height": 120
+                    },
+                    {
+                        "index": 74,
+                        "row": 7,
+                        "column": 4,
+                        "x": 498,
+                        "y": 989,
+                        "width": 102,
+                        "height": 120
+                    },
+                    {
+                        "index": 75,
+                        "row": 7,
+                        "column": 5,
+                        "x": 618,
+                        "y": 989,
+                        "width": 103,
+                        "height": 120
+                    },
+                    {
+                        "index": 76,
+                        "row": 7,
+                        "column": 6,
+                        "x": 740,
+                        "y": 989,
+                        "width": 101,
+                        "height": 120
+                    },
+                    {
+                        "index": 77,
+                        "row": 7,
+                        "column": 7,
+                        "x": 860,
+                        "y": 989,
+                        "width": 100,
+                        "height": 120
+                    },
+                    {
+                        "index": 78,
+                        "row": 7,
+                        "column": 8,
+                        "x": 979,
+                        "y": 989,
+                        "width": 101,
+                        "height": 120
+                    },
+                    {
+                        "index": 79,
+                        "row": 7,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 989,
+                        "width": 100,
+                        "height": 120
+                    },
+                    {
+                        "index": 80,
+                        "row": 8,
+                        "column": 0,
+                        "x": 21,
+                        "y": 1126,
+                        "width": 88,
+                        "height": 98
+                    },
+                    {
+                        "index": 81,
+                        "row": 8,
+                        "column": 1,
+                        "x": 138,
+                        "y": 1126,
+                        "width": 96,
+                        "height": 98
+                    },
+                    {
+                        "index": 82,
+                        "row": 8,
+                        "column": 2,
+                        "x": 263,
+                        "y": 1126,
+                        "width": 88,
+                        "height": 98
+                    },
+                    {
+                        "index": 83,
+                        "row": 8,
+                        "column": 3,
+                        "x": 384,
+                        "y": 1126,
+                        "width": 88,
+                        "height": 98
+                    },
+                    {
+                        "index": 84,
+                        "row": 8,
+                        "column": 4,
+                        "x": 498,
+                        "y": 1126,
+                        "width": 102,
+                        "height": 98
+                    },
+                    {
+                        "index": 85,
+                        "row": 8,
+                        "column": 5,
+                        "x": 618,
+                        "y": 1126,
+                        "width": 103,
+                        "height": 98
+                    },
+                    {
+                        "index": 86,
+                        "row": 8,
+                        "column": 6,
+                        "x": 740,
+                        "y": 1126,
+                        "width": 101,
+                        "height": 98
+                    },
+                    {
+                        "index": 87,
+                        "row": 8,
+                        "column": 7,
+                        "x": 860,
+                        "y": 1126,
+                        "width": 100,
+                        "height": 98
+                    },
+                    {
+                        "index": 88,
+                        "row": 8,
+                        "column": 8,
+                        "x": 979,
+                        "y": 1126,
+                        "width": 101,
+                        "height": 98
+                    },
+                    {
+                        "index": 89,
+                        "row": 8,
+                        "column": 9,
+                        "x": 1101,
+                        "y": 1126,
+                        "width": 100,
+                        "height": 98
+                    }
+                ],
+                "uniformCells": false,
+                "distinctCellWidths": [
+                    88,
+                    96,
+                    100,
+                    101,
+                    102,
+                    103
+                ],
+                "distinctCellHeights": [
+                    98,
+                    120,
+                    122,
+                    123
+                ],
+                "blankCells": []
+            },
+            "agentGrid": null,
+            "warnings": [
+                "Grid is NOT uniform: measured cell widths and heights vary, so explicit per-frame rectangles are required.",
+                "Final row is vertically truncated relative to the other rows."
+            ]
+        },
+        {
+            "path": "Sprite Jobs.png",
+            "fileSizeBytes": 2138373,
+            "sha256": "46c4bbbe72419a2c8f34a21ed7f38a13bfa7173a264bac79e68585e54976f335",
+            "width": 1536,
+            "height": 1024,
+            "bitDepth": 8,
+            "colorType": 2,
+            "channels": 3,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": false,
+            "transparencyUsed": false,
+            "minAlpha": 255,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 0,
+            "partiallyTransparentPixels": 0,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "role_reference",
+            "readiness": "reference_only",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": null,
+            "warnings": [
+                "No alpha channel (PNG colour type 2); cannot be composited over the office background."
+            ]
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (1).png",
+            "fileSizeBytes": 1303147,
+            "sha256": "09ad9303f40cd49d1262d27803784b470b32005c15dbf7cc737a7662692137ba",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1112970,
+            "partiallyTransparentPixels": 96249,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (10).png",
+            "fileSizeBytes": 1303947,
+            "sha256": "b04570ccf864d2bcce5435b036471c059947b215f8b8c1008491e2c7ba200e5a",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1119332,
+            "partiallyTransparentPixels": 89592,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "ambiguous": true,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 8,
+                "equalCellExtractionValid": false
+            },
+            "warnings": [
+                "8 cell(s) spill horizontally past the 181px cell boundary; equal-cell extraction is unsafe."
+            ]
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (11).png",
+            "fileSizeBytes": 1184816,
+            "sha256": "2ffd137cf1e0016c0a8d5f45c68602be7af2be81695311721868746e1dc8e38f",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1185160,
+            "partiallyTransparentPixels": 78603,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "ambiguous": true,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 5,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 48,
+                "equalCellExtractionValid": false
+            },
+            "warnings": [
+                "48 cell(s) spill horizontally past the 181px cell boundary; equal-cell extraction is unsafe.",
+                "Measured 5 column band(s) but the sheet is 6 cells wide; column layout is inconsistent."
+            ]
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (12).png",
+            "fileSizeBytes": 1327548,
+            "sha256": "e8fdcb17954c60402db25f73f40fade971208411d99c02077f1e6054980f7315",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1131597,
+            "partiallyTransparentPixels": 87373,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "ambiguous": true,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 2,
+                "equalCellExtractionValid": false
+            },
+            "warnings": [
+                "2 cell(s) spill horizontally past the 181px cell boundary; equal-cell extraction is unsafe."
+            ]
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (13).png",
+            "fileSizeBytes": 1247725,
+            "sha256": "aa9ff8b2ddfc6c17ee6650003942bdadba3c79ef767ebfdbba97ce27e5fad49a",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1148306,
+            "partiallyTransparentPixels": 86834,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (14).png",
+            "fileSizeBytes": 1202764,
+            "sha256": "70f3f8759c57b524027691f08499f8b5df7ac77dc43f2385e80957b23b5b8a55",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1152135,
+            "partiallyTransparentPixels": 89457,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_reference",
+            "readiness": "reference_only",
+            "ambiguous": true,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 2,
+                "equalCellExtractionValid": false
+            },
+            "warnings": [
+                "2 cell(s) spill horizontally past the 181px cell boundary; equal-cell extraction is unsafe."
+            ]
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (2).png",
+            "fileSizeBytes": 1321142,
+            "sha256": "3ef6c971c63adec462b1af59f8e92f1c77425d5136b209d25db7ae0b8349981d",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1133562,
+            "partiallyTransparentPixels": 93158,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (3).png",
+            "fileSizeBytes": 1444818,
+            "sha256": "322b2d2141f288c7bc32a8e6ad725ba3a8feec1839320dd725c155bddf6921b7",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1083099,
+            "partiallyTransparentPixels": 95526,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 7,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (4).png",
+            "fileSizeBytes": 1258156,
+            "sha256": "7e87267ef85a4c1b8a65d109eeae32cf0d15b9b354e0d83379a74e80e22b4004",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1151980,
+            "partiallyTransparentPixels": 93617,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (5).png",
+            "fileSizeBytes": 1239840,
+            "sha256": "52e3f5ecc75c78df834b7ec9245964f1dec2832d41b640081df24d5aaf776967",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1124926,
+            "partiallyTransparentPixels": 94277,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (6).png",
+            "fileSizeBytes": 1227729,
+            "sha256": "1f6a786a86ac07ce007c7ac7d80244dda4c2f8a3e73e5cf25e33c53dee447e82",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1152667,
+            "partiallyTransparentPixels": 81892,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (7).png",
+            "fileSizeBytes": 1198380,
+            "sha256": "869ef5b61d0235593e8598480aa346aadc28b36d89e078557549aa1a96ebcb19",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1148611,
+            "partiallyTransparentPixels": 87367,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (8).png",
+            "fileSizeBytes": 1232942,
+            "sha256": "18bc53e5d0b0a617883cd4f8b1ee47232acd1c6821f2f42ad03e70fea9fb003c",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1146722,
+            "partiallyTransparentPixels": 85186,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (9).png",
+            "fileSizeBytes": 1269775,
+            "sha256": "d2eacd0339f6579b4794a02e5aaebc52ba3ec18c2e76fbbef1f3de52f1c6f74c",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1135248,
+            "partiallyTransparentPixels": 90399,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        },
+        {
+            "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0.png",
+            "fileSizeBytes": 1452532,
+            "sha256": "f10878dc8a398eb927052269d265e900ac136705bedee43f4883a3c0984143c8",
+            "width": 1086,
+            "height": 1448,
+            "bitDepth": 8,
+            "colorType": 6,
+            "channels": 4,
+            "chunkTypes": [
+                "IDAT",
+                "IEND",
+                "IHDR"
+            ],
+            "hasAlphaChannel": true,
+            "transparencyUsed": true,
+            "minAlpha": 0,
+            "maxAlpha": 255,
+            "fullyTransparentPixels": 1092371,
+            "partiallyTransparentPixels": 64181,
+            "uniformOpaqueBackground": false,
+            "backgroundColor": null,
+            "classification": "agent_sprite_sheet",
+            "readiness": "production_ready",
+            "ambiguous": false,
+            "nexusGrid": null,
+            "agentGrid": {
+                "assumedCellSize": {
+                    "width": 181,
+                    "height": 181
+                },
+                "columns": 6,
+                "rows": 8,
+                "totalCells": 48,
+                "widthDivisible": true,
+                "heightDivisible": true,
+                "detectedColumnBands": 6,
+                "detectedRowBands": 8,
+                "blankCells": 0,
+                "horizontalSpillCells": 0,
+                "equalCellExtractionValid": true
+            },
+            "warnings": []
+        }
+    ]
+}

@@ -1990,3 +1990,143 @@ the build passes,
 the plan reflects reality,
 and remaining limitations are reported honestly.
 ```
+
+---
+
+# Execution Plan — Isolated Sprite Asset & Animation Foundation (PR #20)
+
+## Goal
+
+Build a measured, validated, isolated sprite asset and animation foundation from
+the 18 committed source PNGs, ready to connect to approved Floor 1 sprite
+anchors later, without activating any unapproved sprite in the office runtime.
+
+## Current repository state
+
+- Branch `arena/019faa06-jarvis-office-prototype`, branched from `main` @ `0c218315`.
+- PR #19 (`codex/production-floor1-markup-pipeline-v2`) concurrently owns the
+  Floor 1 markup pipeline. Its changed-file set is protected; intersection with
+  this PR is verified empty before and after every change.
+- Existing sprite scaffolding reused: `src/office/animation.ts`,
+  `src/office/assets.ts`, `src/office/types.ts` (all left unmodified).
+
+## Scope
+
+- Deterministic source-asset measurement and inventory generation.
+- Typed animation manifest with fail-closed validation.
+- Elapsed-time playback built on the existing animation helpers.
+- Reusable `SpriteSheetRenderer` with safe fallbacks.
+- Standalone sprite review lab on an isolated Vite entry.
+- Tests and documentation.
+
+## Out of scope
+
+- Floor 1 placement, sprite anchors, coordinates, z-order decisions.
+- Populating the legacy `central-blue-tube-hologram.png` runtime path.
+- Any change to `src/App.tsx`, `package.json`, or PR #19-owned files.
+- Image generation or destructive image transformation.
+
+## Source files
+
+18 root PNGs (1 Nexus pose grid, 1 role reference, 16 character pose grids),
+all treated as read-only reference material.
+
+## Assumptions
+
+- Root PNGs are authoritative source and will not be renamed during this task.
+- The office engine's missing-asset fallback is intentional and must be preserved.
+
+## Known unknowns
+
+- Nexus rows 1-8 semantics (80 of 90 frames unused).
+- Direction/row semantics and identity mapping for the character pose grids.
+- Real-world scale of the hologram against the 8192x5460 canvas.
+- Foreground/background tube layering.
+
+## Architecture decision
+
+Measurement, approval and rendering are deliberately separated:
+
+- **Measurement** (`scripts/sprites/*`, generated JSON) records only what pixels
+  prove. It can never grant approval.
+- **Approval** (`approvalStatus`, `sequenceAuthorship`) is an authored human
+  decision enforced by validation.
+- **Rendering** consumes manifest data only, failing closed on invalid metadata.
+
+Non-uniform sheets use explicit per-frame rectangles rendered inside a stable
+logical frame box, with anchor, trim offset and float as separate composed
+layers.
+
+## Data model
+
+`SpriteAssetSet` (id, publicPath, sourcePath, sha256, sourceDimensions,
+approvalStatus) and `SpriteAnimation` (grid, rectangles, frame order, timing,
+loop mode, anchor, trim, layer, approvalStatus, sequenceAuthorship), validated
+against the generated inventory.
+
+## Milestones and acceptance criteria
+
+1. **Audit & inventory** — all 18 files measured; regeneration byte-identical. ✅
+2. **Classification** — ambiguous assets quarantined, not forced into grids. ✅
+3. **Candidate asset copies** — byte-for-byte, checksum-verified; legacy runtime
+   path left absent. ✅
+4. **Manifest & validation** — fail-closed; production requires authored
+   approval. ✅
+5. **Renderer** — stable frame box, anchors, fallbacks, no leaks. ✅
+6. **Nexus candidate animation** — measured metadata only. ✅
+7. **Sprite lab** — isolated entry, separated status axes. ✅
+8. **Tests** — 386 passing. ✅
+9. **Documentation** — measured fact separated from interpretation. ✅
+
+## Test strategy
+
+Unit tests for inventory integrity, manifest validation (one test per rejection
+code), playback timing, and renderer/lab behaviour under happy-dom. Regression
+suites added per review finding.
+
+## Visual-validation strategy
+
+The sprite lab is the review surface: checkerboard/halo backgrounds, grid
+overlays with zero-based labels, per-frame preview, and reduced-motion preview.
+Browser binaries cannot be downloaded in the agent sandbox, so screenshot
+capture is replaced by assertion-level DOM tests; a human reviewer runs
+`npm run dev` and opens `/sprite-lab.html`.
+
+## Risks
+
+- **Runtime contamination** — mitigated: legacy path intentionally absent, sync
+  script throws if targeted, regression test asserts absence.
+- **False production approval** — mitigated: strict approval union plus
+  validation coupling; `conditionally_usable` cannot be production-usable.
+- **Silent metadata inference** — mitigated: validation fails closed and
+  rectangles must cover every referenced frame.
+- **Parallel-task collision with PR #19** — mitigated: intersection re-checked
+  after every push.
+
+## Decision log
+
+- Nexus measured as 10x9 = 90 non-uniform cells, not 10x10/100 → explicit
+  rectangles required.
+- Similarity analysis (0.82 consecutive/random ratio) → pose grid, not a
+  verified animation strip → `curated-preview-unverified`.
+- `Sprite Jobs.png` is PNG colour type 2 with no alpha → reference-only.
+- 4 of 16 character grids fail equal-cell verification → quarantined, no
+  fabricated cells in the lab.
+- Legacy hologram path conflicts with `src/domain/seed.ts` (128x192/8/8) →
+  candidate relocated to `holograms/candidates/`.
+
+## Progress log
+
+- `47e79c07` — initial foundation (321 tests).
+- `478e347c` — review corrections: approval model, candidate relocation,
+  fallback closure, stable frame box, rectangle coverage, positional timing,
+  lab navigation and quarantine, status axes (377 tests).
+- This commit — second review round: unused-index range validation, declared
+  fallback rendering, OS reduced-motion default, this execution plan.
+
+## Remaining work (blocked on human review)
+
+1. Approve or reject the Nexus candidate; resolve rows 1-8 semantics.
+2. Establish direction/identity semantics for the character grids.
+3. Update runtime metadata before populating the legacy registry path.
+4. Floor 1 anchor integration after PR #19 registration is approved.
