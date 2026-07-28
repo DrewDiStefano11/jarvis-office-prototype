@@ -1,4 +1,4 @@
-# Jarvis Agent Ecosystem (Phase 1)
+# Jarvis Office Prototype 
 
 ## Project Purpose
 This repository is the visual office prototype for the standalone Jarvis Agent Ecosystem. It uses Phaser to render a digital operations office, demonstrating agent locations, movements, and interactions in a data-driven way, driven by React controls.
