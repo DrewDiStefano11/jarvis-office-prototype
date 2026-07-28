@@ -281,6 +281,9 @@ function validateEntity(
         errors.push(`${path}.allowOutOfBounds must be boolean.`);
     }
     validateGeometry(value.geometry, `${path}.geometry`, errors, width, height, value.allowOutOfBounds === true);
+    if (value.type === 'sprite_anchor' && (!isRecord(value.geometry) || value.geometry.kind !== 'point')) {
+        errors.push(`${path}.geometry must use point geometry for sprite anchors.`);
+    }
     if (value.accessState !== undefined && !ACCESS_STATES.includes(value.accessState as AccessState)) {
         errors.push(`${path}.accessState is invalid.`);
     }

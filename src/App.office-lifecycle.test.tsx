@@ -187,6 +187,24 @@ describe('inactive office lifecycle', () => {
         expect(surface.style.transform).toBe(transformStyle(fitted));
     });
 
+    it('focuses the hovered entity currently shown in the inspector', () => {
+        const { container } = render(<App />);
+        const viewport = container.querySelector('.office-viewport') as HTMLDivElement;
+        const surface = container.querySelector('.office-surface') as HTMLDivElement;
+        const room = container.querySelector(`[data-entity-id="${ROOM_ID}"]`) as SVGGElement;
+
+        emitResize(viewport, 1200, 800);
+        const fittedTransform = surface.style.transform;
+        fireEvent.pointerEnter(room);
+        expect(screen.getByText(ROOM_ID)).toBeTruthy();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Focus' }));
+        expect(surface.style.transform).not.toBe(fittedTransform);
+
+        fireEvent.pointerLeave(room);
+        expect(screen.getByText(ROOM_ID)).toBeTruthy();
+    });
+
     it('isolates office Escape handling while hidden and restores it when active', () => {
         const { container } = render(<App />);
         const room = container.querySelector(`[data-entity-id="${ROOM_ID}"]`) as SVGGElement;

@@ -25,6 +25,7 @@ export function OfficeEngine({ active }: Props) {
     const [focusRequest, setFocusRequest] = useState(0);
     const selected = useMemo(() => document.entities.find(entity => entity.id === selectedId) ?? null, [document.entities, selectedId]);
     const hovered = useMemo(() => document.entities.find(entity => entity.id === hoveredId) ?? null, [document.entities, hoveredId]);
+    const inspected = selected ?? hovered;
 
     useEffect(() => {
         setSelectedId(previous => reconcileSelection(previous, document.entities));
@@ -34,6 +35,12 @@ export function OfficeEngine({ active }: Props) {
         setVisibleLayers(previous => {
             return toggleLayerVisibility(previous, layer);
         });
+    };
+
+    const focusInspected = () => {
+        if (!inspected) return;
+        setSelectedId(inspected.id);
+        setFocusRequest(value => value + 1);
     };
 
     return (
@@ -94,7 +101,7 @@ export function OfficeEngine({ active }: Props) {
                             </div>
                         </section>
                     )}
-                    <EntityInspector entity={selected ?? hovered} onFocus={() => setFocusRequest(value => value + 1)} />
+                    <EntityInspector entity={inspected} onFocus={focusInspected} />
                     <section className="engine-panel access-legend">
                         <h2>Access semantics</h2>
                         <p><i className="green" /> Green · general access</p>

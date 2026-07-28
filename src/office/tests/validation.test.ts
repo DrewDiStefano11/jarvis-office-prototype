@@ -196,6 +196,21 @@ describe('office overlay schema', () => {
         }
     });
 
+    it('rejects sprite anchors that do not use point geometry', () => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        entities[9].geometry = {
+            kind: 'rectangle',
+            rect: { x: 4000, y: 3300, width: 192, height: 288 },
+        };
+
+        const result = validateOverlayDocument(document);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.errors).toContain('entities[9].geometry must use point geometry for sprite anchors.');
+        }
+    });
+
     it('rejects malformed arrays and metadata values', () => {
         const document = cloneDocument();
         const entities = document.entities as Record<string, unknown>[];
