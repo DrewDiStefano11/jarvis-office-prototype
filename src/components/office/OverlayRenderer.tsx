@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { resolveEntityAccessState } from '../../office/access';
 import { getSpriteSheetAsset } from '../../office/assets';
 import {
     buildPlaybackSequence,
@@ -57,7 +58,8 @@ function EntityGeometry({
     debug,
     emphasized,
 }: Readonly<{ entity: OfficeEntity; debug: boolean; emphasized: boolean }>) {
-    const color = entity.accessState ? ACCESS_COLORS[entity.accessState] : DEBUG_COLORS[entity.sourceLayer];
+    const accessState = resolveEntityAccessState(entity);
+    const color = accessState ? ACCESS_COLORS[accessState] : DEBUG_COLORS[entity.sourceLayer];
     const visible = debug || emphasized || ['access_light', 'effect_zone'].includes(entity.type);
     const fillOpacity = visible ? (entity.type === 'room' || entity.type === 'restricted_zone' || entity.type === 'effect_zone' ? 0.18 : 0.1) : 0;
     const strokeOpacity = visible ? 0.95 : 0;

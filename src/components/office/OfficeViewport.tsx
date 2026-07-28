@@ -12,7 +12,7 @@ import {
     updatePanGesture,
     updatePinchGesture,
 } from '../../office/gestures';
-import { focusEntityTransform, panTransform } from '../../office/interaction';
+import { panTransform, resolveFocusRequest } from '../../office/interaction';
 import { LAYER_ORDER } from '../../office/layers';
 import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform, ViewportSize } from '../../office/types';
 import { OverlayRenderer } from './OverlayRenderer';
@@ -51,6 +51,7 @@ export function OfficeViewport({
     const frameRef = useRef<number | null>(null);
     const pointerFrameRef = useRef<number | null>(null);
     const pendingTransformRef = useRef<ViewTransform | null>(null);
+    const lastHandledFocusRequestRef = useRef(0);
     const [transform, setTransform] = useState(transformRef.current);
     const [viewport, setViewport] = useState<ViewportSize>({ width: 1, height: 1 });
     const [backgroundState, setBackgroundState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -108,10 +109,18 @@ export function OfficeViewport({
     }, [onSelect]);
 
     useEffect(() => {
-        if (!focusRequest || !selectedId) return;
-        const entity = document.entities.find(item => item.id === selectedId);
-        if (!entity) return;
-        commitTransform(focusEntityTransform(entity, transformRef.current, viewport, DEFAULT_VIEWPORT_OPTIONS.maximumZoom));
+        const entity = selectedId ? document.entities.find(item => item.id === selectedId) : undefined;
+        const resolution = resolveFocusRequest(
+            focusRequest,
+            lastHandledFocusRequestRef.current,
+            entity,
+            transformRef.current,
+            viewport,
+            DEFAULT_VIEWPORT_OPTIONS.maximumZoom,
+        );
+        if (!resolution) return;
+        commitTransform(resolution.transform);
+        lastHandledFocusRequestRef.current = resolution.request;
     }, [commitTransform, document.entities, focusRequest, selectedId, viewport]);
 
     const localPoint = (clientX: number, clientY: number): Point => {

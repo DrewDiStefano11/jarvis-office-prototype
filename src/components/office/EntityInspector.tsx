@@ -1,3 +1,4 @@
+import { resolveEntityAccessState } from '../../office/access';
 import { geometryCenter, geometrySummary } from '../../office/geometry';
 import { AccessState, OfficeEntity } from '../../office/types';
 
@@ -12,7 +13,7 @@ export function EntityInspector({ entity, onFocus }: Readonly<{ entity: OfficeEn
     if (!entity) {
         return <section className="engine-panel"><h2>Inspector</h2><p className="muted">Select an interaction region to inspect it.</p></section>;
     }
-    const access = entity.accessState ?? entity.accessPolicy?.state ?? entity.door?.currentState;
+    const access = resolveEntityAccessState(entity);
     const center = geometryCenter(entity.geometry);
     const rows: readonly [string, string][] = [
         ['ID', entity.id],

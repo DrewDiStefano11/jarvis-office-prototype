@@ -39,6 +39,28 @@ export function focusEntityTransform(
     };
 }
 
+export type FocusRequestResolution = Readonly<{
+    request: number;
+    transform: ViewTransform;
+}>;
+
+export function resolveFocusRequest(
+    request: number,
+    lastHandledRequest: number,
+    entity: OfficeEntity | undefined,
+    transform: ViewTransform,
+    viewport: ViewportSize,
+    maximumZoom: number,
+): FocusRequestResolution | null {
+    if (request <= 0 || request <= lastHandledRequest || !entity) return null;
+    if (!Number.isFinite(viewport.width) || !Number.isFinite(viewport.height) ||
+        viewport.width <= 1 || viewport.height <= 1) return null;
+    return {
+        request,
+        transform: focusEntityTransform(entity, transform, viewport, maximumZoom),
+    };
+}
+
 export function reconcileSelection(selectedId: string | null, entities: readonly OfficeEntity[]): string | null {
     if (!selectedId) return null;
     return entities.some(entity => entity.id === selectedId && entity.enabled) ? selectedId : null;
