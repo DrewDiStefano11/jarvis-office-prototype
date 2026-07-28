@@ -20,6 +20,8 @@ let animationFrames: Map<number, FrameRequestCallback>;
 let nextAnimationFrame: number;
 let setPointerCapture: ReturnType<typeof vi.fn>;
 let releasePointerCapture: ReturnType<typeof vi.fn>;
+let reducedMotionMatches: boolean;
+let reducedMotionListeners: Set<(event: MediaQueryListEvent) => void>;
 
 function restorePrototypeProperty(
     name: 'setPointerCapture' | 'releasePointerCapture' | 'hasPointerCapture',
@@ -78,6 +80,8 @@ beforeEach(() => {
     capturedPointers = new Set();
     animationFrames = new Map();
     nextAnimationFrame = 1;
+    reducedMotionMatches = false;
+    reducedMotionListeners = new Set();
     setPointerCapture = vi.fn((pointerId: number) => capturedPointers.add(pointerId));
     releasePointerCapture = vi.fn((pointerId: number) => capturedPointers.delete(pointerId));
     Object.defineProperties(HTMLElement.prototype, {
@@ -109,13 +113,25 @@ beforeEach(() => {
     Object.defineProperty(window, 'matchMedia', {
         configurable: true,
         value: vi.fn(() => ({
-            matches: false,
+            get matches() {
+                return reducedMotionMatches;
+            },
             media: '',
             onchange: null,
             addListener: vi.fn(),
             removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
+            addEventListener: vi.fn((
+                type: string,
+                listener: (event: MediaQueryListEvent) => void,
+            ) => {
+                if (type === 'change') reducedMotionListeners.add(listener);
+            }),
+            removeEventListener: vi.fn((
+                type: string,
+                listener: (event: MediaQueryListEvent) => void,
+            ) => {
+                if (type === 'change') reducedMotionListeners.delete(listener);
+            }),
             dispatchEvent: vi.fn(),
         })),
     });
@@ -123,6 +139,7 @@ beforeEach(() => {
 
 afterEach(() => {
     cleanup();
+    expect(reducedMotionListeners.size).toBe(0);
     vi.unstubAllGlobals();
     restorePrototypeProperty('setPointerCapture', originalCaptureDescriptors.set);
     restorePrototypeProperty('releasePointerCapture', originalCaptureDescriptors.release);
@@ -200,6 +217,19 @@ describe('OfficeViewport pointer interactions', () => {
         expect(setPointerCapture).toHaveBeenCalledWith(7);
     });
 
+    it('cleans up an uncaptured pointer that leaves before the pan threshold', () => {
+        const { room, viewport } = renderViewport();
+        fireEvent.pointerDown(room, pointer(12, 'mouse', 2, 100));
+        fireEvent.pointerMove(room, pointer(12, 'mouse', 5, 100));
+        expect(setPointerCapture).not.toHaveBeenCalled();
+
+        fireEvent.pointerLeave(viewport, pointer(12, 'mouse', -1, 100));
+        fireEvent.pointerDown(room, pointer(13, 'mouse', 100, 100));
+
+        expect(setPointerCapture).not.toHaveBeenCalled();
+        fireEvent.pointerUp(room, pointer(13, 'mouse', 100, 100));
+    });
+
     it('captures both pinch pointers and resumes captured one-finger panning', () => {
         const { onTransformChange, viewport } = renderViewport();
         fireEvent.pointerDown(viewport, pointer(8, 'touch', 100, 100));
@@ -240,5 +270,30 @@ describe('OfficeViewport pointer interactions', () => {
         fireEvent.keyDown(room, { key: 'Enter' });
         fireEvent.keyDown(room, { key: ' ' });
         expect(onSelect.mock.calls).toEqual([[ROOM_ID], [ROOM_ID]]);
+    });
+
+    it('reacts to reduced-motion preference changes and removes its listener', () => {
+        const { container } = renderViewport();
+        const sprite = container.querySelector('.office-sprite') as HTMLDivElement;
+        expect(sprite.classList.contains('office-sprite--idle')).toBe(true);
+        expect(reducedMotionListeners.size).toBe(1);
+
+        act(() => {
+            reducedMotionMatches = true;
+            reducedMotionListeners.forEach(listener => listener({
+                matches: true,
+                media: '(prefers-reduced-motion: reduce)',
+            } as MediaQueryListEvent));
+        });
+        expect(sprite.classList.contains('office-sprite--idle')).toBe(false);
+
+        act(() => {
+            reducedMotionMatches = false;
+            reducedMotionListeners.forEach(listener => listener({
+                matches: false,
+                media: '(prefers-reduced-motion: reduce)',
+            } as MediaQueryListEvent));
+        });
+        expect(sprite.classList.contains('office-sprite--idle')).toBe(true);
     });
 });

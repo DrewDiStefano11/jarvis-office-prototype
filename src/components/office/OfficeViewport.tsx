@@ -1,4 +1,4 @@
-import { PointerEvent as ReactPointerEvent, WheelEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { PointerEvent as ReactPointerEvent, WheelEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { OFFICE_ASSETS } from '../../office/assets';
 import { constrainTransform, fitTransform, screenToOffice, zoomAtScreenPoint } from '../../office/coordinates';
 import { DEFAULT_VIEWPORT_OPTIONS, OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../office/constants';
@@ -57,7 +57,9 @@ export function OfficeViewport({
     const [transform, setTransform] = useState(transformRef.current);
     const [viewport, setViewport] = useState<ViewportSize>({ width: 1, height: 1 });
     const [backgroundState, setBackgroundState] = useState<'loading' | 'ready' | 'error'>('loading');
-    const reducedMotion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
+    const [reducedMotion, setReducedMotion] = useState(
+        () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    );
 
     const commitTransform = useCallback((next: ViewTransform) => {
         const constrained = constrainTransform(next, viewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
@@ -101,6 +103,14 @@ export function OfficeViewport({
     useEffect(() => () => {
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
         if (pointerFrameRef.current !== null) cancelAnimationFrame(pointerFrameRef.current);
+    }, []);
+
+    useEffect(() => {
+        const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const handleChange = (event: MediaQueryListEvent) => setReducedMotion(event.matches);
+        setReducedMotion(preference.matches);
+        preference.addEventListener('change', handleChange);
+        return () => preference.removeEventListener('change', handleChange);
     }, []);
 
     useEffect(() => {
@@ -265,10 +275,13 @@ export function OfficeViewport({
                     event.stopPropagation();
                     suppressClickRef.current = false;
                 }}
-                onPointerLeave={() => {
+                onPointerLeave={event => {
                     if (pointerFrameRef.current !== null) cancelAnimationFrame(pointerFrameRef.current);
                     pointerFrameRef.current = null;
                     if (debug) onPointerOfficePoint(null);
+                    if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+                        finishPointer(event.pointerId, false);
+                    }
                 }}
                 onDoubleClick={fit}
                 onClick={event => {
