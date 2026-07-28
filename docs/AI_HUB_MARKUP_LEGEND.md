@@ -11,11 +11,50 @@ The finished application must use the clean, unmarked office image as the visibl
 - The authoritative runtime/world coordinate system is 8192 × 5460.
 - The markup PDFs use a 4608 × 3072 reference canvas.
 - The markup files must cover the same uncropped office composition and maintain the same aspect ratio.
-- Markup coordinates must be converted into production source coordinates:
-  - sourceX = markupX × (8192 / 4608)
-  - sourceY = markupY × (5460 / 3072)
+- Markup coordinates must be converted into production source coordinates using a single uniform scale and explicit registration offsets:
+  - sourceX = markupX * uniformScale + offsetX
+  - sourceY = markupY * uniformScale + offsetY
+- The markup must never be independently stretched along X and Y.
+- A mismatch between nominal canvas aspect ratios is evidence that crop, padding, export margins, or source assumptions must be investigated. It is not permission to stretch the markup independently along X and Y.
+- No markup-derived geometry may be classified as production-approved until visual registration has passed.
+- Unknown registration values must remain clearly unverified. Do not invent final numerical values for `uniformScale`, `offsetX`, or `offsetY` unless the repository contains enough evidence to derive and verify them.
 - Runtime geometry must be stored in 8192 × 5460 source pixels.
 - The markup images themselves are development references and must never be rendered in production.
+
+### Coordinate terminology
+
+- **Source or world coordinates**: The authoritative coordinates stored by production runtime geometry. Defined as 8192 × 5460, origin at upper-left, X increases to the right, Y increases downward.
+- **Markup coordinates**: Coordinates measured from the original markup export or rendered PDF page before registration. Markup coordinates must not be treated as source coordinates.
+- **Registered source coordinates**: Markup coordinates transformed using the approved uniform scale and registration offsets.
+- **Viewport coordinates**: Temporary screen coordinates after pan, zoom, responsive scaling, and camera transformations. Viewport coordinates must never be stored as authoritative geometry.
+
+### Required Registration Procedure
+
+1. Verify the actual pixel dimensions of every markup image or rendered PDF page.
+2. Verify whether the markup covers the full clean image, a cropped subsection, a padded canvas, or an image with borders/export margins.
+3. Select at least four clearly identifiable landmarks distributed across the office (one near each corner, plus central landmarks like the Central Nexus and elevator).
+4. Record each landmark in both markup coordinates and source-image coordinates.
+5. Calculate the candidate uniform scale and offsets.
+6. Measure residual alignment error at all calibration landmarks.
+7. Reject the mapping if errors indicate nonuniform stretching, rotation, cropping mismatch, inconsistent export margins, or incorrect source dimensions.
+8. Produce a visual registration overlay before extracting production geometry.
+9. Store the approved registration information in a dedicated structured record before production geometry generation, using an interface similar to:
+
+```ts
+interface MarkupRegistration {
+  sourceWidth: 8192;
+  sourceHeight: 5460;
+  markupWidth: number;
+  markupHeight: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  rotationDegrees: 0;
+  registrationLandmarks: RegistrationLandmark[];
+  maximumResidualErrorPixels: number;
+  status: 'unverified' | 'review_required' | 'approved';
+}
+```
 - The top-left corner is coordinate `(0, 0)`.
 - X increases from left to right.
 - Y increases from top to bottom.
