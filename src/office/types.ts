@@ -57,6 +57,7 @@ export type AnimationDefinition = Readonly<{
     frameWidth: number;
     frameHeight: number;
     frameCount: number;
+    columns: number;
     frameSequence: readonly number[];
     frameDurationMs: number;
     loop: boolean;

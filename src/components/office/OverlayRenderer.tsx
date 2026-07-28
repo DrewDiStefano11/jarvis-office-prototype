@@ -1,6 +1,12 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { OFFICE_ASSETS } from '../../office/assets';
-import { buildPlaybackSequence, nextPlaybackIndex } from '../../office/animation';
+import {
+    buildPlaybackSequence,
+    hasValidSpriteSheetDimensions,
+    nextPlaybackIndex,
+    spriteFrameLayout,
+    spriteSheetDimensions,
+} from '../../office/animation';
 import { geometryCenter } from '../../office/geometry';
 import { compareEntities } from '../../office/layers';
 import { OfficeEntity, OfficeLayer } from '../../office/types';
@@ -99,6 +105,20 @@ function EntityHitArea({ entity }: Readonly<{ entity: OfficeEntity }>) {
     return <polyline points={pointsAttribute(geometry.points)} fill="none" stroke="transparent" strokeWidth={Math.max(geometry.width, 80)} pointerEvents="stroke" />;
 }
 
+function SeatPriorityMarker({ entity }: Readonly<{ entity: OfficeEntity }>) {
+    if (entity.type !== 'desk' || !entity.seatPriority) return null;
+    const point = geometryCenter(entity.geometry);
+    const color = entity.seatPriority === 'yellow' ? ACCESS_COLORS.yellow : ACCESS_COLORS.red;
+    return (
+        <g data-seat-priority={entity.seatPriority} pointerEvents="none">
+            <circle cx={point.x} cy={point.y} r={46} fill="#0a1117" stroke={color} strokeWidth={18} />
+            <text x={point.x} y={point.y + 18} textAnchor="middle" fill={color} fontSize={54} fontWeight="700">
+                {entity.seatPriority === 'yellow' ? 'P' : 'S'}
+            </text>
+        </g>
+    );
+}
+
 function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: OfficeEntity; debug: boolean; reducedMotion: boolean }>) {
     const [assetState, setAssetState] = useState<'loading' | 'ready' | 'missing'>('loading');
     const [playbackIndex, setPlaybackIndex] = useState(0);
@@ -135,6 +155,8 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
     const width = sprite.animation.frameWidth * sprite.scale;
     const height = sprite.animation.frameHeight * sprite.scale;
     const frame = playback[playbackIndex] ?? 0;
+    const frameLayout = spriteFrameLayout(frame, sprite.animation, sprite.scale);
+    const sheetDimensions = spriteSheetDimensions(sprite.animation);
 
     return (
         <foreignObject x={point.x - width / 2} y={point.y - height} width={width} height={height} pointerEvents="none">
@@ -153,9 +175,11 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
                     draggable={false}
                     className="office-sprite__preload"
                     onLoad={event => {
-                        const expectedWidth = sprite.animation.frameWidth * sprite.animation.frameCount;
-                        const expectedHeight = sprite.animation.frameHeight;
-                        setAssetState(event.currentTarget.naturalWidth >= expectedWidth && event.currentTarget.naturalHeight >= expectedHeight ? 'ready' : 'missing');
+                        setAssetState(hasValidSpriteSheetDimensions(
+                            event.currentTarget.naturalWidth,
+                            event.currentTarget.naturalHeight,
+                            sprite.animation,
+                        ) ? 'ready' : 'missing');
                     }}
                     onError={() => setAssetState('missing')}
                 />
@@ -164,8 +188,8 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
                         className="office-sprite__frame"
                         style={{
                             backgroundImage: `url(${asset.path})`,
-                            backgroundPosition: `${-frame * sprite.animation.frameWidth * sprite.scale}px 0`,
-                            backgroundSize: `${sprite.animation.frameWidth * sprite.animation.frameCount * sprite.scale}px auto`,
+                            backgroundPosition: `${frameLayout.x}px ${frameLayout.y}px`,
+                            backgroundSize: `${sheetDimensions.width * sprite.scale}px ${sheetDimensions.height * sprite.scale}px`,
                         }}
                     />
                 )}
@@ -174,6 +198,75 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
         </foreignObject>
     );
 }
+
+const OverlayEntityView = memo(function OverlayEntityView({
+    entity,
+    debug,
+    selected,
+    hovered,
+    showLabels,
+    reducedMotion,
+    onHover,
+    onSelect,
+}: Readonly<{
+    entity: OfficeEntity;
+    debug: boolean;
+    selected: boolean;
+    hovered: boolean;
+    showLabels: boolean;
+    reducedMotion: boolean;
+    onHover: (id: string | null) => void;
+    onSelect: (id: string) => void;
+}>) {
+    const emphasized = selected || hovered;
+    const interactive = entity.interactive && (entity.sprite?.pointerEvents ?? true);
+    const labelPoint = geometryCenter(entity.geometry);
+    return (
+        <g
+            data-entity-id={entity.id}
+            className={interactive ? 'office-entity office-entity--interactive' : 'office-entity'}
+            role={interactive ? 'button' : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            pointerEvents={interactive ? undefined : 'none'}
+            aria-label={interactive ? `${entity.name}, ${entity.type.replace('_', ' ')}` : undefined}
+            onPointerEnter={() => interactive && onHover(entity.id)}
+            onPointerLeave={() => interactive && onHover(null)}
+            onClick={event => {
+                if (!interactive) return;
+                event.stopPropagation();
+                onSelect(entity.id);
+            }}
+            onKeyDown={event => {
+                if (interactive && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                    onSelect(entity.id);
+                }
+            }}
+        >
+            <EntityGeometry entity={entity} debug={debug} emphasized={emphasized} />
+            <SeatPriorityMarker entity={entity} />
+            {debug && <VertexMarkers entity={entity} />}
+            {entity.type === 'sprite_anchor' && <SpriteAnchor entity={entity} debug={debug} reducedMotion={reducedMotion} />}
+            {interactive && <EntityHitArea entity={entity} />}
+            {entity.type === 'label_anchor' && showLabels && (
+                <text
+                    data-production-label={entity.id}
+                    x={labelPoint.x}
+                    y={labelPoint.y}
+                    textAnchor="middle"
+                    className="office-production-label"
+                >
+                    {entity.name}
+                </text>
+            )}
+            {debug && showLabels && (
+                <text x={labelPoint.x} y={labelPoint.y - 72} textAnchor="middle" className="office-overlay-label">
+                    {entity.id}
+                </text>
+            )}
+        </g>
+    );
+});
 
 export const OverlayRenderer = memo(function OverlayRenderer({
     entities,
@@ -186,52 +279,25 @@ export const OverlayRenderer = memo(function OverlayRenderer({
     onHover,
     onSelect,
 }: Props) {
-    const sorted = [...entities].filter(entity => entity.enabled && visibleLayers.has(entity.sourceLayer)).sort(compareEntities);
+    const sorted = useMemo(
+        () => [...entities].filter(entity => entity.enabled && visibleLayers.has(entity.sourceLayer)).sort(compareEntities),
+        [entities, visibleLayers],
+    );
     return (
         <svg className="office-overlay" width="8192" height="5460" viewBox="0 0 8192 5460" aria-label="Office interaction regions">
-            {sorted.map(entity => {
-                const emphasized = selectedId === entity.id || hoveredId === entity.id;
-                const interactive = entity.interactive && (entity.sprite?.pointerEvents ?? true);
-                const labelPoint = geometryCenter(entity.geometry);
-                return (
-                    <g
-                        key={entity.id}
-                        data-entity-id={entity.id}
-                        className={interactive ? 'office-entity office-entity--interactive' : 'office-entity'}
-                        role={interactive ? 'button' : undefined}
-                        tabIndex={interactive ? 0 : undefined}
-                        pointerEvents={interactive ? undefined : 'none'}
-                        aria-label={interactive ? `${entity.name}, ${entity.type.replace('_', ' ')}` : undefined}
-                        onPointerEnter={() => interactive && onHover(entity.id)}
-                        onPointerLeave={() => interactive && onHover(null)}
-                        onClick={event => {
-                            if (!interactive) return;
-                            event.stopPropagation();
-                            onSelect(entity.id);
-                        }}
-                        onKeyDown={event => {
-                            if (interactive && (event.key === 'Enter' || event.key === ' ')) {
-                                event.preventDefault();
-                                onSelect(entity.id);
-                            }
-                        }}
-                    >
-                        <EntityGeometry entity={entity} debug={debug} emphasized={emphasized} />
-                        {debug && <VertexMarkers entity={entity} />}
-                        {entity.type === 'sprite_anchor' && <SpriteAnchor entity={entity} debug={debug} reducedMotion={reducedMotion} />}
-                        {interactive && <EntityHitArea entity={entity} />}
-                        {debug && showLabels && (
-                            <text
-                                x={labelPoint.x}
-                                y={labelPoint.y - 72}
-                                className="office-overlay-label"
-                            >
-                                {entity.id}
-                            </text>
-                        )}
-                    </g>
-                );
-            })}
+            {sorted.map(entity => (
+                <OverlayEntityView
+                    key={entity.id}
+                    entity={entity}
+                    debug={debug}
+                    selected={selectedId === entity.id}
+                    hovered={hoveredId === entity.id}
+                    showLabels={showLabels}
+                    reducedMotion={reducedMotion}
+                    onHover={onHover}
+                    onSelect={onSelect}
+                />
+            ))}
         </svg>
     );
 });

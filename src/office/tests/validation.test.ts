@@ -93,4 +93,81 @@ describe('office overlay schema', () => {
             expect(result.errors.some(error => error.includes('zero-length'))).toBe(true);
         }
     });
+
+    it('rejects non-object structured fields before rendering can dereference them', () => {
+        for (const [entityIndex, field] of [[9, 'sprite'], [1, 'path'], [3, 'door'], [0, 'accessPolicy']] as const) {
+            const document = cloneDocument();
+            const entities = document.entities as Record<string, unknown>[];
+            entities[entityIndex][field] = 'malformed';
+            const result = validateOverlayDocument(document);
+            expect(result.valid, `${field} should be rejected`).toBe(false);
+            if (!result.valid) expect(result.errors.some(error => error.includes(`${field} must be an object`))).toBe(true);
+        }
+    });
+
+    it('requires and fully validates sprite definitions for sprite anchors', () => {
+        const invalidValues: readonly [string, unknown][] = [
+            ['assetId', ''],
+            ['scale', 0],
+            ['opacity', 1.5],
+            ['blendMode', 'overlay'],
+            ['pointerEvents', 'yes'],
+        ];
+        for (const [field, invalidValue] of invalidValues) {
+            const document = cloneDocument();
+            const entities = document.entities as Record<string, unknown>[];
+            const sprite = entities[9].sprite as Record<string, unknown>;
+            sprite[field] = invalidValue;
+            expect(validateOverlayDocument(document).valid, field).toBe(false);
+        }
+        const missing = cloneDocument();
+        delete (missing.entities as Record<string, unknown>[])[9].sprite;
+        expect(validateOverlayDocument(missing).valid).toBe(false);
+    });
+
+    it('rejects malformed arrays and metadata values', () => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        (entities[0].accessPolicy as Record<string, unknown>).memberIds = ['valid', 7];
+        (entities[3].door as Record<string, unknown>).linkedRoomIds = 'sample.room.central';
+        (entities[1].path as Record<string, unknown>).linkedDoorIds = [false];
+        entities[0].metadata = { nested: { unsafe: true }, infinite: Number.POSITIVE_INFINITY };
+        const result = validateOverlayDocument(document);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.errors.some(error => error.includes('memberIds'))).toBe(true);
+            expect(result.errors.some(error => error.includes('linkedRoomIds'))).toBe(true);
+            expect(result.errors.some(error => error.includes('linkedDoorIds'))).toBe(true);
+            expect(result.errors.some(error => error.includes('metadata'))).toBe(true);
+        }
+    });
+
+    it('rejects degenerate polygons and entity type/layer mismatches', () => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        entities[0].geometry = {
+            kind: 'polygon',
+            points: [{ x: 100, y: 100 }, { x: 200, y: 200 }, { x: 300, y: 300 }],
+        };
+        entities[5].sourceLayer = 'rooms';
+        const result = validateOverlayDocument(document);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.errors.some(error => error.includes('nonzero polygon area'))).toBe(true);
+            expect(result.errors.some(error => error.includes('does not match entity type'))).toBe(true);
+        }
+    });
+
+    it('validates room and door reference target types', () => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        (entities[3].door as Record<string, unknown>).linkedRoomIds = ['sample.computer.one'];
+        (entities[1].path as Record<string, unknown>).linkedDoorIds = ['sample.room.central'];
+        const result = validateOverlayDocument(document);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.errors.some(error => error.includes('must reference a room'))).toBe(true);
+            expect(result.errors.some(error => error.includes('must reference a door'))).toBe(true);
+        }
+    });
 });

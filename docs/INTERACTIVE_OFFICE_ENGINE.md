@@ -6,7 +6,7 @@ The office engine displays a clean 8192×5460 source image and renders validated
 
 The current renderer is a hybrid: an HTML image preserves the browser's native image decode/downscale path, one transformed SVG holds vector overlays and accessible hit targets, and HTML provides controls and the inspector. A single source-space transform is applied to the image and overlay together, which prevents alignment drift and keeps the domain model renderer-independent. SVG is suitable for the current hundreds-to-low-thousands target because debug geometry remains inspectable and keyboard focusable. Labels are suppressed at low zoom, pointer motion does not rebuild the entity document, and transform commits are animation-frame scheduled while dragging.
 
-The legacy Phaser prototype remains in the repository. It is not the source of truth for the new engine.
+The application-level view switch keeps the legacy Phaser agent simulation reachable during engine development. Its commands and agent state remain React/domain-owned; Phaser is still renderer-only.
 
 ## Coordinate system
 
@@ -50,7 +50,7 @@ The background is critical and must report natural dimensions of exactly 8192×5
 
 The hologram is optional until supplied. Its anchor, animation metadata, scale, opacity, glow, and blend mode are data-driven. Missing sprite files render a simple non-image fallback instead of a broken-image icon. Pixel sprites use `image-rendering: pixelated`. Idle motion is disabled by `prefers-reduced-motion`.
 
-Sprite animation data supports frame width/height/count, a frame sequence, frame duration, loop, ping-pong, idle, source-space scale, opacity, glow, and conservative blend modes. The current fallback renderer establishes this contract but does not crop through sprite-sheet frames until the real sheet is supplied and its layout is verified.
+Sprite animation data supports frame width/height/count, configurable column count, multi-row frame lookup, custom sequences, frame duration, loop, ping-pong, idle, source-space scale, opacity, glow, and conservative blend modes. Frame indexes are converted to row/column coordinates, and the decoded image must exactly match the calculated grid dimensions. A 100-frame, 10-column definition therefore accepts the planned 10×10 hologram sheet without restructuring it.
 
 ## Overlay schema
 
@@ -75,7 +75,7 @@ Supported geometry:
 - `polygon` with at least three vertices
 - `polyline` with at least two vertices and positive width
 
-Validation rejects unsupported versions, duplicate IDs, non-finite numbers, invalid bounds, malformed or zero-area geometry, zero-length path segments, unknown references, invalid layers, invalid access/priority values, malformed animation frames, and invalid path-node references.
+Validation rejects unsupported versions, duplicate IDs, non-finite numbers, invalid bounds, malformed structured fields, zero-area or degenerate geometry, type/layer mismatches, non-primitive metadata, broken or incorrectly typed references, invalid access/priority values, malformed sprite grids, and invalid path-node references.
 
 Stable IDs use lowercase namespaced tokens, for example `room.executive-suite`, `door.executive-suite.north`, and `computer.research.desk-03`. Never rename an ID merely to improve its label; update `name`. When an ID truly changes, update all parent, entity, room, door, and path references in the same change and run tests.
 
@@ -98,7 +98,7 @@ Back to front:
 13. hitboxes
 14. selection, hover, and debug UI
 
-Within a layer, z-index, entity-type precedence, then stable ID determine ordering. Production mode makes structural overlays transparent while leaving hit regions interactive. Lights, intentional effects, and sprites remain visible. Debug mode shows translucent geometry, filters, IDs where zoom permits, image coordinates, current zoom, hover, and selection.
+Within a layer, z-index, entity-type precedence, then stable ID determine ordering. Production mode makes structural overlays transparent while leaving hit regions interactive. Lights, intentional effects, sprites, zoom-gated label names, and yellow/red seat-priority markers remain visible. Debug mode shows translucent geometry, filters, IDs where zoom permits, image coordinates, current zoom, hover, and selection.
 
 ## Access and priority semantics
 
@@ -147,7 +147,7 @@ The checked-in `NON_PRODUCTION_OVERLAY` exists only to exercise the engine and i
 
 ## UI and accessibility
 
-Wheel/trackpad zoom centers on the pointer. Drag pans with pointer capture. Touch uses one-finger pan and two-pointer pinch. Buttons provide keyboard zoom, fit, reset, debug, and sidebar control. Interactive SVG entities are focusable and select with Enter or Space. Escape and background clicks clear selection. Focus outlines and inspector text avoid color-only meaning.
+Wheel/trackpad zoom centers on the pointer. Drag pans with pointer capture and suppresses the synthetic selection click after crossing the pan threshold. Touch uses one-finger pan and anchored two-pointer pinch translation/scaling; releasing one pinch pointer resumes pan from the remaining pointer without a jump. Pointer cancellation and lost capture share the same cleanup path. Buttons provide keyboard zoom, fit, reset, debug, and sidebar control. Interactive SVG entities are focusable and select with Enter or Space. Escape and background clicks clear selection. Focus outlines and inspector text avoid color-only meaning.
 
 ## Commands
 
@@ -165,6 +165,6 @@ There is no formatter dependency or formatting-check script in this repository.
 
 - Production 8K imagery, marked-up guides, and a hologram sprite sheet are not currently present.
 - No live agent movement, pathfinding, scheduling, backend, WebSocket, authentication, database, AI execution, or orchestration is included.
-- The sprite contract is validated, but frame-cropping animation awaits the real asset.
+- Sprite grid dimensions are enforced exactly; any padding or non-grid sprite layout will require explicit future schema metadata.
 - The SVG renderer avoids pathological React updates, but production-scale data should be profiled. If tens of thousands of regions require canvas, the document, transforms, ordering, and interaction helpers can remain unchanged.
 - A future integration may provide validated overlay documents and live entity states to React. Phaser or another renderer may consume those states but must not become authoritative.

@@ -46,4 +46,4 @@ This repository is the visual office prototype for the standalone Jarvis Agent E
 3. Enable Debug overlays to inspect layers, IDs, source coordinates, hover, and selection.
 4. Use Fit or Reset to return to the centered full-office view.
 
-The earlier Phaser agent simulation remains as renderer/domain reference code but is no longer the primary application view.
+Use the application view switch to open the earlier Phaser agent simulation. Its React/domain state and movement controls remain available while the interactive office engine is developed.

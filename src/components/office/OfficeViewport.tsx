@@ -2,6 +2,16 @@ import { PointerEvent as ReactPointerEvent, WheelEvent, useCallback, useEffect, 
 import { OFFICE_ASSETS } from '../../office/assets';
 import { constrainTransform, fitTransform, screenToOffice, zoomAtScreenPoint } from '../../office/coordinates';
 import { DEFAULT_VIEWPORT_OPTIONS, OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../office/constants';
+import {
+    beginPanGesture,
+    beginPinchGesture,
+    PanGesture,
+    PinchGesture,
+    resumePanGesture,
+    shouldSuppressSelection,
+    updatePanGesture,
+    updatePinchGesture,
+} from '../../office/gestures';
 import { focusEntityTransform, panTransform } from '../../office/interaction';
 import { LAYER_ORDER } from '../../office/layers';
 import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform, ViewportSize } from '../../office/types';
@@ -34,9 +44,10 @@ export function OfficeViewport({
 }: Props) {
     const viewportRef = useRef<HTMLDivElement>(null);
     const transformRef = useRef<ViewTransform>({ scale: 0.1, x: 0, y: 0 });
-    const pointerRef = useRef<{ id: number; x: number; y: number } | null>(null);
+    const panRef = useRef<PanGesture | null>(null);
     const touchesRef = useRef(new Map<number, Point>());
-    const pinchRef = useRef<{ distance: number; transform: ViewTransform } | null>(null);
+    const pinchRef = useRef<PinchGesture | null>(null);
+    const suppressClickRef = useRef(false);
     const frameRef = useRef<number | null>(null);
     const pointerFrameRef = useRef<number | null>(null);
     const pendingTransformRef = useRef<ViewTransform | null>(null);
@@ -119,36 +130,50 @@ export function OfficeViewport({
     const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
         if (event.button !== 0 && event.pointerType === 'mouse') return;
         event.currentTarget.setPointerCapture(event.pointerId);
-        touchesRef.current.set(event.pointerId, localPoint(event.clientX, event.clientY));
+        const point = localPoint(event.clientX, event.clientY);
+        touchesRef.current.set(event.pointerId, point);
         if (touchesRef.current.size === 1) {
-            pointerRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+            suppressClickRef.current = false;
+            panRef.current = beginPanGesture(event.pointerId, point);
         } else if (touchesRef.current.size === 2) {
             const [a, b] = [...touchesRef.current.values()];
-            pinchRef.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), transform: transformRef.current };
+            const initialTransform = pendingTransformRef.current ?? transformRef.current;
+            if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+            frameRef.current = null;
+            pendingTransformRef.current = null;
+            commitTransform(initialTransform);
+            pinchRef.current = beginPinchGesture(a, b, initialTransform);
+            panRef.current = null;
+            suppressClickRef.current = true;
         }
     };
 
     const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
         const local = localPoint(event.clientX, event.clientY);
-        if (pointerFrameRef.current !== null) cancelAnimationFrame(pointerFrameRef.current);
-        pointerFrameRef.current = requestAnimationFrame(() => onPointerOfficePoint(screenToOffice(local, transformRef.current)));
+        if (debug) {
+            if (pointerFrameRef.current !== null) cancelAnimationFrame(pointerFrameRef.current);
+            pointerFrameRef.current = requestAnimationFrame(() => onPointerOfficePoint(screenToOffice(local, transformRef.current)));
+        }
         if (!touchesRef.current.has(event.pointerId)) return;
         touchesRef.current.set(event.pointerId, local);
         if (touchesRef.current.size === 2 && pinchRef.current) {
             const [a, b] = [...touchesRef.current.values()];
-            const distance = Math.hypot(a.x - b.x, a.y - b.y);
-            const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-            const nextScale = Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, Math.max(DEFAULT_VIEWPORT_OPTIONS.minimumZoom, pinchRef.current.transform.scale * distance / pinchRef.current.distance));
-            commitTransform(zoomAtScreenPoint(pinchRef.current.transform, center, nextScale));
+            commitTransform(updatePinchGesture(
+                pinchRef.current,
+                a,
+                b,
+                DEFAULT_VIEWPORT_OPTIONS.minimumZoom,
+                DEFAULT_VIEWPORT_OPTIONS.maximumZoom,
+            ));
             return;
         }
-        const drag = pointerRef.current;
-        if (!drag || drag.id !== event.pointerId) return;
-        const dx = event.clientX - drag.x;
-        const dy = event.clientY - drag.y;
-        pointerRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        const pan = panRef.current;
+        if (!pan || pan.pointerId !== event.pointerId) return;
+        const updated = updatePanGesture(pan, local);
+        panRef.current = updated.gesture;
+        if (shouldSuppressSelection(updated.gesture)) suppressClickRef.current = true;
         const base = pendingTransformRef.current ?? transformRef.current;
-        pendingTransformRef.current = panTransform(base, dx, dy, viewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
+        pendingTransformRef.current = panTransform(base, updated.delta.x, updated.delta.y, viewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
         if (frameRef.current === null) {
             frameRef.current = requestAnimationFrame(() => {
                 const next = pendingTransformRef.current;
@@ -160,8 +185,16 @@ export function OfficeViewport({
     };
 
     const releasePointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const hadPinch = pinchRef.current !== null;
+        if (panRef.current?.pointerId === event.pointerId && shouldSuppressSelection(panRef.current)) {
+            suppressClickRef.current = true;
+        }
         touchesRef.current.delete(event.pointerId);
-        if (pointerRef.current?.id === event.pointerId) pointerRef.current = null;
+        if (hadPinch && touchesRef.current.size === 1) {
+            panRef.current = resumePanGesture(touchesRef.current);
+        } else if (panRef.current?.pointerId === event.pointerId) {
+            panRef.current = null;
+        }
         if (touchesRef.current.size < 2) pinchRef.current = null;
     };
 
@@ -187,10 +220,17 @@ export function OfficeViewport({
                 onPointerMove={handlePointerMove}
                 onPointerUp={releasePointer}
                 onPointerCancel={releasePointer}
+                onLostPointerCapture={releasePointer}
+                onClickCapture={event => {
+                    if (!suppressClickRef.current) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    suppressClickRef.current = false;
+                }}
                 onPointerLeave={() => {
                     if (pointerFrameRef.current !== null) cancelAnimationFrame(pointerFrameRef.current);
                     pointerFrameRef.current = null;
-                    onPointerOfficePoint(null);
+                    if (debug) onPointerOfficePoint(null);
                 }}
                 onDoubleClick={fit}
                 onClick={event => {
@@ -224,7 +264,7 @@ export function OfficeViewport({
                         showLabels={transform.scale >= 0.15}
                         reducedMotion={reducedMotion}
                         onHover={onHover}
-                        onSelect={id => onSelect(id)}
+                        onSelect={onSelect}
                     />
                 </div>
                 {backgroundState === 'loading' && <div className="asset-status" role="status">Loading 8K office image…</div>}

@@ -1,7 +1,35 @@
+import { useState } from 'react';
+import { LegacyAgentSimulation } from './components/LegacyAgentSimulation';
 import { OfficeEngine } from './components/office/OfficeEngine';
+import './app.css';
+
+type ApplicationView = 'office-engine' | 'agent-simulation';
 
 function App() {
-    return <OfficeEngine />;
+    const [view, setView] = useState<ApplicationView>('office-engine');
+    return (
+        <div className="application-shell">
+            <nav className="view-switcher" aria-label="Prototype view">
+                <button
+                    type="button"
+                    aria-pressed={view === 'office-engine'}
+                    onClick={() => setView('office-engine')}
+                >
+                    Office engine
+                </button>
+                <button
+                    type="button"
+                    aria-pressed={view === 'agent-simulation'}
+                    onClick={() => setView('agent-simulation')}
+                >
+                    Agent simulation
+                </button>
+            </nav>
+            <div className="application-view">
+                {view === 'office-engine' ? <OfficeEngine /> : <LegacyAgentSimulation />}
+            </div>
+        </div>
+    );
 }
 
 export default App;

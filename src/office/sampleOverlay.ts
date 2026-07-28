@@ -159,6 +159,7 @@ const sampleOverlay: OfficeOverlayDocument = {
                     frameWidth: 128,
                     frameHeight: 192,
                     frameCount: 8,
+                    columns: 8,
                     frameSequence: [0, 1, 2, 3, 4, 5, 6, 7],
                     frameDurationMs: 120,
                     loop: true,
