@@ -40,9 +40,27 @@ describe('Floor 1 coordinate spaces and registration', () => {
         expect(alignEdgeMaps(reference, moving, { scale: 1, offsetX: 0, offsetY: 0 }).offsetX).toBe(1);
     });
 
+    it('aligns a realistic larger edge-map fixture', () => {
+        const width = 64;
+        const height = 48;
+        const movingValues = Array.from({ length: width * height }, (_, index) => {
+            const x = index % width;
+            const y = Math.floor(index / width);
+            return x === 20 || y === 31 || (x > 35 && x < 50 && y > 8 && y < 12) ? 255 : 0;
+        });
+        const referenceWidth = 68;
+        const referenceHeight = 52;
+        const referenceValues = new Array(referenceWidth * referenceHeight).fill(0);
+        for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) referenceValues[(y + 2) * referenceWidth + x + 3] = movingValues[y * width + x];
+        const result = alignEdgeMaps({ width: referenceWidth, height: referenceHeight, values: referenceValues }, { width, height, values: movingValues }, { scale: 1, offsetX: 1, offsetY: 1 }, 4);
+        expect(result.offsetX).toBe(3);
+        expect(result.offsetY).toBe(2);
+        expect(result.scale).toBeCloseTo(1, 1);
+        expect(result.score).toBeGreaterThan(0.9);
+    });
+
     it('never loads candidate data in normal mode', () => {
         expect(selectFloor1RuntimeSource(null)).toBe('existing-sample');
         expect(() => selectFloor1RuntimeSource({ productionApproved: false, registrationStatus: 'candidate-unverified' })).toThrow(/refuses/);
     });
 });
-

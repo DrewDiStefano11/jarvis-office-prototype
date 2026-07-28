@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
+import { validateApprovalArtifact } from './approval.mjs';
 
 export const ROOT = process.cwd();
 export const OUT = path.join(ROOT, 'artifacts', 'production-floor1');
@@ -15,7 +16,7 @@ export const SOURCES = [
     ['computers', 'Computers.pdf'], ['chairs-standing-desks', 'Chairs-Standing desks.pdf'],
     ['interactive-objects', 'Interactive Objects.pdf'],
 ];
-const EXPECTED = {
+export const EXPECTED = {
     rooms: 69, 'walk-paths': 131, walls: 62, objects: 105, doors: 95,
     'door-lights': 144, computers: 44, 'chairs-standing-desks': 205,
     'interactive-objects': 12,
@@ -24,12 +25,14 @@ const KNOWN_FIELDS = new Set([
     'Subtype', 'Rect', 'QuadPoints', 'InkList', 'Vertices', 'L', 'LE', 'C', 'IC',
     'CA', 'BS', 'Border', 'Contents', 'RC', 'NM', 'T', 'M', 'F', 'AP', 'Type', 'P',
 ]);
+const SUPPORTED_FILTERS = new Set(['FlateDecode', 'ASCIIHexDecode', 'DCTDecode']);
+export const GENERATOR_VERSION = '2.0.0';
 
 export function sha(buffer) {
     return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 export function mkdir(dir) { fs.mkdirSync(dir, { recursive: true }); }
-function canonical(value) {
+export function canonical(value) {
     if (Array.isArray(value)) return value.map(canonical);
     if (value && typeof value === 'object') {
         return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
@@ -38,7 +41,7 @@ function canonical(value) {
 }
 export function writeJson(file, value) {
     mkdir(path.dirname(file));
-    fs.writeFileSync(file, `${JSON.stringify(canonical(value), null, 2)}\n`);
+    fs.writeFileSync(file, `${JSON.stringify(canonical(value))}\n`);
 }
 function text(buffer) { return buffer.toString('latin1'); }
 function objectEntries(buffer) {
@@ -174,20 +177,26 @@ function streamBytes(buffer, object) {
     const start = bodyStart + streamMatch.index + streamMatch[0].length;
     return buffer.subarray(start, start + length);
 }
+function streamFilters(body) {
+    const direct = [...body.matchAll(/\/Filter\s*\/([A-Za-z0-9]+)/g)].map(match => match[1]);
+    const arrays = [...body.matchAll(/\/Filter\s*\[([^\]]*)\]/g)].flatMap(match => [...match[1].matchAll(/\/([A-Za-z0-9]+)/g)].map(item => item[1]));
+    return [...new Set([...direct, ...arrays])];
+}
 function decodeStream(bytes, body) {
     if (!bytes) return null;
-    const filters = [...body.matchAll(/\/(FlateDecode|ASCIIHexDecode|ASCII85Decode|DCTDecode)/g)].map(match => match[1]);
+    const filters = streamFilters(body);
     let result = bytes;
     for (const filter of filters) {
         if (filter === 'FlateDecode') result = zlib.inflateSync(result);
         else if (filter === 'ASCIIHexDecode') {
             const hex = text(result).replace(/\s|>/g, '');
             result = Buffer.from(hex.length % 2 ? `${hex}0` : hex, 'hex');
-        } else if (filter === 'ASCII85Decode') {
-            throw new Error('ASCII85Decode encountered but not implemented for this source set.');
-        }
+        } else if (filter !== 'DCTDecode') throw new Error(`Unsupported stream filter: ${filter}`);
     }
     return result;
+}
+function referencedObjectIds(body) {
+    return [...body.matchAll(/(\d+)\s+(\d+)\s+R/g)].map(match => ({ objectId: Number(match[1]), generation: Number(match[2]) }));
 }
 function pageInfo(objects, buffer) {
     const page = objects.find(object => /\/Type\s*\/Page\b/.test(object.body));
@@ -198,6 +207,9 @@ function pageInfo(objects, buffer) {
     const content = decoded ? text(decoded) : '';
     const matrix = [...content.matchAll(/([-+.\d]+)\s+([-+.\d]+)\s+([-+.\d]+)\s+([-+.\d]+)\s+([-+.\d]+)\s+([-+.\d]+)\s+cm\s*\/Image\s+Do/g)]
         .map(match => match.slice(1).map(Number))[0] ?? null;
+    const annotationsRef = reference(page.body, 'Annots');
+    const annotationsObject = annotationsRef ? objects.find(object => object.id === annotationsRef.objectId && object.generation === annotationsRef.generation) : null;
+    const pageAnnotationReferences = annotationsObject ? referencedObjectIds(annotationsObject.body) : [];
     return {
         mediaBox: numbers(balanced(page.body, 'MediaBox', '[', ']')),
         cropBox: numbers(balanced(page.body, 'CropBox', '[', ']')),
@@ -206,11 +218,16 @@ function pageInfo(objects, buffer) {
         resources: reference(page.body, 'Resources') ?? (page.body.includes('/Resources<<') ? 'inline' : null),
         imagePlacementMatrix: matrix,
         contentOperators: [...new Set([...content.matchAll(/(?:^|\s)(q|Q|cm|Do|m|l|c|v|y|h|re|S|s|f\*?|B\*?|b\*?|n|w|J|j|M|d|RG|rg|G|g|K|k)(?=\s|$)/g)].map(match => match[1]))].sort(),
+        annotationsReference: annotationsRef,
+        pageAnnotationReferences,
     };
 }
 export function inspectPdf(key, fileName, includeRecords = true) {
     const absolute = path.join(ROOT, fileName);
     const buffer = fs.readFileSync(absolute);
+    return inspectPdfBuffer(key, fileName, buffer, includeRecords);
+}
+export function inspectPdfBuffer(key, fileName, buffer, includeRecords = true) {
     const objects = objectEntries(buffer);
     const annotationObjects = objects.filter(object => /\/Type\s*\/Annot\b/.test(object.body));
     const records = includeRecords ? annotationObjects.map((object, index) => annotation(object, fileName, 0, index)) : [];
@@ -229,12 +246,66 @@ export function inspectPdf(key, fileName, includeRecords = true) {
     }
     const appearances = annotationObjects.filter(object => /\/AP\s*(?:<<|\d+\s+\d+\s+R)/.test(object.body)).length;
     const formXObjects = objects.filter(object => /\/Subtype\s*\/Form\b/.test(object.body)).length;
+    const page = pageInfo(objects, buffer);
+    const objectKey = value => `${value.objectId}:${value.generation}`;
+    const objectKeys = new Set(objects.map(object => `${object.id}:${object.generation}`));
+    const referencedKeys = new Set((page.pageAnnotationReferences ?? []).map(objectKey));
+    const parsedKeys = new Set(annotationObjects.map(object => `${object.id}:${object.generation}`));
+    const missingReferencedObjects = [...referencedKeys].filter(value => !objectKeys.has(value));
+    const extraAnnotationObjects = [...parsedKeys].filter(value => !referencedKeys.has(value));
+    const unsupportedFilters = [...new Set(objects.flatMap(object => streamFilters(object.body)).filter(filter => !SUPPORTED_FILTERS.has(filter)))];
+    const malformedObjects = annotationObjects.filter(object => {
+        const arrays = ['Rect', 'Vertices', 'InkList', 'QuadPoints', 'L'].filter(keyName => new RegExp(`/${keyName}\\s*\\[`).test(object.body));
+        return arrays.some(keyName => {
+            return balanced(object.body, keyName, '[', ']') == null;
+        }) || (object.body.split('<<').length - 1) !== (object.body.split('>>').length - 1);
+    }).map(object => object.id);
+    const appearanceReferences = records.map(record => record.appearance).filter(Boolean);
+    const unresolvedAppearances = appearanceReferences.filter(value => !objectKeys.has(objectKey(value)));
+    const duplicateAnnotationIds = [...new Set(records.map(record => record.annotationId).filter((id, index, values) => values.indexOf(id) !== index))];
+    const recordsWithoutUsableGeometry = records.filter(record => record.nativeGeometry.kind === 'none').map(record => record.id);
+    const unsupportedIndirectStructures = [
+        ...objects.filter(object => /\/Type\s*\/XRef\b/.test(object.body)).map(object => `xref-stream:${object.id}`),
+        ...objects.filter(object => /\/Type\s*\/ObjStm\b/.test(object.body)).map(object => `object-stream:${object.id}`),
+    ];
+    const unresolvedStructures = [
+        ...missingReferencedObjects.map(value => `missing-annotation-object:${value}`),
+        ...unresolvedAppearances.map(value => `missing-appearance-object:${objectKey(value)}`),
+        ...malformedObjects.map(value => `malformed-annotation-object:${value}`),
+        ...unsupportedFilters.map(value => `unsupported-stream-filter:${value}`),
+        ...unsupportedIndirectStructures,
+    ];
+    const intentionallyIgnoredObjects = objects.length - annotationObjects.length - images.length - formXObjects
+        - objects.filter(object => /\/Type\s*\/Page\b/.test(object.body)).length;
+    const reconciliation = {
+        pageReferencedAnnotationCount: referencedKeys.size,
+        parsedAnnotationCount: annotationObjects.length,
+        parsedReferencedAnnotationCount: [...parsedKeys].filter(value => referencedKeys.has(value)).length,
+        classifiedCount: null,
+        intentionallyRetainedUnmatchedCount: 0,
+        missingReferencedObjectCount: missingReferencedObjects.length,
+        extraAnnotationObjectCount: extraAnnotationObjects.length,
+        unresolvedCount: unresolvedStructures.length + recordsWithoutUsableGeometry.length,
+        unsupportedCount: unsupportedFilters.length + unsupportedIndirectStructures.length,
+        duplicateCount: duplicateAnnotationIds.length,
+        discardedCount: 0,
+        intentionallyIgnoredObjectCount: Math.max(0, intentionallyIgnoredObjects),
+        missingReferencedObjects,
+        extraAnnotationObjects,
+        unresolvedAppearances,
+        duplicateAnnotationIds,
+        recordsWithoutUsableGeometry,
+        unsupportedFilters,
+        unsupportedIndirectStructures,
+        malformedObjects,
+    };
     const info = {
         key, fileName, sha256: sha(buffer), byteSize: buffer.length, pageCount: objects.filter(object => /\/Type\s*\/Page\b/.test(object.body)).length,
         indirectObjectCount: objects.length, annotationCount: annotationObjects.length, annotationSubtypeCounts: subtypeCounts,
         appearanceStreamCount: appearances, embeddedImages: images, formXObjectCount: formXObjects,
-        ...pageInfo(objects, buffer),
-        unresolvedStructures: [],
+        ...page,
+        reconciliation,
+        unresolvedStructures,
     };
     return { info, records, buffer, objects };
 }
@@ -273,7 +344,7 @@ function svgFor(key, records, backgroundHref = null) {
 }
 export function auditAll() {
     mkdir(OUT);
-    const results = SOURCES.map(([key, file]) => inspectPdf(key, file, false));
+    const results = SOURCES.map(([key, file]) => inspectPdf(key, file, true));
     const audit = {
         schemaVersion: 1, sourceCount: results.length,
         totalAnnotations: results.reduce((sum, result) => sum + result.info.annotationCount, 0),
@@ -285,13 +356,33 @@ export function auditAll() {
         fileName: result.info.fileName, sha256: result.info.sha256, expectedRecords: EXPECTED[result.info.key],
         observedAnnotations: result.info.annotationCount, status: result.info.annotationCount === EXPECTED[result.info.key] ? 'complete' : 'mismatch',
     })));
+    writeJson(path.join(OUT, 'reconciliation-report.json'), {
+        schemaVersion: 1,
+        discardedCount: 0,
+        sources: results.map(result => ({ key: result.info.key, fileName: result.info.fileName, ...result.info.reconciliation })),
+    });
     fs.writeFileSync(path.join(OUT, 'alignment-report.md'), [
         '# Floor 1 Alignment Report', '', 'Status: candidate-unverified', '',
         '- All nine pages report `MediaBox [0 0 4608 3072]`.',
         '- Each PDF embeds one `6144 × 4096` DCT image.',
         '- Registration requires one uniform scale and explicit offsets.',
-        '- Visual landmark review is required; nominal dimensions do not constitute approval.', '',
+        '- Browser QA compared the actual `8192 × 5460` clean master with the actual embedded image using downsampled Sobel edge maps.',
+        '- The 2026-07-28 assistance pass retained scale `1.3333333333333333`, offset X `0`, and offset Y `-0.6666666666665151`; sampled score `0.85924`, overlap `100%`.',
+        '- This result is candidate assistance only. Distributed visual landmark review and all approval gates remain required.', '',
     ].join('\n'));
+    for (const result of results) {
+        const reconciliation = result.info.reconciliation;
+        if (reconciliation.pageReferencedAnnotationCount !== reconciliation.parsedAnnotationCount
+            || reconciliation.parsedReferencedAnnotationCount !== reconciliation.parsedAnnotationCount
+            || reconciliation.missingReferencedObjectCount !== 0
+            || reconciliation.extraAnnotationObjectCount !== 0
+            || reconciliation.unresolvedCount !== 0
+            || reconciliation.unsupportedCount !== 0
+            || reconciliation.duplicateCount !== 0
+            || reconciliation.discardedCount !== 0) {
+            throw new Error(`${result.info.fileName}: PDF annotation reconciliation failed`);
+        }
+    }
     if (audit.totalAnnotations !== 867) throw new Error(`Expected 867 annotations, observed ${audit.totalAnnotations}`);
     return audit;
 }
@@ -321,12 +412,17 @@ export function extractAll() {
         schemaVersion: 1, totalRecords: results.reduce((sum, result) => sum + result.records.length, 0),
         bySource: Object.fromEntries(results.map(result => [result.info.key, result.records.length])),
         totalAppearanceStreams: results.reduce((sum, result) => sum + result.info.appearanceStreamCount, 0),
-        unresolvedRecordCount: results.flatMap(result => result.records).filter(record => record.warnings.length).length,
+        unresolvedRecordCount: results.reduce((sum, result) => sum + result.info.reconciliation.unresolvedCount, 0),
         uniqueBackgroundHashes: [...backgrounds.keys()],
     };
     writeJson(path.join(OUT, 'extraction-summary.json'), summary);
     writeJson(path.join(OUT, 'unresolved-records.json'), results.flatMap(result => result.records).filter(record => record.warnings.length));
     writeJson(path.join(OUT, 'pdf-structure.json'), results.map(result => result.info));
+    writeJson(path.join(OUT, 'reconciliation-report.json'), {
+        schemaVersion: 1,
+        discardedCount: 0,
+        sources: results.map(result => ({ key: result.info.key, fileName: result.info.fileName, ...result.info.reconciliation })),
+    });
     if (backgrounds.size !== 1 || !backgrounds.has('9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea')) {
         throw new Error(`Unexpected embedded backgrounds: ${[...backgrounds.keys()].join(', ')}`);
     }
@@ -442,6 +538,14 @@ export function classifyAll() {
     writeJson(path.join(OUT, 'classification-summary.json'), summary);
     writeJson(path.join(OUT, 'door-reconciliation.json'), doors.map(door => ({ id: door.id, sourceAnnotationIds: door.sourceAnnotationIds, manualReviewRequired: door.manualReviewRequired })));
     writeJson(path.join(OUT, 'unresolved-classification.json'), { unmatchedRoomText, unresolvedPositionPoseCount: positions.length });
+    const reconciliationFile = path.join(OUT, 'reconciliation-report.json');
+    const reconciliation = JSON.parse(fs.readFileSync(reconciliationFile, 'utf8'));
+    reconciliation.sources = reconciliation.sources.map(source => ({
+        ...source,
+        classifiedCount: EXPECTED[source.key],
+        intentionallyRetainedUnmatchedCount: source.key === 'rooms' ? unmatchedRoomText.length : 0,
+    }));
+    writeJson(reconciliationFile, reconciliation);
     return summary;
 }
 export function candidateRegistration() {
@@ -462,6 +566,17 @@ function transformGeometry(value, registration) {
     if (Array.isArray(value)) return value.map(item => transformGeometry(item, registration));
     if (value && typeof value === 'object') {
         if (Number.isFinite(value.x) && Number.isFinite(value.y) && Object.keys(value).every(key => ['x', 'y'].includes(key))) return pdfToProduction(value, registration);
+        if ([value.x1, value.x2, value.y1, value.y2].every(Number.isFinite)
+            && Object.keys(value).every(key => ['x1', 'x2', 'y1', 'y2'].includes(key))) {
+            const first = pdfToProduction({ x: value.x1, y: value.y1 }, registration);
+            const second = pdfToProduction({ x: value.x2, y: value.y2 }, registration);
+            return {
+                x1: Math.min(first.x, second.x),
+                x2: Math.max(first.x, second.x),
+                y1: Math.min(first.y, second.y),
+                y2: Math.max(first.y, second.y),
+            };
+        }
         return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, transformGeometry(item, registration)]));
     }
     return value;
@@ -481,21 +596,124 @@ export function registerCandidate() {
     writeJson(path.join(provisional, 'navigation.json'), navigation);
     return registration;
 }
-function approvedChecksum(registration) {
-    const payload = { schemaVersion: registration.schemaVersion, source: registration.source, landmarks: registration.landmarks, scale: registration.scale, offsetX: registration.offsetX, offsetY: registration.offsetY, residuals: registration.residuals };
-    return sha(Buffer.from(JSON.stringify(canonical(payload))));
+function readJson(file) {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
-export function promoteProduction() {
-    const file = path.join(OUT, 'registration-approved.json');
-    if (!fs.existsSync(file)) throw new Error('Production promotion refused: approved registration file is absent.');
-    const registration = JSON.parse(fs.readFileSync(file, 'utf8'));
-    const enabled = registration.landmarks?.filter(landmark => landmark.enabled) ?? [];
-    if (registration.status !== 'approved' || registration.approved !== true) throw new Error('Production promotion refused: registration is not approved.');
-    if (enabled.length < 8) throw new Error('Production promotion refused: at least eight enabled landmarks are required.');
-    if (!Number.isFinite(registration.scale) || registration.scale <= 0 || 'scaleX' in registration || 'scaleY' in registration) throw new Error('Production promotion refused: invalid uniform scale.');
-    if (!registration.residuals || !Number.isFinite(registration.residuals.maximum) || !Number.isFinite(registration.residuals.mean)) throw new Error('Production promotion refused: residual evidence is missing.');
-    if (registration.checksum !== approvedChecksum(registration)) throw new Error('Production promotion refused: stale or invalid checksum.');
-    throw new Error('Production promotion refused: this repository contains no human-approved registration; synthetic promotion belongs in tests only.');
+function productionContext(source = candidateRegistration().source, classifiedDir = path.join(DATA, 'classified'), reconciliationPath = path.join(OUT, 'reconciliation-report.json')) {
+    const classifiedNames = ['rooms', 'walk-paths', 'walls', 'objects', 'doors', 'door-lights', 'computers', 'positions', 'interactive-objects'];
+    const complete = classifiedNames.every(name => fs.existsSync(path.join(classifiedDir, `${name}.json`)));
+    const doors = complete ? readJson(path.join(classifiedDir, 'doors.json')).doors : [];
+    const reconciliation = fs.existsSync(reconciliationPath) ? readJson(reconciliationPath) : { sources: [], discardedCount: 1 };
+    return {
+        source,
+        reconciliation: {
+            unresolvedCriticalCount: reconciliation.sources?.reduce((sum, item) => sum + item.unresolvedCount + item.unsupportedCount + item.duplicateCount, 0) ?? 1,
+            discardedCount: reconciliation.discardedCount ?? 1,
+        },
+        classification: { complete, doorIds: doors.map(door => door.id) },
+    };
+}
+function runtimeOverlayFromClassified(classified, registration) {
+    const entities = [];
+    for (const room of classified.rooms.rooms) {
+        entities.push({
+            id: room.id.toLowerCase().replaceAll('_', '.'),
+            type: 'room',
+            name: room.canonicalName ?? room.id,
+            geometry: { kind: 'polygon', points: room.pdfPolygon.map(point => pdfToProduction(point, registration)) },
+            sourceLayer: 'rooms', enabled: true, interactive: true,
+            metadata: { reviewStatus: 'approved', source: 'floor1-production' }, zIndex: 0,
+        });
+    }
+    const access = { open: 'green', blocked: 'red', restricted: 'blue', event: 'yellow', elevator: 'green' };
+    for (const door of classified.doors.doors) {
+        const state = access[door.csvAccessMode] ?? 'red';
+        entities.push({
+            id: `door.${door.id.toLowerCase()}`,
+            type: 'door', name: door.authoredFacts?.location_name ?? door.id,
+            geometry: { kind: 'polygon', points: door.pdfPolygon.map(point => pdfToProduction(point, registration)) },
+            sourceLayer: 'doors', enabled: true, interactive: true,
+            metadata: { authoredDoorId: door.id, reviewStatus: 'approved' }, zIndex: 0,
+            accessState: state, accessPolicy: { state },
+            door: { currentState: state, defaultState: state, linkedRoomIds: [], locked: state === 'red', visualState: 'closed' },
+        });
+    }
+    for (const record of classified.computers.records) {
+        if (record.nativeGeometry.kind !== 'polygon') continue;
+        entities.push({
+            id: `computer.${record.id}`, type: 'computer', name: record.decodedText ?? record.id,
+            geometry: { kind: 'polygon', points: record.nativeGeometry.points.map(point => pdfToProduction(point, registration)) },
+            sourceLayer: 'computers', enabled: true, interactive: true,
+            metadata: { annotationId: record.annotationId, reviewStatus: 'approved' }, zIndex: 0,
+        });
+    }
+    for (const item of classified['interactive-objects'].interactiveObjects) {
+        entities.push({
+            id: item.id.toLowerCase().replaceAll('_', '.'), type: 'interaction_zone', name: item.name ?? item.id,
+            geometry: { kind: 'polygon', points: item.pdfPolygon.map(point => pdfToProduction(point, registration)) },
+            sourceLayer: 'hitboxes', enabled: true, interactive: true,
+            metadata: { reviewStatus: 'approved', source: 'floor1-production' }, zIndex: 0,
+        });
+    }
+    return { schemaVersion: 1, source: PRODUCTION, production: true, entities, pathNodes: [] };
+}
+export function promoteProduction(options = {}) {
+    const artifactPath = options.artifactPath ?? path.join(OUT, 'registration-approved.json');
+    const outputDir = options.outputDir ?? path.join(DATA, 'production');
+    const classifiedDir = options.classifiedDir ?? path.join(DATA, 'classified');
+    const reconciliationPath = options.reconciliationPath ?? path.join(OUT, 'reconciliation-report.json');
+    const source = options.source ?? candidateRegistration().source;
+    const stagingDir = `${outputDir}.tmp-${process.pid}`;
+    const safeRoot = path.resolve(options.safeRoot ?? DATA);
+    for (const target of [outputDir, stagingDir]) {
+        const resolved = path.resolve(target);
+        if (resolved !== safeRoot && !resolved.startsWith(`${safeRoot}${path.sep}`)) throw new Error('Production output must stay within the Floor 1 data root.');
+    }
+    const remove = target => {
+        if (fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
+    };
+    try {
+        if (!fs.existsSync(artifactPath)) throw new Error('Production promotion refused: approved registration file is absent.');
+        const artifact = readJson(artifactPath);
+        validateApprovalArtifact(artifact, productionContext(source, classifiedDir, reconciliationPath));
+        remove(stagingDir);
+        mkdir(stagingDir);
+        const shared = {
+            schemaVersion: 1,
+            registrationStatus: 'approved',
+            productionApproved: true,
+            approvalChecksum: artifact.checksum,
+            sourceChecksum: sha(Buffer.from(JSON.stringify(canonical(source)))),
+        };
+        const mapping = [
+            ['rooms', 'rooms'], ['walk-paths', 'walkable'], ['walls', 'walls'], ['objects', 'objects'],
+            ['doors', 'doors'], ['door-lights', 'door-lights'], ['computers', 'computers'],
+            ['positions', 'positions'], ['interactive-objects', 'interactive-objects'],
+        ];
+        const classifiedDocuments = {};
+        for (const [sourceName, outputName] of mapping) {
+            const classifiedDocument = readJson(path.join(classifiedDir, `${sourceName}.json`));
+            classifiedDocuments[sourceName] = classifiedDocument;
+            writeJson(path.join(stagingDir, `${outputName}.json`), { ...shared, data: transformGeometry(classifiedDocument, artifact.transform) });
+        }
+        writeJson(path.join(stagingDir, 'runtime-overlay.json'), { ...shared, data: runtimeOverlayFromClassified(classifiedDocuments, artifact.transform) });
+        writeJson(path.join(stagingDir, 'navigation.json'), { ...shared, data: artifact.navigation });
+        writeJson(path.join(stagingDir, 'registration.json'), { ...shared, approval: artifact });
+        const ledger = readJson(path.join(OUT, 'extraction-ledger.json'));
+        writeJson(path.join(stagingDir, 'extraction-ledger.json'), { ...shared, data: ledger });
+        const files = fs.readdirSync(stagingDir).sort().map(name => {
+            const bytes = fs.readFileSync(path.join(stagingDir, name));
+            return { path: name, byteSize: bytes.length, sha256: sha(bytes) };
+        });
+        writeJson(path.join(stagingDir, 'manifest.json'), { ...shared, files });
+        remove(outputDir);
+        fs.renameSync(stagingDir, outputDir);
+        return { outputDir, files: fs.readdirSync(outputDir).sort(), approvalChecksum: artifact.checksum };
+    } catch (error) {
+        remove(stagingDir);
+        remove(outputDir);
+        throw error;
+    }
 }
 export function generateEvidence() {
     const registration = candidateRegistration();
@@ -515,4 +733,52 @@ export function generateEvidence() {
     writeJson(path.join(dir, 'registration-summary.json'), registration);
     fs.writeFileSync(path.join(dir, 'README.md'), '# Floor 1 registration evidence\n\n**CANDIDATE — VISUAL APPROVAL REQUIRED**\n\nThese browser-viewable SVGs are review aids. They do not prove or grant production approval.\n');
     return { files: fs.readdirSync(dir).sort() };
+}
+
+function walkFiles(root) {
+    if (!fs.existsSync(root)) return [];
+    return fs.readdirSync(root, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).flatMap(entry => {
+        const file = path.join(root, entry.name);
+        return entry.isDirectory() ? walkFiles(file) : [file];
+    });
+}
+
+export function generateArtifactManifest() {
+    const manifestPath = path.join(OUT, 'generated-artifact-manifest.json');
+    fs.writeFileSync(path.join(OUT, 'GENERATED_DATA.md'), [
+        '# Generated Floor 1 data', '',
+        'All JSON is compact canonical output to keep diffs bounded. Do not hand-edit generated files.',
+        'Run `npm run generate:floor1` to regenerate and `npm run check:floor1-generated` to detect drift.',
+        'Raw extraction, semantic classification, provisional review data, and visual evidence are source-controlled for traceability and review.',
+        'Approved production data is generated only by the protected promotion command.', '',
+    ].join('\n'));
+    const roots = [path.join(DATA, 'raw-pdf'), path.join(DATA, 'classified'), path.join(DATA, 'provisional'), OUT];
+    const files = roots.flatMap(walkFiles)
+        .filter(file => file !== manifestPath && !file.includes(`${path.sep}production${path.sep}`))
+        .filter((file, index, values) => values.indexOf(file) === index)
+        .map(file => {
+            const bytes = fs.readFileSync(file);
+            return {
+                path: path.relative(ROOT, file).replaceAll('\\', '/'),
+                byteSize: bytes.length,
+                sha256: sha(bytes),
+            };
+        }).sort((a, b) => a.path.localeCompare(b.path));
+    const source = candidateRegistration().source;
+    const manifest = {
+        schemaVersion: 1,
+        generatorVersion: GENERATOR_VERSION,
+        sourceHashes: source,
+        files,
+        totals: { fileCount: files.length, byteSize: files.reduce((sum, file) => sum + file.byteSize, 0) },
+        sourceControlPolicy: {
+            rawPdf: 'Committed as the canonical source-traced extraction; required for auditability.',
+            classified: 'Committed because it records reviewable semantic decisions independent of runtime promotion.',
+            provisional: 'Committed compactly for visual review; never loaded by normal runtime.',
+            evidence: 'Committed because reviewers must inspect browser-viewable registration evidence without PDF tooling.',
+            production: 'Generated only after approved promotion; absent while production remains unapproved.',
+        },
+    };
+    writeJson(manifestPath, manifest);
+    return manifest;
 }

@@ -5,7 +5,7 @@ Plan ID: 000
 Owner: Codex
 Reviewer: Human visual reviewer
 Created: 2026-07-28
-Last Updated: 2026-07-28
+Last Updated: 2026-07-28 (PR #19 corrective review)
 Related Task: Production Floor 1 markup pipeline
 Related Branch: `codex/production-floor1-markup-pipeline-v2`
 Related Pull Request: TBD
@@ -89,6 +89,7 @@ The clean 8192×5460 PNG controls appearance. PDFs contain a shared lossless DCT
 | U-001 | Exact production registration | yes for promotion | 8+ distributed landmarks and residual review | candidate-unverified only |
 | U-002 | Exact object collider footprints | yes for production navigation | visual review against clean art | review regions remain provisional |
 | U-003 | Some door connected zones/thresholds | yes where CSV flags review | visual lab and reviewer resolution | fail closed/manual review |
+| U-004 | Human registration and geometry approval | yes for production | functional review lab and signed approval artifact | normal runtime remains on sample data |
 
 ## Questions Requiring User Decision
 
@@ -233,6 +234,24 @@ Affected Files: `src/components/office`, `src/office`
 - Remote preflight and real branch publication passed.
 - Mandatory sources and source asset inventory inspected.
 - PDF annotation distributions and page/image dimensions confirmed.
+- Draft PR #19 was created at `faf725db44da443282a944f959dfc3215362a122`; initial Node 18/20 CI passed.
+- Corrective review found incomplete visual overlays, real-image alignment, parser reconciliation, approval/promotion, runtime loading, and generated-data drift enforcement.
+- PR #19 contains no GitHub review threads; the attached corrective brief is the complete actionable scope.
+- Parser reconciliation now accounts for all 867 page-referenced annotations with zero missing, extra, duplicate, unsupported, unresolved, or discarded records.
+- The development lab now renders the actual embedded image, clean master, and selectable generated layers with uniform registration controls, pan/zoom, editable landmarks, residual/coverage evidence, guarded imports, and deliberate approval export.
+- Browser QA exercised the lab and actual-image alignment at desktop and 768 px viewport widths. The assistance pass retained the nominal candidate at score `0.85924` and full sampled overlap; it remains unapproved.
+- Checksummed approval validation, atomic promotion, generated-data drift enforcement, and verified runtime loading are implemented. Current unapproved promotion fails closed and leaves no production directory; the synthetic approved promotion test passes.
+- Generated data is compact and deterministic: 65 review artifacts total `11,568,585` bytes, a `44.48%` reduction from the previous `20,837,097` bytes.
+- Typecheck, lint, all 279 tests, production build, deterministic regeneration, and whitespace validation pass.
+
+### Corrective milestones
+
+1. Reconcile every page annotation reference with parsed/classified records and report unsupported/ignored structures.
+2. Replace the static lab shell with rendered layers, pan/zoom, editable/clickable landmarks, residuals, fitted export, controlled import errors, and real-image alignment suggestions.
+3. Define a checksummed reviewer approval artifact and implement fail-closed, atomic production promotion with a synthetic success path.
+4. Load approved data only through a verified runtime manifest; preserve the sample document when production is absent.
+5. Compact deterministic generated JSON, publish an artifact manifest, and make CI fail on generator drift.
+6. Re-run all generators/checks, push to the existing draft PR, update its description, and wait for final CI.
 
 ## Unexpected Discoveries
 
@@ -255,29 +274,29 @@ User review needed: no.
 ## Completion Criteria
 
 ### Functional
-- [ ] all requested commands work
+- [x] all requested commands work
 
 ### Data Integrity
-- [ ] exact counts; no silent discards; deterministic hashes
+- [x] exact counts; no silent discards; deterministic hashes
 
 ### Tests
-- [ ] required and regression suites pass
+- [x] required and regression suites pass
 
 ### Visual
-- [ ] candidate evidence generated; approval honestly pending
+- [x] candidate evidence generated; approval honestly pending
 
 ### Performance
-- [ ] lab remains usable with all layers
+- [x] lab remains usable with all layers
 
 ### Accessibility
-- [ ] controls and state are keyboard/text accessible
+- [x] controls and state are keyboard/text accessible
 
 ### Documentation
-- [ ] plan and evidence README reflect reality
+- [x] plan and evidence README reflect reality
 
 ### Build
-- [ ] typecheck, lint, test, build, diff check pass
+- [x] typecheck, lint, test, build, diff check pass
 
 ## Final Report
 
-TBD after implementation and draft PR verification.
+Implementation validation is complete. Production remains intentionally unapproved and absent pending the manual review items above. Publication SHA, PR size, and final CI state are recorded in the PR handoff after push.

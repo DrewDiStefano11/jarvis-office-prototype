@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NON_PRODUCTION_OVERLAY } from '../../domain/seed';
 import { LAYER_ORDER } from '../../office/layers';
 import { reconcileSelection, toggleLayerVisibility } from '../../office/interaction';
+import { loadVerifiedProductionOverlay } from '../../office/floor1/runtime';
 import { OfficeLayer, Point, ViewTransform } from '../../office/types';
 import { EntityInspector } from './EntityInspector';
 import { OfficeViewport } from './OfficeViewport';
@@ -14,7 +15,9 @@ type Props = Readonly<{
 }>;
 
 export function OfficeEngine({ active }: Props) {
-    const document = NON_PRODUCTION_OVERLAY;
+    const [document, setDocument] = useState(NON_PRODUCTION_OVERLAY);
+    const [dataSource, setDataSource] = useState<'sample' | 'approved-production'>('sample');
+    const [productionError, setProductionError] = useState<string | null>(null);
     const [debug, setDebug] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -30,6 +33,19 @@ export function OfficeEngine({ active }: Props) {
     useEffect(() => {
         setSelectedId(previous => reconcileSelection(previous, document.entities));
     }, [document.entities, selectedId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        loadVerifiedProductionOverlay().then(production => {
+            if (cancelled || !production) return;
+            setDocument(production);
+            setDataSource('approved-production');
+        }).catch(error => {
+            if (cancelled) return;
+            setProductionError(error instanceof Error ? error.message : 'Approved Floor 1 data failed validation.');
+        });
+        return () => { cancelled = true; };
+    }, []);
 
     const toggleLayer = (layer: OfficeLayer) => {
         setVisibleLayers(previous => {
@@ -51,7 +67,7 @@ export function OfficeEngine({ active }: Props) {
                     <h1>Interactive office engine</h1>
                 </div>
                 <div className="header-actions">
-                    <span className="sample-badge">Non-production coordinates</span>
+                    <span className="sample-badge">{dataSource === 'approved-production' ? 'Approved production Floor 1' : 'Non-production coordinates'}</span>
                     <label className="debug-toggle">
                         <input type="checkbox" checked={debug} onChange={event => setDebug(event.target.checked)} />
                         Debug overlays
@@ -62,6 +78,7 @@ export function OfficeEngine({ active }: Props) {
                 </div>
             </header>
             <section className="engine-workspace">
+                {productionError && <p className="asset-status asset-status--error" role="alert">{productionError} Existing sample data remains active.</p>}
                 <OfficeViewport
                     active={active}
                     document={document}

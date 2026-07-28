@@ -25,6 +25,22 @@ export interface RegistrationFit extends UniformRegistration {
     readonly rmsResidual: number;
 }
 
+export interface LandmarkResidual {
+    readonly id: string;
+    readonly predicted: ProductionPoint;
+    readonly x: number;
+    readonly y: number;
+    readonly distance: number;
+}
+
+export interface CoverageAssessment {
+    readonly passed: boolean;
+    readonly quadrants: readonly string[];
+    readonly xSpan: number;
+    readonly ySpan: number;
+    readonly missing: readonly string[];
+}
+
 const PDF_WIDTH = 4608;
 const PDF_HEIGHT = 3072;
 const EMBEDDED_WIDTH = 6144;
@@ -108,13 +124,32 @@ export function fitUniformRegistration(landmarks: readonly RegistrationLandmark[
     };
 }
 
-export function hasDistributedCoverage(landmarks: readonly RegistrationLandmark[]): boolean {
+export function landmarkResiduals(landmarks: readonly RegistrationLandmark[], registration: UniformRegistration): LandmarkResidual[] {
+    return landmarks.filter(landmark => landmark.enabled).map(landmark => {
+        const predicted = embeddedToProduction(landmark.embedded, registration);
+        const x = predicted.x - landmark.production.x;
+        const y = predicted.y - landmark.production.y;
+        return { id: landmark.id, predicted, x, y, distance: Math.hypot(x, y) };
+    });
+}
+
+export function assessDistributedCoverage(landmarks: readonly RegistrationLandmark[]): CoverageAssessment {
     const enabled = landmarks.filter(landmark => landmark.enabled);
-    if (enabled.length < 8) return false;
-    const quadrants = new Set(enabled.map(({ embedded }) => `${embedded.x >= EMBEDDED_WIDTH / 2 ? 1 : 0}:${embedded.y >= EMBEDDED_HEIGHT / 2 ? 1 : 0}`));
+    const quadrants = new Set(enabled.map(({ embedded }) => `${embedded.x >= EMBEDDED_WIDTH / 2 ? 'right' : 'left'}-${embedded.y >= EMBEDDED_HEIGHT / 2 ? 'lower' : 'upper'}`));
     const xs = enabled.map(value => value.embedded.x);
     const ys = enabled.map(value => value.embedded.y);
-    return quadrants.size === 4 && Math.max(...xs) - Math.min(...xs) >= EMBEDDED_WIDTH * 0.7 && Math.max(...ys) - Math.min(...ys) >= EMBEDDED_HEIGHT * 0.7;
+    const xSpan = xs.length ? Math.max(...xs) - Math.min(...xs) : 0;
+    const ySpan = ys.length ? Math.max(...ys) - Math.min(...ys) : 0;
+    const missing = [];
+    if (enabled.length < 8) missing.push(`${8 - enabled.length} more enabled landmark(s)`);
+    if (quadrants.size < 4) missing.push('landmarks in all four image quadrants');
+    if (xSpan < EMBEDDED_WIDTH * 0.7) missing.push('at least 70% horizontal coverage');
+    if (ySpan < EMBEDDED_HEIGHT * 0.7) missing.push('at least 70% vertical coverage');
+    return { passed: missing.length === 0, quadrants: [...quadrants].sort(), xSpan, ySpan, missing };
+}
+
+export function hasDistributedCoverage(landmarks: readonly RegistrationLandmark[]): boolean {
+    return assessDistributedCoverage(landmarks).passed;
 }
 
 export interface EdgeMap {
@@ -138,6 +173,10 @@ function edgeScore(reference: EdgeMap, moving: EdgeMap, registration: UniformReg
     }
     const overlap = count / moving.values.length;
     return { score: count ? (1 - error / (count * 255)) * overlap : -Infinity, overlap };
+}
+
+export function scoreEdgeMaps(reference: EdgeMap, moving: EdgeMap, registration: UniformRegistration): { score: number; overlap: number } {
+    return edgeScore(reference, moving, registration);
 }
 
 export function alignEdgeMaps(reference: EdgeMap, moving: EdgeMap, candidate: UniformRegistration, range = 2): UniformRegistration & { score: number; overlap: number } {
