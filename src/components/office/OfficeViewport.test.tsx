@@ -49,6 +49,7 @@ function renderViewport() {
     const onTransformChange = vi.fn<(transform: ViewTransform) => void>();
     const result = render(
         <OfficeViewport
+            active
             document={NON_PRODUCTION_OVERLAY}
             debug={false}
             selectedId={null}

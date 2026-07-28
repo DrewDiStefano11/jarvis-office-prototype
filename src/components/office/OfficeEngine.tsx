@@ -9,7 +9,11 @@ import './office-engine.css';
 
 const DEFAULT_VISIBLE_LAYERS = new Set<OfficeLayer>(LAYER_ORDER);
 
-export function OfficeEngine() {
+type Props = Readonly<{
+    active: boolean;
+}>;
+
+export function OfficeEngine({ active }: Props) {
     const document = NON_PRODUCTION_OVERLAY;
     const [debug, setDebug] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -52,6 +56,7 @@ export function OfficeEngine() {
             </header>
             <section className="engine-workspace">
                 <OfficeViewport
+                    active={active}
                     document={document}
                     debug={debug}
                     selectedId={selectedId}

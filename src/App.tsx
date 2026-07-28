@@ -32,7 +32,7 @@ function App() {
                     aria-hidden={view !== 'office-engine'}
                     inert={view !== 'office-engine'}
                 >
-                    <OfficeEngine />
+                    <OfficeEngine active={view === 'office-engine'} />
                 </div>
                 <div
                     className="application-view__panel"

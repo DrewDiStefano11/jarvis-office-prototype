@@ -18,6 +18,7 @@ import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform, ViewportSize 
 import { OverlayRenderer } from './OverlayRenderer';
 
 type Props = Readonly<{
+    active: boolean;
     document: OfficeOverlayDocument;
     debug: boolean;
     selectedId: string | null;
@@ -31,6 +32,7 @@ type Props = Readonly<{
 }>;
 
 export function OfficeViewport({
+    active,
     document,
     debug,
     selectedId,
@@ -76,6 +78,7 @@ export function OfficeViewport({
         const observer = new ResizeObserver(entries => {
             const rect = entries[0]?.contentRect;
             if (!rect) return;
+            if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height) || rect.width <= 0 || rect.height <= 0) return;
             const nextViewport = { width: rect.width, height: rect.height };
             setViewport(nextViewport);
             if (firstMeasurement) {
@@ -101,12 +104,13 @@ export function OfficeViewport({
     }, []);
 
     useEffect(() => {
+        if (!active) return;
         const handleKey = (event: KeyboardEvent) => {
             if (event.key === 'Escape') onSelect(null);
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [onSelect]);
+    }, [active, onSelect]);
 
     useEffect(() => {
         const entity = selectedId ? document.entities.find(item => item.id === selectedId) : undefined;
