@@ -11,7 +11,11 @@ import { EventBus } from '../game/EventBus';
 import { Agent } from '../types';
 import { ControlPanel } from './ControlPanel';
 
-export function LegacyAgentSimulation() {
+interface LegacyAgentSimulationProps {
+    active?: boolean;
+}
+
+export function LegacyAgentSimulation({ active = true }: LegacyAgentSimulationProps) {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
     const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -32,6 +36,17 @@ export function LegacyAgentSimulation() {
             EventBus.removeListener('movement-completed', handleMovementCompletedEvent);
         };
     }, []);
+
+    useEffect(() => {
+        if (!active) return;
+
+        const frame = window.requestAnimationFrame(() => {
+            // The game can initially mount in a hidden panel. Refresh its existing
+            // scale manager once the panel has layout dimensions again.
+            phaserRef.current?.game?.scale.refresh();
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [active]);
 
     const selectedAgent = agents.find(agent => agent.id === selectedAgentId) ?? null;
 

@@ -26,7 +26,22 @@ function App() {
                 </button>
             </nav>
             <div className="application-view">
-                {view === 'office-engine' ? <OfficeEngine /> : <LegacyAgentSimulation />}
+                <div
+                    className="application-view__panel"
+                    hidden={view !== 'office-engine'}
+                    aria-hidden={view !== 'office-engine'}
+                    inert={view !== 'office-engine'}
+                >
+                    <OfficeEngine />
+                </div>
+                <div
+                    className="application-view__panel"
+                    hidden={view !== 'agent-simulation'}
+                    aria-hidden={view !== 'agent-simulation'}
+                    inert={view !== 'agent-simulation'}
+                >
+                    <LegacyAgentSimulation active={view === 'agent-simulation'} />
+                </div>
             </div>
         </div>
     );
