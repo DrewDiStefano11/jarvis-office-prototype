@@ -1,0 +1,36 @@
+.sprite-sheet-renderer {
+    /* Sprites are decorative overlays: never intercept office pointer input. */
+    pointer-events: none;
+    display: block;
+    background-color: transparent;
+    /* Keep nearest-neighbour sampling across vendor prefixes. */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.sprite-sheet-renderer--fallback {
+    min-width: 8px;
+    min-height: 8px;
+    border: 1px dashed rgba(120, 160, 220, 0.55);
+    background-color: rgba(20, 30, 48, 0.35);
+    border-radius: 2px;
+}
+
+/* The float bob is intentionally a transform so frame selection is unaffected
+   and the effect can be disabled independently. */
+.sprite-sheet-renderer--float {
+    animation: sprite-float 3.2s ease-in-out infinite;
+    will-change: transform;
+}
+
+@keyframes sprite-float {
+    0%,
+    100% { transform: translateY(0); }
+    50% { transform: translateY(-3%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sprite-sheet-renderer--float {
+        animation: none;
+    }
+}

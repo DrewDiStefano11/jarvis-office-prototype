@@ -1,5 +1,9 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const phasermsg = () => {
     return {
@@ -26,6 +30,12 @@ export default defineConfig({
     logLevel: 'warning',
     build: {
         rollupOptions: {
+            // Multi-page build: the sprite review lab ships as an isolated
+            // entry so it never loads the production office application.
+            input: {
+                main: resolve(rootDir, 'index.html'),
+                'sprite-lab': resolve(rootDir, 'sprite-lab.html'),
+            },
             output: {
                 manualChunks: {
                     phaser: ['phaser']
