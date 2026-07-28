@@ -1,40 +1,114 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NON_PRODUCTION_OVERLAY } from '../../domain/seed';
-import { LAYER_ORDER } from '../../office/layers';
+import {
+    candidateEntityCounts,
+    FLOOR1_CANDIDATE_LABEL,
+    FLOOR1_CANDIDATE_LAYER_CONTROLS,
+    FLOOR1_CANDIDATE_LAYERS,
+    loadFloor1CandidateOverlay,
+} from '../../office/floor1/candidateReview';
+import {
+    isFloor1CandidateReviewRequested,
+    loadVerifiedProductionOverlay,
+} from '../../office/floor1/runtime';
 import { reconcileSelection, toggleLayerVisibility } from '../../office/interaction';
-import { OfficeLayer, Point, ViewTransform } from '../../office/types';
+import { LAYER_ORDER } from '../../office/layers';
+import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform } from '../../office/types';
 import { EntityInspector } from './EntityInspector';
 import { OfficeViewport } from './OfficeViewport';
 import './office-engine.css';
 
-const DEFAULT_VISIBLE_LAYERS = new Set<OfficeLayer>(LAYER_ORDER);
+const EMPTY_REVIEW_DOCUMENT: OfficeOverlayDocument = {
+    schemaVersion: 1,
+    source: { width: 8192, height: 5460 },
+    production: false,
+    entities: [],
+    pathNodes: [],
+};
 
 type Props = Readonly<{
     active: boolean;
+    candidateLoader?: () => Promise<OfficeOverlayDocument>;
 }>;
 
-export function OfficeEngine({ active }: Props) {
-    const document = NON_PRODUCTION_OVERLAY;
+export function OfficeEngine({ active, candidateLoader }: Props) {
+    const candidateReviewRequested = isFloor1CandidateReviewRequested(window.location.search);
+    const [document, setDocument] = useState<OfficeOverlayDocument>(
+        candidateReviewRequested ? EMPTY_REVIEW_DOCUMENT : NON_PRODUCTION_OVERLAY,
+    );
+    const [dataSource, setDataSource] = useState<'sample' | 'candidate-review' | 'approved-production'>(
+        candidateReviewRequested ? 'candidate-review' : 'sample',
+    );
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [debug, setDebug] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [showScopeOverlays, setShowScopeOverlays] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [pointer, setPointer] = useState<Point | null>(null);
     const [transform, setTransform] = useState<ViewTransform>({ scale: 1, x: 0, y: 0 });
-    const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<OfficeLayer>>(DEFAULT_VISIBLE_LAYERS);
+    const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<OfficeLayer>>(
+        () => new Set(candidateReviewRequested ? FLOOR1_CANDIDATE_LAYERS : LAYER_ORDER),
+    );
     const [focusRequest, setFocusRequest] = useState(0);
-    const selected = useMemo(() => document.entities.find(entity => entity.id === selectedId) ?? null, [document.entities, selectedId]);
-    const hovered = useMemo(() => document.entities.find(entity => entity.id === hoveredId) ?? null, [document.entities, hoveredId]);
+    const selected = useMemo(
+        () => document.entities.find(entity => entity.id === selectedId) ?? null,
+        [document.entities, selectedId],
+    );
+    const hovered = useMemo(
+        () => document.entities.find(entity => entity.id === hoveredId) ?? null,
+        [document.entities, hoveredId],
+    );
     const inspected = selected ?? hovered;
+    const counts = useMemo(() => candidateEntityCounts(document), [document]);
+    const renderedVisibleLayers = candidateReviewRequested && !showScopeOverlays
+        ? new Set<OfficeLayer>()
+        : visibleLayers;
 
     useEffect(() => {
         setSelectedId(previous => reconcileSelection(previous, document.entities));
-    }, [document.entities, selectedId]);
+        setHoveredId(previous => reconcileSelection(previous, document.entities));
+    }, [document.entities]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoadError(null);
+
+        if (candidateReviewRequested) {
+            const loadCandidate = candidateLoader ?? loadFloor1CandidateOverlay;
+            loadCandidate().then(candidate => {
+                if (cancelled) return;
+                setDocument(candidate);
+                setDataSource('candidate-review');
+                setVisibleLayers(new Set(FLOOR1_CANDIDATE_LAYERS));
+            }).catch(error => {
+                if (cancelled) return;
+                setLoadError(error instanceof Error ? error.message : 'Floor 1 candidate data failed validation.');
+            });
+            return () => { cancelled = true; };
+        }
+
+        loadVerifiedProductionOverlay().then(production => {
+            if (cancelled || !production) return;
+            setDocument(production);
+            setDataSource('approved-production');
+        }).catch(error => {
+            if (cancelled) return;
+            setLoadError(error instanceof Error ? error.message : 'Approved Floor 1 data failed validation.');
+        });
+        return () => { cancelled = true; };
+    }, [candidateLoader, candidateReviewRequested]);
 
     const toggleLayer = (layer: OfficeLayer) => {
-        setVisibleLayers(previous => {
-            return toggleLayerVisibility(previous, layer);
-        });
+        setVisibleLayers(previous => toggleLayerVisibility(previous, layer));
+    };
+
+    const toggleScopeOverlays = (visible: boolean) => {
+        setShowScopeOverlays(visible);
+        if (!visible) {
+            setSelectedId(null);
+            setHoveredId(null);
+        }
     };
 
     const focusInspected = () => {
@@ -42,6 +116,12 @@ export function OfficeEngine({ active }: Props) {
         setSelectedId(inspected.id);
         setFocusRequest(value => value + 1);
     };
+
+    const statusLabel = dataSource === 'approved-production'
+        ? 'Approved production Floor 1'
+        : candidateReviewRequested
+            ? FLOOR1_CANDIDATE_LABEL
+            : 'Sample fallback — not production Floor 1';
 
     return (
         <main className={`office-engine ${sidebarOpen ? '' : 'office-engine--collapsed'}`}>
@@ -51,7 +131,22 @@ export function OfficeEngine({ active }: Props) {
                     <h1>Interactive office engine</h1>
                 </div>
                 <div className="header-actions">
-                    <span className="sample-badge">Non-production coordinates</span>
+                    <span
+                        className={`sample-badge ${candidateReviewRequested ? 'sample-badge--candidate' : ''}`}
+                        data-testid="floor1-runtime-status"
+                    >
+                        {statusLabel}
+                    </span>
+                    {candidateReviewRequested && (
+                        <label className="debug-toggle">
+                            <input
+                                type="checkbox"
+                                checked={showScopeOverlays}
+                                onChange={event => toggleScopeOverlays(event.target.checked)}
+                            />
+                            Show scope overlays
+                        </label>
+                    )}
                     <label className="debug-toggle">
                         <input type="checkbox" checked={debug} onChange={event => setDebug(event.target.checked)} />
                         Debug overlays
@@ -62,13 +157,21 @@ export function OfficeEngine({ active }: Props) {
                 </div>
             </header>
             <section className="engine-workspace">
+                {loadError && (
+                    <p className="asset-status asset-status--error" role="alert">
+                        {loadError} {candidateReviewRequested
+                            ? 'Candidate review remains empty; sample data was not loaded.'
+                            : 'Existing sample data remains active.'}
+                    </p>
+                )}
                 <OfficeViewport
                     active={active}
                     document={document}
                     debug={debug}
+                    reviewMode={candidateReviewRequested}
                     selectedId={selectedId}
                     hoveredId={hoveredId}
-                    visibleLayers={visibleLayers}
+                    visibleLayers={renderedVisibleLayers}
                     onSelect={setSelectedId}
                     onHover={setHoveredId}
                     onPointerOfficePoint={setPointer}
@@ -76,7 +179,35 @@ export function OfficeEngine({ active }: Props) {
                     focusRequest={focusRequest}
                 />
                 <aside className="engine-sidebar" aria-hidden={!sidebarOpen}>
-                    {debug && (
+                    {candidateReviewRequested && (
+                        <section className="engine-panel candidate-layers" aria-label="Floor 1 candidate layer visibility">
+                            <div className="panel-heading">
+                                <div>
+                                    <h2>Candidate scope layers</h2>
+                                    <p className="muted">{document.entities.length} entities loaded</p>
+                                </div>
+                                <div className="layer-actions">
+                                    <button type="button" onClick={() => setVisibleLayers(new Set(FLOOR1_CANDIDATE_LAYERS))}>All</button>
+                                    <button type="button" onClick={() => setVisibleLayers(new Set())}>None</button>
+                                </div>
+                            </div>
+                            <div className="layer-grid">
+                                {FLOOR1_CANDIDATE_LAYER_CONTROLS.map(control => (
+                                    <label key={control.category}>
+                                        <input
+                                            type="checkbox"
+                                            aria-label={control.label}
+                                            checked={visibleLayers.has(control.layer)}
+                                            onChange={() => toggleLayer(control.layer)}
+                                        />
+                                        <span>{control.label}</span>
+                                        <small>{counts[control.category]}</small>
+                                    </label>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+                    {debug && !candidateReviewRequested && (
                         <section className="engine-panel">
                             <div className="panel-heading">
                                 <h2>Layer visibility</h2>
@@ -93,6 +224,11 @@ export function OfficeEngine({ active }: Props) {
                                     </label>
                                 ))}
                             </div>
+                        </section>
+                    )}
+                    {debug && (
+                        <section className="engine-panel">
+                            <h2>Debug readout</h2>
                             <div className="debug-readout">
                                 <span>Zoom <strong>{transform.scale.toFixed(4)}×</strong></span>
                                 <span>Pointer <strong>{pointer ? `${pointer.x.toFixed(1)}, ${pointer.y.toFixed(1)}` : '—'}</strong></span>

@@ -34,5 +34,8 @@ jobs:
     - name: Test
       run: npx vitest run
 
+    - name: Verify Floor 1 generated artifacts
+      run: npm run check:floor1-generated
+
     - name: Build
       run: npm run build
