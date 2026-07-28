@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { OFFICE_ASSETS } from '../assets';
 import { NON_PRODUCTION_OVERLAY } from '../sampleOverlay';
-import { validateOverlayDocument } from '../validation';
+import { isSupportedCssColor, validateOverlayDocument } from '../validation';
 
 function cloneDocument(): Record<string, unknown> {
     return structuredClone(NON_PRODUCTION_OVERLAY) as unknown as Record<string, unknown>;
@@ -132,6 +132,51 @@ describe('office overlay schema', () => {
         const sprite = entities[9].sprite as Record<string, unknown>;
         sprite.assetId = OFFICE_ASSETS.hologram.id;
         expect(validateOverlayDocument(document)).toMatchObject({ valid: true });
+    });
+
+    it.each([
+        '#fff',
+        '#ffff',
+        '#ffffff',
+        '#ffffffff',
+        '#AbC',
+        '#aBcD',
+        '#AbCdEf',
+        '#aBcDeF12',
+    ])('accepts a supported hexadecimal glow color: %s', glow => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        const sprite = entities[9].sprite as Record<string, unknown>;
+        sprite.glow = glow;
+
+        expect(isSupportedCssColor(glow)).toBe(true);
+        expect(validateOverlayDocument(document)).toMatchObject({ valid: true });
+    });
+
+    it.each([
+        'notacolor',
+        '#12',
+        '#12345',
+        '#1234567',
+        '#ggg',
+        '#12345z',
+        '',
+        '   ',
+        'rgb(255, 255, 255)',
+        '##fff',
+        'fff',
+    ])('rejects an unsupported glow color: %j', glow => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        const sprite = entities[9].sprite as Record<string, unknown>;
+        sprite.glow = glow;
+
+        expect(isSupportedCssColor(glow)).toBe(false);
+        const result = validateOverlayDocument(document);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.errors).toContain('entities[9].sprite.glow is not a supported color.');
+        }
     });
 
     it.each([

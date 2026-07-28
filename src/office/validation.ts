@@ -25,7 +25,7 @@ const ACCESS_STATES: readonly AccessState[] = ['green', 'blue', 'yellow', 'red']
 const SEAT_PRIORITIES: readonly SeatPriority[] = ['yellow', 'red'];
 const BLEND_MODES = ['normal', 'screen', 'multiply'] as const;
 const ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
-const CSS_COLOR_PATTERN = /^(#[0-9a-f]{3,8}|[a-z]+)$/i;
+const CSS_HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const TYPE_LAYER: Record<OfficeEntityType, OfficeLayer> = {
     room: 'rooms',
     walk_path: 'paths',
@@ -47,6 +47,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function finite(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value);
+}
+
+/**
+ * Overlay glow colors intentionally support deterministic CSS hexadecimal
+ * forms only: RGB, RGBA, RRGGBB, and RRGGBBAA.
+ */
+export function isSupportedCssColor(value: unknown): value is string {
+    return typeof value === 'string' && CSS_HEX_COLOR_PATTERN.test(value);
 }
 
 function validateStringArray(value: unknown, path: string, errors: string[], required: boolean): void {
@@ -198,7 +206,7 @@ function validateSprite(value: unknown, path: string, errors: string[], required
     }
     if (!finite(value.scale) || value.scale <= 0) errors.push(`${path}.scale must be a positive finite number.`);
     if (!finite(value.opacity) || value.opacity < 0 || value.opacity > 1) errors.push(`${path}.opacity must be between 0 and 1.`);
-    if (value.glow !== undefined && (typeof value.glow !== 'string' || !CSS_COLOR_PATTERN.test(value.glow))) {
+    if (value.glow !== undefined && !isSupportedCssColor(value.glow)) {
         errors.push(`${path}.glow is not a supported color.`);
     }
     if (value.blendMode !== undefined && !BLEND_MODES.includes(value.blendMode as never)) {

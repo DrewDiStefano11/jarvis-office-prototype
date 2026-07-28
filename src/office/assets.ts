@@ -6,16 +6,30 @@
     pixelated?: boolean;
 }>;
 
+/**
+ * Resolves a public asset without importing it into Vite's module graph.
+ * Vite replaces BASE_URL for each deployment, including relative builds.
+ */
+export function resolvePublicAssetPath(path: string, baseUrl = import.meta.env.BASE_URL): string {
+    const trimmedBase = baseUrl.trim();
+    const baseWithoutTrailingSlashes = trimmedBase.replace(/\/+$/, '');
+    const normalizedBase = baseWithoutTrailingSlashes === ''
+        ? (trimmedBase.startsWith('/') ? '/' : './')
+        : `${baseWithoutTrailingSlashes}/`;
+    const normalizedPath = path.replace(/^\/+/, '');
+    return `${normalizedBase}${normalizedPath}`;
+}
+
 export const OFFICE_ASSETS = {
     background: {
         id: 'office-background-8k',
-        path: '/assets/office/office-8192x5460.png',
+        path: resolvePublicAssetPath('assets/office/office-8192x5460.png'),
         kind: 'background',
         required: true,
     },
     hologram: {
         id: 'central-blue-tube-hologram',
-        path: '/assets/office/sprites/central-blue-tube-hologram.png',
+        path: resolvePublicAssetPath('assets/office/sprites/central-blue-tube-hologram.png'),
         kind: 'sprite-sheet',
         required: false,
         pixelated: true,
@@ -44,4 +58,3 @@ export function getSpriteSheetAsset(value: unknown): SpriteSheetAsset | undefine
         (asset): asset is SpriteSheetAsset => asset.kind === 'sprite-sheet' && asset.id === value,
     );
 }
-
