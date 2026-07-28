@@ -1,4 +1,5 @@
 import { Agent, OfficeLocation, WaypointNode } from '../types';
+export { NON_PRODUCTION_OVERLAY } from '../office/sampleOverlay';
 
 export const INITIAL_AGENTS: Agent[] = [
     {

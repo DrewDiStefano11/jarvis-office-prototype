@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "width": 8192,
+    "height": 5460
+  },
+  "production": false,
+  "entities": [
+    {
+      "id": "sample.room.example",
+      "type": "room",
+      "name": "Example room — non-production",
+      "geometry": {
+        "kind": "polygon",
+        "points": [
+          { "x": 1000, "y": 1000 },
+          { "x": 2200, "y": 1000 },
+          { "x": 2200, "y": 1900 },
+          { "x": 1000, "y": 1900 }
+        ]
+      },
+      "sourceLayer": "rooms",
+      "enabled": true,
+      "interactive": true,
+      "metadata": {
+        "fixture": true
+      },
+      "zIndex": 0,
+      "tags": ["sample", "non-production"],
+      "accessPolicy": {
+        "state": "green"
+      }
+    }
+  ],
+  "pathNodes": []
+}
