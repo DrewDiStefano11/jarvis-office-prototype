@@ -1,0 +1,14 @@
+.floor1-lab { min-height: 100vh; background: #07111f; color: #e8f4ff; }
+.floor1-lab header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 2px solid #ff2d55; }
+.floor1-lab h1 { margin: .25rem 0; color: #ff6b86; }
+.floor1-lab a { color: #74d7ff; }
+.floor1-lab__workspace { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; min-height: calc(100vh - 6rem); }
+.floor1-lab__canvas { position: relative; overflow: auto; background: #111; }
+.floor1-lab__canvas img { display: block; width: 100%; height: auto; opacity: calc(1 - (var(--layer-opacity) * .05)); mix-blend-mode: var(--blend-mode); }
+.floor1-lab__candidate { position: absolute; left: 1rem; bottom: 1rem; padding: .75rem; background: #07111fe6; border: 1px solid #ff6b86; max-width: calc(100% - 3rem); }
+.floor1-lab aside { padding: 1rem; overflow: auto; background: #0c1b2d; }
+.floor1-lab aside label { display: grid; gap: .25rem; margin: .6rem 0; }
+.floor1-lab aside input, .floor1-lab aside select, .floor1-lab aside button { font: inherit; padding: .45rem; }
+.floor1-lab fieldset label { grid-template-columns: auto 1fr; align-items: center; }
+@media (max-width: 850px) { .floor1-lab__workspace { grid-template-columns: 1fr; } }
+

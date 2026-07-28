@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { LegacyAgentSimulation } from './components/LegacyAgentSimulation';
 import { OfficeEngine } from './components/office/OfficeEngine';
+import { Floor1VisualLab } from './components/office/Floor1VisualLab';
 import './app.css';
 
 type ApplicationView = 'office-engine' | 'agent-simulation';
 
 function App() {
     const [view, setView] = useState<ApplicationView>('office-engine');
+    const visualLab = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('visualLab') : null;
+    if (visualLab === 'floor1-registration') return <Floor1VisualLab mode="registration" />;
+    if (visualLab === 'floor1-provisional') return <Floor1VisualLab mode="provisional" />;
     return (
         <div className="application-shell">
             <nav className="view-switcher" aria-label="Prototype view">

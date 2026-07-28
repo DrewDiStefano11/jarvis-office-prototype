@@ -1,0 +1,191 @@
+{
+  "interactiveObjects": [
+    {
+      "id": "INTERACTIVE_ELEVATOR",
+      "name": "Elevator",
+      "pdfLabelAnchor": {
+        "x": 2672.744,
+        "y": 1389.8139999999999
+      },
+      "pdfPolygon": [
+        {
+          "x": 2236.608,
+          "y": 1438.967
+        },
+        {
+          "x": 2236.608,
+          "y": 1129.898
+        },
+        {
+          "x": 2482.859,
+          "y": 1129.898
+        },
+        {
+          "x": 2482.859,
+          "y": 1438.967
+        }
+      ],
+      "reviewStatus": "provisional",
+      "sourceAnnotationIds": [
+        "JJLZSFJWYGSWVMVQ",
+        "PAVCAHDKTZOVGNEY"
+      ]
+    },
+    {
+      "id": "INTERACTIVE_MAIN_ROBOT_TUBE",
+      "name": "Main Robot Tube",
+      "pdfLabelAnchor": {
+        "x": 2516.685,
+        "y": 2019.304
+      },
+      "pdfPolygon": [
+        {
+          "x": 2271.615,
+          "y": 2011.744
+        },
+        {
+          "x": 2271.615,
+          "y": 1746.363
+        },
+        {
+          "x": 2426.723,
+          "y": 1746.363
+        },
+        {
+          "x": 2426.723,
+          "y": 2011.744
+        }
+      ],
+      "reviewStatus": "provisional",
+      "sourceAnnotationIds": [
+        "MVGOTRUSAPTBPJVN",
+        "MRMQPJLRXATTALZM"
+      ]
+    },
+    {
+      "id": "INTERACTIVE_SMALL_ROBOT_TUBE",
+      "name": "Small Robot Tube",
+      "pdfLabelAnchor": {
+        "x": 1364.9724999999999,
+        "y": 1772.1390000000001
+      },
+      "pdfPolygon": [
+        {
+          "x": 1066.052,
+          "y": 1937.476
+        },
+        {
+          "x": 1066.052,
+          "y": 1700.858
+        },
+        {
+          "x": 1239.851,
+          "y": 1700.858
+        },
+        {
+          "x": 1239.851,
+          "y": 1937.476
+        }
+      ],
+      "reviewStatus": "provisional",
+      "sourceAnnotationIds": [
+        "RNXHPOBCKSYUAHRU",
+        "JNAJSKYBQEWNSIAG"
+      ]
+    },
+    {
+      "id": "INTERACTIVE_MAP",
+      "name": "Map",
+      "pdfLabelAnchor": {
+        "x": 3792.1684999999998,
+        "y": 2786.87
+      },
+      "pdfPolygon": [
+        {
+          "x": 3398.905,
+          "y": 2823.224
+        },
+        {
+          "x": 3398.905,
+          "y": 2655.998
+        },
+        {
+          "x": 3686.825,
+          "y": 2655.998
+        },
+        {
+          "x": 3686.825,
+          "y": 2823.224
+        }
+      ],
+      "reviewStatus": "provisional",
+      "sourceAnnotationIds": [
+        "SQYGOGEIITXQYJFS",
+        "MRTRZNFGIMBKJAAJ"
+      ]
+    },
+    {
+      "id": "INTERACTIVE_STAIRS1",
+      "name": "Stairs1",
+      "pdfLabelAnchor": {
+        "x": 4342.1115,
+        "y": 2568.828
+      },
+      "pdfPolygon": [
+        {
+          "x": 4010.453,
+          "y": 2695.471
+        },
+        {
+          "x": 4010.453,
+          "y": 2375.848
+        },
+        {
+          "x": 4215.494,
+          "y": 2375.848
+        },
+        {
+          "x": 4215.494,
+          "y": 2695.471
+        }
+      ],
+      "reviewStatus": "provisional",
+      "sourceAnnotationIds": [
+        "IKECGXUYZWRSTCPN",
+        "CCLETMDYLBSOFEKZ"
+      ]
+    },
+    {
+      "id": "INTERACTIVE_STAIRS2",
+      "name": "Stairs2",
+      "pdfLabelAnchor": {
+        "x": 361.8248,
+        "y": 2511.5370000000003
+      },
+      "pdfPolygon": [
+        {
+          "x": 455.4004,
+          "y": 2674.364
+        },
+        {
+          "x": 455.4004,
+          "y": 2339.665
+        },
+        {
+          "x": 702.656,
+          "y": 2339.665
+        },
+        {
+          "x": 702.656,
+          "y": 2674.364
+        }
+      ],
+      "reviewStatus": "provisional",
+      "sourceAnnotationIds": [
+        "ISTOCYQZJUENSQCJ",
+        "IUATZDGBNTVFWTVX"
+      ]
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -27,7 +27,12 @@
     "build-nolog": "vite build --config vite/config.prod.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run"
+    "test": "vitest run",
+    "audit:floor1": "node scripts/audit-floor1.mjs",
+    "extract:floor1": "node scripts/extract-floor1.mjs",
+    "classify:floor1": "node scripts/classify-floor1.mjs",
+    "register:floor1": "node scripts/register-floor1.mjs",
+    "evidence:floor1": "node scripts/generate-floor1-evidence.mjs"
   },
   "dependencies": {
     "phaser": "4.0.0",

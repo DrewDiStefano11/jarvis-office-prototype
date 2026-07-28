@@ -1,0 +1,12 @@
+{
+  "agentRadius": 24,
+  "cells": [],
+  "method": "review-only-derived-grid",
+  "productionApproved": false,
+  "registrationStatus": "candidate-unverified",
+  "routes": [],
+  "schemaVersion": 1,
+  "warnings": [
+    "Navigation cells require visually reviewed walkable/collision geometry."
+  ]
+}

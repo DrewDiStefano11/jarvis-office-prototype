@@ -1,0 +1,24 @@
+{
+  "approved": false,
+  "landmarks": [],
+  "offsetX": 0,
+  "offsetY": -0.6666666666665151,
+  "scale": 1.3333333333333333,
+  "schemaVersion": 1,
+  "source": {
+    "embeddedImageHash": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+    "pdfHashes": {
+      "chairs-standing-desks": "08e3a65f22351a4f0d76d24b5f23f8082b721f0bfc7880f794a64cd0b23f4f38",
+      "computers": "20514e88efd2ae8a456b7949963e1ffa3d0221f355f42d3c88fcff77d9a47166",
+      "door-lights": "c24b6492ce6c637144a4dfb2802720b678276cad994586d643df9fe1ca493058",
+      "doors": "ac0f07f96742cff63692a548c53b1f37170aaa539c47fadbe2e4c496b99d4d7f",
+      "interactive-objects": "6dbb3c891f4107d12bd05fc847fa0f8a7a3c5a481a82b00bbb18f7382f86847a",
+      "objects": "c808b29a321537ad5109385e600fd8df427894cf162038226d76647d065d72b8",
+      "rooms": "9f18013711ca674df7001582e32582771dc05b22df91c6b72ea5a302814c0a12",
+      "walk-paths": "acc974dcb55ec609381b246e9a6bbc7560859d0f07ea23f3148a29db3a3b7ee3",
+      "walls": "b0f2ac169e0c30ad8bc1b6cc47ddffc8bf1524eed2b5cbbe4ac72d361007c442"
+    },
+    "productionImageHash": "aa0ff821d5530e8ee1be3c1de733d0bff4bb74767a0ba27e48a141abf784d026"
+  },
+  "status": "candidate-unverified"
+}

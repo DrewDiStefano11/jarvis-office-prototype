@@ -1,0 +1,464 @@
+{
+  "schemaVersion": 1,
+  "sourceCount": 9,
+  "sources": [
+    {
+      "annotationCount": 69,
+      "annotationSubtypeCounts": {
+        "FreeText": 35,
+        "PolyLine": 34
+      },
+      "appearanceStreamCount": 69,
+      "byteSize": 3337527,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Rooms.pdf",
+      "formXObjectCount": 69,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 147,
+      "key": "rooms",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "9f18013711ca674df7001582e32582771dc05b22df91c6b72ea5a302814c0a12",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 131,
+      "annotationSubtypeCounts": {
+        "Ink": 131
+      },
+      "appearanceStreamCount": 131,
+      "byteSize": 3827808,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Walk paths.pdf",
+      "formXObjectCount": 262,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 532,
+      "key": "walk-paths",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "acc974dcb55ec609381b246e9a6bbc7560859d0f07ea23f3148a29db3a3b7ee3",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 62,
+      "annotationSubtypeCounts": {
+        "Ink": 62
+      },
+      "appearanceStreamCount": 62,
+      "byteSize": 3469713,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Walls.pdf",
+      "formXObjectCount": 124,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 256,
+      "key": "walls",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "b0f2ac169e0c30ad8bc1b6cc47ddffc8bf1524eed2b5cbbe4ac72d361007c442",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 105,
+      "annotationSubtypeCounts": {
+        "Ink": 105
+      },
+      "appearanceStreamCount": 105,
+      "byteSize": 3403421,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Objects.pdf",
+      "formXObjectCount": 105,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 218,
+      "key": "objects",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "c808b29a321537ad5109385e600fd8df427894cf162038226d76647d065d72b8",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 95,
+      "annotationSubtypeCounts": {
+        "FreeText": 48,
+        "Polygon": 47
+      },
+      "appearanceStreamCount": 95,
+      "byteSize": 3503033,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Doors.pdf",
+      "formXObjectCount": 142,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 434,
+      "key": "doors",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "ac0f07f96742cff63692a548c53b1f37170aaa539c47fadbe2e4c496b99d4d7f",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 144,
+      "annotationSubtypeCounts": {
+        "FreeText": 48,
+        "Polygon": 95,
+        "Popup": 1
+      },
+      "appearanceStreamCount": 143,
+      "byteSize": 3600505,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Door Lights.pdf",
+      "formXObjectCount": 191,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 489,
+      "key": "door-lights",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "c24b6492ce6c637144a4dfb2802720b678276cad994586d643df9fe1ca493058",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 44,
+      "annotationSubtypeCounts": {
+        "Polygon": 44
+      },
+      "appearanceStreamCount": 44,
+      "byteSize": 3357183,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Computers.pdf",
+      "formXObjectCount": 44,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 140,
+      "key": "computers",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "20514e88efd2ae8a456b7949963e1ffa3d0221f355f42d3c88fcff77d9a47166",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 205,
+      "annotationSubtypeCounts": {
+        "Polygon": 204,
+        "Popup": 1
+      },
+      "appearanceStreamCount": 204,
+      "byteSize": 3737271,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Chairs-Standing desks.pdf",
+      "formXObjectCount": 204,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 544,
+      "key": "chairs-standing-desks",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "08e3a65f22351a4f0d76d24b5f23f8082b721f0bfc7880f794a64cd0b23f4f38",
+      "unresolvedStructures": []
+    },
+    {
+      "annotationCount": 12,
+      "annotationSubtypeCounts": {
+        "FreeText": 6,
+        "Polygon": 6
+      },
+      "appearanceStreamCount": 12,
+      "byteSize": 3297124,
+      "contentOperators": [
+        "Do",
+        "cm"
+      ],
+      "contents": {
+        "generation": 0,
+        "objectId": 7
+      },
+      "cropBox": [],
+      "embeddedImages": [
+        {
+          "byteLength": 3256898,
+          "encoding": "DCTDecode",
+          "height": 4096,
+          "objectId": 6,
+          "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+          "width": 6144
+        }
+      ],
+      "fileName": "Interactive Objects.pdf",
+      "formXObjectCount": 18,
+      "imagePlacementMatrix": [
+        4608,
+        0,
+        0,
+        3072,
+        0,
+        0
+      ],
+      "indirectObjectCount": 63,
+      "key": "interactive-objects",
+      "mediaBox": [
+        0,
+        0,
+        4608,
+        3072
+      ],
+      "pageCount": 1,
+      "resources": "inline",
+      "rotation": 0,
+      "sha256": "6dbb3c891f4107d12bd05fc847fa0f8a7a3c5a481a82b00bbb18f7382f86847a",
+      "unresolvedStructures": []
+    }
+  ],
+  "totalAnnotations": 867,
+  "totalAppearanceStreams": 865
+}

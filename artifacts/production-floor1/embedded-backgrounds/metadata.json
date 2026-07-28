@@ -1,0 +1,125 @@
+{
+  "allPdfsShareIdenticalBytes": true,
+  "images": [
+    {
+      "byteLength": 3256898,
+      "dimensions": {
+        "height": 4096,
+        "width": 6144
+      },
+      "encoding": "DCTDecode",
+      "sha256": "9513850ce99814aee3b10bd1c64670e10b72e9ebd03b66960bff420e14558dea",
+      "sources": [
+        {
+          "fileName": "Rooms.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Walk paths.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Walls.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Objects.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Doors.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Door Lights.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Computers.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Chairs-Standing desks.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        },
+        {
+          "fileName": "Interactive Objects.pdf",
+          "objectId": 6,
+          "placementMatrix": [
+            4608,
+            0,
+            0,
+            3072,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "uniqueImageCount": 1
+}
