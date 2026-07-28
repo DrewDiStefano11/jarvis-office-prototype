@@ -1,5 +1,8 @@
+import { webcrypto } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { loadVerifiedProductionOverlay, ProductionRawModules, selectFloor1RuntimeSource } from './runtime';
+
+Object.defineProperty(globalThis, 'crypto', { configurable: true, value: webcrypto });
 
 function canonical(value: unknown): unknown {
     if (Array.isArray(value)) return value.map(canonical);
@@ -59,4 +62,3 @@ describe('verified production runtime loader', () => {
         expect(overlay).toMatchObject({ production: true, source: { width: 8192, height: 5460 } });
     });
 });
-
