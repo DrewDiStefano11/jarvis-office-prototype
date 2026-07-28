@@ -1,6 +1,11 @@
 import { webcrypto } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { loadVerifiedProductionOverlay, ProductionRawModules, selectFloor1RuntimeSource } from './runtime';
+import {
+    isFloor1CandidateReviewRequested,
+    loadVerifiedProductionOverlay,
+    ProductionRawModules,
+    selectFloor1RuntimeSource,
+} from './runtime';
 
 Object.defineProperty(globalThis, 'crypto', { configurable: true, value: webcrypto });
 
@@ -37,6 +42,11 @@ async function validModules(): Promise<Record<string, string>> {
 }
 
 describe('verified production runtime loader', () => {
+    it('enables candidate review only for the explicit development query', () => {
+        expect(isFloor1CandidateReviewRequested('?floor1Review=candidate', true)).toBe(true);
+        expect(isFloor1CandidateReviewRequested('?floor1Review=other', true)).toBe(false);
+        expect(isFloor1CandidateReviewRequested('?floor1Review=candidate', false)).toBe(false);
+    });
     it('uses sample data when production is absent', async () => {
         expect(selectFloor1RuntimeSource(null)).toBe('existing-sample');
         await expect(loadVerifiedProductionOverlay({})).resolves.toBeNull();

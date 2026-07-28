@@ -1,7 +1,7 @@
 import { OfficeOverlayDocument } from '../types';
 import { assertValidOverlayDocument } from '../validation';
 
-export type Floor1DataSource = 'existing-sample' | 'approved-production';
+export type Floor1DataSource = 'existing-sample' | 'candidate-review' | 'approved-production';
 export type ProductionRawModules = Readonly<Record<string, string>>;
 
 const PRODUCTION_RAW_MODULES = import.meta.glob('../data/floor1/production/*.json', {
@@ -46,6 +46,14 @@ export function selectFloor1RuntimeSource(productionDocument: unknown): Floor1Da
         throw new Error('Normal office mode refuses candidate or provisional Floor 1 data.');
     }
     return 'approved-production';
+}
+
+export function isFloor1CandidateReviewRequested(
+    search: string,
+    isDevelopment: boolean = import.meta.env.DEV,
+): boolean {
+    if (!isDevelopment) return false;
+    return new URLSearchParams(search).get('floor1Review') === 'candidate';
 }
 
 export async function loadVerifiedProductionOverlay(modules: ProductionRawModules = PRODUCTION_RAW_MODULES): Promise<OfficeOverlayDocument | null> {
