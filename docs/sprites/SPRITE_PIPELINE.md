@@ -74,14 +74,42 @@ An asset is only `production_ready` when it has a true alpha channel, is not
 ambiguous, and has a measured grid where equal-cell extraction was verified.
 This invariant is enforced by a test.
 
+### Approval is separate from measurement
+
+Measurement never grants approval. `isProductionUsable()` requires readiness to
+be exactly `production_ready` — `conditionally_usable` is explicitly excluded,
+because it means "measured, but a human still has to decide".
+
+Production eligibility requires **all** of:
+
+1. inventory readiness is exactly `production_ready`;
+2. the asset is not ambiguous;
+3. alpha channel present and transparency actually used;
+4. an authored `approvalStatus: 'production-approved'` on the manifest entry;
+5. the whole manifest passes validation.
+
+`approvalStatus` is a strict union: `candidate-unverified` |
+`production-approved` | `reference-only`. Animations additionally carry
+`sequenceAuthorship`, and a production animation may not use a
+`curated-preview-unverified` order.
+
+**Nothing in this pipeline is currently production-approved.** The Nexus grid is
+`candidate-unverified`; everything else is `reference-only`.
+
 ## 5. Production copies
 
 `sync-production-assets.mjs` copies with `copyFileSync` and then re-reads the
 copy and compares SHA-256 against the source. No resizing, re-encoding, cropping
 or background removal ever happens. Layout:
 
-- `public/assets/office/sprites/central-blue-tube-hologram.png` — the path the
-  existing `OFFICE_ASSETS.hologram` registry entry already expects.
+- `public/assets/office/sprites/holograms/candidates/central-nexus-pose-grid.png`
+  — the Nexus **candidate**. Isolated on purpose.
+- `public/assets/office/sprites/central-blue-tube-hologram.png` — **intentionally
+  NOT created.** The office sample overlay declares this asset ID as a uniform
+  128x192 / 8-frame / 8-column sheet; the 1254x1254 non-uniform pose grid does
+  not satisfy that, so writing here would change runtime loading and defeat the
+  engine's missing-asset fallback. `sync-production-assets.mjs` throws if any
+  mapping resolves to this path, and a regression test asserts its absence.
 - `public/assets/office/sprites/agents/` — verified uniform agent sheets.
 - `public/assets/office/sprites/references/` — reference-only and ambiguous art,
   named so it cannot be mistaken for a production sprite.
@@ -99,6 +127,8 @@ Stable IDs currently defined:
 - `ASSETSET_CENTRAL_NEXUS_HOLOGRAM`
 - `ANIM_CENTRAL_NEXUS_IDLE`
 - `ANIM_CENTRAL_NEXUS_FLOAT`
+
+Both Nexus animations ship as `candidate-unverified` with `production: false`.
 
 No `ANIMSET_AGENT_REFERENCE_*` animations are defined yet. The agent sheets have
 verified grids, but nothing in the source states which row is which facing
@@ -140,6 +170,13 @@ Behaviour guarantees:
 
 - One frame is shown at a time via `background-position`.
 - Uniform grids and explicit per-frame rectangles are both supported.
+- Variable-size rectangles render inside a **stable logical frame box**, so
+  frame 0 and frame 9 always produce identical outer dimensions.
+- Anchor, logical box, trim offset and float are separate composed layers, so
+  the float transform can never overwrite the anchor translation.
+- A single animation is validated together with its **fallback dependency
+  closure**, so fallback checking stays enabled without false
+  `FALLBACK_ANIMATION_MISSING` errors. Cyclic fallbacks are detected.
 - Frame selection is a pure function of elapsed milliseconds, so playback is
   identical at 60 Hz and 144 Hz.
 - The clock only accumulates while visible, so hiding and restoring the tab
@@ -170,6 +207,20 @@ scale controls, loop-mode selector, reduced-motion toggle, float-transform
 toggle, a locked nearest-neighbour indicator, manifest validation results,
 readiness badges, and a deliberately invalid animation demonstrating the safe
 fallback.
+
+Status is reported on **five separate axes** rather than one green badge:
+manifest structure, source measurements, production approval, sequence
+authorship and visual review. The Nexus entry is labelled
+`CANDIDATE — HUMAN REVIEW REQUIRED`.
+
+Assets whose measured layout failed equal-cell verification do **not** get a
+fabricated uniform grid. The lab shows the source image with no clickable frame
+cells and states that frame extraction is unavailable pending human review.
+
+Manual frame navigation stores a **sequence position**, resolving the sheet
+frame via `sequence[position]`. Both values are displayed, because under
+ping-pong they differ. The position resets when the animation or loop mode
+changes and is clamped so it can never select an unrelated or negative frame.
 
 ## 10. Reusing existing code
 

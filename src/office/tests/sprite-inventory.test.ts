@@ -128,11 +128,30 @@ describe('source asset inventory', () => {
         }
     });
 
-    it('copies the Central Nexus asset to the path the registry expects', () => {
+    it('copies the Central Nexus asset to an isolated candidate path', () => {
         const nexus = getSourceAsset(NEXUS_TUBE_SOURCE_PATH);
-        const target = 'public/assets/office/sprites/central-blue-tube-hologram.png';
+        const target = 'public/assets/office/sprites/holograms/candidates/central-nexus-pose-grid.png';
         expect(existsSync(target)).toBe(true);
         const hash = createHash('sha256').update(readFileSync(target)).digest('hex');
         expect(hash).toBe(nexus?.sha256);
+    });
+
+    it('leaves the legacy office runtime hologram path absent', () => {
+        // The office sample overlay declares this asset as a uniform
+        // 128x192 / 8-frame / 8-column sheet. Populating it with the
+        // 1254x1254 non-uniform pose grid would change runtime loading and
+        // defeat the intentional missing-asset fallback.
+        expect(existsSync('public/assets/office/sprites/central-blue-tube-hologram.png'))
+            .toBe(false);
+    });
+
+    it('never maps any asset onto the legacy runtime path', () => {
+        const mappings = (productionMap as { mappings: { destination: string; productionAsset: boolean }[] }).mappings;
+        for (const mapping of mappings) {
+            expect(mapping.destination)
+                .not.toBe('assets/office/sprites/central-blue-tube-hologram.png');
+            // Nothing in this pipeline is production-approved yet.
+            expect(mapping.productionAsset).toBe(false);
+        }
     });
 });

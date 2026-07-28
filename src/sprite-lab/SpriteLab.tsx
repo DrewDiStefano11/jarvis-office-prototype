@@ -35,12 +35,23 @@ function publicPathFor(record: SourceAssetRecord): string {
     return mapping ? resolvePublicAssetPath(mapping.destination) : '';
 }
 
-/** Measured cell rectangles for whichever grid the inventory recorded. */
-function gridRectsFor(record: SourceAssetRecord) {
+type LabRect = Readonly<{
+    index: number; row: number; column: number;
+    x: number; y: number; width: number; height: number;
+}>;
+
+/**
+ * Measured cell rectangles, or none.
+ *
+ * Crucially, a uniform grid is only generated when equal-cell extraction was
+ * actually verified. For quarantined/irregular sheets we return no rectangles
+ * rather than presenting 48 assumed cells as if they were measured frames.
+ */
+function gridRectsFor(record: SourceAssetRecord): readonly LabRect[] {
     if (record.nexusGrid) return record.nexusGrid.frameRectangles;
-    if (record.agentGrid) {
+    if (record.agentGrid && record.agentGrid.equalCellExtractionValid) {
         const { columns, rows, assumedCellSize } = record.agentGrid;
-        const rects = [];
+        const rects: LabRect[] = [];
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < columns; c++) {
                 rects.push({
@@ -59,6 +70,25 @@ function gridRectsFor(record: SourceAssetRecord) {
     return [];
 }
 
+/** Why frame extraction is unavailable, when it is. */
+function extractionBlockedReason(record: SourceAssetRecord): string | null {
+    if (record.nexusGrid) return null;
+    if (!record.agentGrid) {
+        return 'No measurable cell structure. This is a reference image, not a frame sheet.';
+    }
+    if (record.agentGrid.equalCellExtractionValid) return null;
+    const g = record.agentGrid;
+    const details: string[] = [];
+    if (g.detectedColumnBands !== g.columns) {
+        details.push(`measured ${g.detectedColumnBands} ink column band(s) but the sheet is ${g.columns} cells wide`);
+    }
+    if (g.horizontalSpillCells > 0) {
+        details.push(`${g.horizontalSpillCells} cell(s) spill horizontally past the ${g.assumedCellSize.width}px boundary`);
+    }
+    if (g.blankCells > 0) details.push(`${g.blankCells} blank cell(s)`);
+    return `Frame extraction unavailable pending human review: ${details.join('; ') || 'irregular layout'}.`;
+}
+
 export function SpriteLab() {
     const assets = SOURCE_ASSET_INVENTORY.assets;
     const [selectedPath, setSelectedPath] = useState(assets[0]?.path ?? '');
@@ -73,11 +103,14 @@ export function SpriteLab() {
     const [previewScale, setPreviewScale] = useState(2);
     const [reducedMotion, setReducedMotion] = useState(false);
     const [floatOn, setFloatOn] = useState(true);
-    const [manualFrame, setManualFrame] = useState<number | undefined>(undefined);
+    // Stored as a SEQUENCE POSITION. For ping-pong these differ from sheet
+    // frame indexes, so the position is resolved through the sequence below.
+    const [manualPosition, setManualPosition] = useState<number | undefined>(undefined);
     const [loopMode, setLoopMode] = useState<SpriteLoopMode>('ping-pong');
 
     const record = assets.find(a => a.path === selectedPath);
     const rects = record ? gridRectsFor(record) : [];
+    const blockedReason = record ? extractionBlockedReason(record) : null;
     const currentRect = rects[Math.min(frameIndex, Math.max(rects.length - 1, 0))];
 
     const validation = useMemo(() => validateSpriteManifest(SPRITE_MANIFEST), []);
@@ -88,6 +121,23 @@ export function SpriteLab() {
         [baseAnimation, loopMode],
     );
     const sequence = animation ? resolvePlaybackSequence(animation) : [];
+
+    // Clamp (never wrap to an unrelated frame) whenever the sequence shrinks,
+    // e.g. after switching animation or loop mode.
+    const safePosition = manualPosition === undefined
+        ? undefined
+        : Math.min(Math.max(0, manualPosition), Math.max(0, sequence.length - 1));
+    const manualFrameIndex = safePosition === undefined || sequence.length === 0
+        ? undefined
+        : sequence[safePosition];
+
+    const stepPosition = (delta: number) => {
+        if (sequence.length === 0) return;
+        setManualPosition(previous => {
+            const current = previous ?? 0;
+            return Math.min(Math.max(0, current + delta), sequence.length - 1);
+        });
+    };
 
     return (
         <div className="sprite-lab">
@@ -100,10 +150,39 @@ export function SpriteLab() {
             </header>
 
             <section className="sprite-lab__panel">
-                <h2>Manifest validation</h2>
-                <p className={validation.valid ? 'status status--ok' : 'status status--bad'}>
-                    {validation.valid ? 'VALID' : `INVALID — ${validation.errors.length} error(s)`}
-                    {validation.warnings.length > 0 && ` · ${validation.warnings.length} warning(s)`}
+                <h2>Status</h2>
+                <p className="sprite-lab__hint">
+                    Structural validity, source measurement, production approval and visual
+                    review are tracked separately. A structurally valid manifest may still
+                    contain candidate entries that are not cleared for the office runtime.
+                </p>
+                <dl className="sprite-lab__meta" data-testid="status-axes">
+                    <div>
+                        <dt>Manifest structure</dt>
+                        <dd className={validation.valid ? 'status--ok' : 'status--bad'}
+                            data-testid="axis-structure">
+                            {validation.valid ? 'valid' : `invalid (${validation.errors.length})`}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Source measurements</dt>
+                        <dd className="status--ok" data-testid="axis-measurements">valid</dd>
+                    </div>
+                    <div>
+                        <dt>Production approval</dt>
+                        <dd className="status--bad" data-testid="axis-approval">not approved</dd>
+                    </div>
+                    <div>
+                        <dt>Sequence authorship</dt>
+                        <dd className="status--warn" data-testid="axis-authorship">unverified</dd>
+                    </div>
+                    <div>
+                        <dt>Visual review</dt>
+                        <dd className="status--warn" data-testid="axis-review">required</dd>
+                    </div>
+                </dl>
+                <p className="status status--warn" data-testid="nexus-status-banner">
+                    Central Nexus: CANDIDATE — HUMAN REVIEW REQUIRED
                 </p>
                 <ul className="sprite-lab__issues">
                     {validation.issues.map((issue, i) => (
@@ -115,11 +194,22 @@ export function SpriteLab() {
             </section>
 
             <section className="sprite-lab__panel">
-                <h2>Central Nexus preview</h2>
+                <h2>Central Nexus preview (candidate)</h2>
+                <p className="sprite-lab__hint">
+                    Preview only. This asset is <strong>not</strong> production-approved and is
+                    not placed in the office runtime. The legacy registry path
+                    <code> assets/office/sprites/central-blue-tube-hologram.png </code>
+                    is deliberately left absent so the office engine keeps its missing-asset
+                    fallback. The ten-frame order is a curated review choice, not a
+                    source-verified animation sequence.
+                </p>
                 <div className="sprite-lab__controls">
                     <label>
                         Animation
-                        <select value={animationId} onChange={e => setAnimationId(e.target.value)}>
+                        <select
+                            value={animationId}
+                            onChange={e => { setAnimationId(e.target.value); setManualPosition(undefined); }}
+                        >
                             <option value={ANIM_CENTRAL_NEXUS_IDLE}>ANIM_CENTRAL_NEXUS_IDLE</option>
                             <option value={ANIM_CENTRAL_NEXUS_FLOAT}>ANIM_CENTRAL_NEXUS_FLOAT</option>
                         </select>
@@ -128,7 +218,10 @@ export function SpriteLab() {
                         Loop mode
                         <select
                             value={loopMode}
-                            onChange={e => setLoopMode(e.target.value as SpriteLoopMode)}
+                            onChange={e => {
+                                setLoopMode(e.target.value as SpriteLoopMode);
+                                setManualPosition(undefined);
+                            }}
                         >
                             <option value="loop">loop</option>
                             <option value="once">once</option>
@@ -139,19 +232,9 @@ export function SpriteLab() {
                     <button type="button" onClick={() => setPlaying(p => !p)}>
                         {playing ? 'Pause' : 'Play'}
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => setManualFrame(f => Math.max(0, (f ?? 0) - 1))}
-                    >
-                        Prev frame
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setManualFrame(f => Math.min(sequence.length - 1, (f ?? 0) + 1))}
-                    >
-                        Next frame
-                    </button>
-                    <button type="button" onClick={() => setManualFrame(undefined)}>
+                    <button type="button" onClick={() => stepPosition(-1)}>Prev frame</button>
+                    <button type="button" onClick={() => stepPosition(1)}>Next frame</button>
+                    <button type="button" onClick={() => setManualPosition(undefined)}>
                         Resume auto
                     </button>
                     <label>
@@ -197,13 +280,25 @@ export function SpriteLab() {
                                 paused={!playing}
                                 speedMultiplier={1 / speed}
                                 forceReducedMotion={reducedMotion}
-                                manualFrameIndex={manualFrame}
+                                manualFrameIndex={manualFrameIndex}
                                 floatTransform={floatOn}
                                 label="Central Nexus hologram preview"
                             />
                         </div>
                         <dl className="sprite-lab__meta">
                             <div><dt>Sequence length</dt><dd>{sequence.length}</dd></div>
+                            <div>
+                                <dt>Sequence position</dt>
+                                <dd data-testid="sequence-position">
+                                    {safePosition === undefined ? 'auto' : safePosition}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Sheet frame index (0-based)</dt>
+                                <dd data-testid="sheet-frame-index">
+                                    {manualFrameIndex === undefined ? 'auto' : manualFrameIndex}
+                                </dd>
+                            </div>
                             <div><dt>Frame order</dt><dd>{animation.frameOrder.join(', ')}</dd></div>
                             <div><dt>Cycle duration</dt><dd>{totalCycleDurationMs(animation)} ms</dd></div>
                             <div><dt>Reduced-motion frame</dt><dd>{animation.reducedMotionFrameIndex}</dd></div>
@@ -287,6 +382,12 @@ export function SpriteLab() {
                             </ul>
                         )}
 
+                        {blockedReason && (
+                            <p className="status status--warn" data-testid="extraction-blocked">
+                                {blockedReason}
+                            </p>
+                        )}
+
                         <h3>Full source preview</h3>
                         <div className={`sprite-lab__sheet sprite-lab__stage--${background}`}>
                             <div
@@ -300,7 +401,7 @@ export function SpriteLab() {
                                     height={record.height * zoom}
                                     style={{ imageRendering: 'pixelated' }}
                                 />
-                                {showGrid && rects.map(r => (
+                                {showGrid && !blockedReason && rects.map(r => (
                                     <span
                                         key={r.index}
                                         className={`sprite-lab__cell${r.index === frameIndex ? ' sprite-lab__cell--active' : ''}`}
@@ -318,7 +419,7 @@ export function SpriteLab() {
                             </div>
                         </div>
 
-                        {currentRect && (
+                        {currentRect && !blockedReason && (
                             <>
                                 <h3>Individual frame — index {currentRect.index} (zero-based)</h3>
                                 <div className="sprite-lab__controls">

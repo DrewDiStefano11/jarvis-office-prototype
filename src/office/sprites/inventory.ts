@@ -139,8 +139,23 @@ export function assetsByReadiness(
     return SOURCE_ASSET_INVENTORY.assets.filter(asset => asset.readiness === readiness);
 }
 
+/**
+ * Measurement-side production eligibility.
+ *
+ * A generated measurement can never by itself grant production approval, so
+ * `conditionally_usable` is deliberately excluded: it means "measured, but a
+ * human still has to decide". Only `production_ready` qualifies here, and even
+ * then the manifest must additionally carry an explicit authored approval
+ * (`approvalStatus: 'production-approved'`) before anything reaches runtime.
+ */
 export function isProductionUsable(asset: SourceAssetRecord): boolean {
-    return (asset.readiness === 'production_ready' || asset.readiness === 'conditionally_usable')
+    return asset.readiness === 'production_ready'
         && !asset.ambiguous
-        && asset.hasAlphaChannel;
+        && asset.hasAlphaChannel
+        && asset.transparencyUsed;
+}
+
+/** True when a human decision is still outstanding for this asset. */
+export function requiresHumanReview(asset: SourceAssetRecord): boolean {
+    return asset.readiness === 'conditionally_usable' || asset.ambiguous;
 }

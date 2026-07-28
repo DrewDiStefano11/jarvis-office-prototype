@@ -47,7 +47,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,140,310
 - Partially transparent pixels: 55,047
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -73,7 +73,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 831,513
 - Partially transparent pixels: 710,503
 - Uniform opaque background: no
-- Appears to be: sprite sheet (non-uniform grid)
+- Appears to be: non-uniform pose grid (measured); sequence semantics unverified
 - Measured structure: 10 cols x 9 rows = 90 cells, uniform: no
 - Blank cells: 0
 - Distinct measured cell widths: 88, 96, 100, 101, 102, 103
@@ -82,7 +82,7 @@ Ink alpha threshold used for bounds: **128**
 - Classification: **central_nexus_hologram**
 - Readiness: **conditionally_usable**
 - Ambiguous: no
-- Public copy: `public/assets/office/sprites/central-blue-tube-hologram.png`
+- Public copy: `public/assets/office/sprites/holograms/candidates/central-nexus-pose-grid.png`
 - Warnings / unresolved questions:
   - Grid is NOT uniform: measured cell widths and heights vary, so explicit per-frame rectangles are required.
   - Final row is vertically truncated relative to the other rows.
@@ -124,7 +124,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,112,970
 - Partially transparent pixels: 96,249
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -150,7 +150,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,119,332
 - Partially transparent pixels: 89,592
 - Uniform opaque background: no
-- Appears to be: sprite sheet (irregular / ambiguous)
+- Appears to be: character pose grid with an irregular measured layout; frame extraction unavailable pending human review
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: no
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 8
@@ -177,7 +177,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,185,160
 - Partially transparent pixels: 78,603
 - Uniform opaque background: no
-- Appears to be: sprite sheet (irregular / ambiguous)
+- Appears to be: character pose grid with an irregular measured layout; frame extraction unavailable pending human review
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: no
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 48
@@ -205,7 +205,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,131,597
 - Partially transparent pixels: 87,373
 - Uniform opaque background: no
-- Appears to be: sprite sheet (irregular / ambiguous)
+- Appears to be: character pose grid with an irregular measured layout; frame extraction unavailable pending human review
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: no
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 2
@@ -232,7 +232,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,148,306
 - Partially transparent pixels: 86,834
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -258,7 +258,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,152,135
 - Partially transparent pixels: 89,457
 - Uniform opaque background: no
-- Appears to be: sprite sheet (irregular / ambiguous)
+- Appears to be: character pose grid with an irregular measured layout; frame extraction unavailable pending human review
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: no
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 2
@@ -285,7 +285,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,133,562
 - Partially transparent pixels: 93,158
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -311,7 +311,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,083,099
 - Partially transparent pixels: 95,526
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -337,7 +337,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,151,980
 - Partially transparent pixels: 93,617
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -363,7 +363,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,124,926
 - Partially transparent pixels: 94,277
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -389,7 +389,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,152,667
 - Partially transparent pixels: 81,892
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -415,7 +415,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,148,611
 - Partially transparent pixels: 87,367
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -441,7 +441,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,146,722
 - Partially transparent pixels: 85,186
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -467,7 +467,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,135,248
 - Partially transparent pixels: 90,399
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -493,7 +493,7 @@ Ink alpha threshold used for bounds: **128**
 - Fully transparent pixels: 1,092,371
 - Partially transparent pixels: 64,181
 - Uniform opaque background: no
-- Appears to be: sprite sheet (uniform grid)
+- Appears to be: 6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified
 - Measured structure: 6 cols x 8 rows = 48 cells @ 181x181, equal-cell valid: yes
 - Blank cells: 0
 - Cells spilling horizontally past the cell boundary: 0
@@ -513,4 +513,22 @@ Ink alpha threshold used for bounds: **128**
 - No character names, job assignments, facing directions or animation state names
   were invented. Where the source does not state something, it is recorded as
   unresolved rather than guessed.
+
+### Measured fact vs. interpretation
+
+**Measured:** image dimensions, checksums, bit depth, colour type, alpha presence
+and usage, transparent-pixel counts, ink-band positions, cell counts, cell sizes,
+blank cells and boundary spill.
+
+**Not established by the source (interpretation only):** which row corresponds to
+which facing direction, whether every row is a direction at all, the authoritative
+playback order within a row, and any job/identity mapping for a given character.
+The `d85660f4` sheets are therefore described as 6-column x 8-row character pose
+grids that are *visually consistent with* directional animation sheets — not as
+confirmed "8 directions x 6-frame walk cycles".
+
+**Approval:** no asset in this pipeline is production-approved. The Nexus grid is
+`candidate-unverified`; everything else is reference-only. The legacy office
+registry path `assets/office/sprites/central-blue-tube-hologram.png` is
+deliberately left absent so the office engine keeps its missing-asset fallback.
 

@@ -10,7 +10,27 @@ export type SpritePlaybackDirection = 'forward' | 'reverse';
 export type SpriteHoldBehavior = 'first-frame' | 'last-frame' | 'none';
 export type SpriteInterpolationMode = 'nearest' | 'smooth';
 export type SpriteBlendMode = 'normal' | 'screen' | 'multiply';
-export type SpriteTrimBehavior = 'none' | 'trimmed';
+/**
+ * `trimmed-ink-bounds` means the source rectangles are measured ink bounds, not
+ * complete authored cells, so a stable logical frame box plus per-frame offsets
+ * are required to keep placement steady.
+ */
+export type SpriteTrimBehavior = 'none' | 'trimmed-ink-bounds';
+
+/**
+ * Approval lifecycle. This is an authored human decision and is deliberately
+ * separate from generated measurements: measuring an asset never approves it.
+ */
+export type SpriteApprovalStatus =
+    | 'candidate-unverified'
+    | 'production-approved'
+    | 'reference-only';
+
+export const SPRITE_APPROVAL_STATUSES: readonly SpriteApprovalStatus[] = [
+    'candidate-unverified',
+    'production-approved',
+    'reference-only',
+];
 export type SpritePreloadBehavior = 'eager' | 'lazy';
 export type SpriteFrameIndexBase = 0;
 
@@ -27,10 +47,23 @@ export type SpriteFrameRect = Readonly<{
     index: number;
     row: number;
     column: number;
+    /** Source rectangle within the sheet (may be tight ink bounds). */
     x: number;
     y: number;
     width: number;
     height: number;
+}>;
+
+/**
+ * Placement of one source rectangle inside the stable logical frame box.
+ * Keeping this separate from the source rectangle is what stops variable-width
+ * frames from moving the sprite around as the animation plays.
+ */
+export type SpriteFramePlacement = Readonly<{
+    rect: SpriteFrameRect;
+    /** Offset of the source content within the logical frame box. */
+    offsetX: number;
+    offsetY: number;
 }>;
 
 export type SpriteSourceDimensions = Readonly<{ width: number; height: number }>;
@@ -50,8 +83,12 @@ export type SpriteAssetSet = Readonly<{
     sourceDimensions: SpriteSourceDimensions;
     hasAlphaChannel: boolean;
     pixelArt: boolean;
-    /** True when the asset may back a production animation. */
+    /**
+     * True only when a human has approved the asset for the office runtime.
+     * Must be false unless `approvalStatus === 'production-approved'`.
+     */
     productionApproved: boolean;
+    approvalStatus: SpriteApprovalStatus;
     notes: readonly string[];
 }>;
 
@@ -63,7 +100,10 @@ export type SpriteAnimation = Readonly<{
     rows: number;
     columns: number;
     totalCellCount: number;
-    /** Nominal frame size. For non-uniform sheets this is the maximum cell size. */
+    /**
+     * Stable logical frame box. Every played frame occupies exactly this outer
+     * size regardless of its individual source-rectangle dimensions.
+     */
     frameWidth: number;
     frameHeight: number;
     frameIndexBase: SpriteFrameIndexBase;
@@ -92,8 +132,14 @@ export type SpriteAnimation = Readonly<{
     reducedMotionFrameIndex: number;
     /** Optional animation to fall back to; null means use the reduced-motion frame. */
     fallbackAnimationId: SpriteAnimationId | null;
-    /** True for entries intended to render in the real office. */
+    /** True only for entries cleared to render in the real office runtime. */
     production: boolean;
+    approvalStatus: SpriteApprovalStatus;
+    /**
+     * True when the frame order is a review-time curatorial choice rather than
+     * an ordering established by the source asset.
+     */
+    sequenceAuthorship: 'source-verified' | 'curated-preview-unverified';
     notes: readonly string[];
     warnings: readonly string[];
 }>;

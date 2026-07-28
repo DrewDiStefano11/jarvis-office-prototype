@@ -89,6 +89,10 @@ function validateAssetSet(asset: SpriteAssetSet, out: SpriteValidationIssue[]): 
         out.push(issue('error', 'ASSET_ALPHA_MISMATCH', target,
             'Manifest alpha-channel flag does not match the measured PNG colour type.'));
     }
+    if (asset.productionApproved && asset.approvalStatus !== 'production-approved') {
+        out.push(issue('error', 'ASSET_APPROVAL_INCONSISTENT', target,
+            `Asset is flagged productionApproved but approvalStatus is "${asset.approvalStatus}".`));
+    }
     if (asset.productionApproved && !isProductionUsable(record)) {
         out.push(issue('error', 'ASSET_REFERENCE_ONLY', target,
             `Asset is marked production-approved but the inventory classifies it as "${record.readiness}"${record.ambiguous ? ' (ambiguous)' : ''}.`));
@@ -160,6 +164,17 @@ function validateAnimation(
     if (animation.frameRectangles) {
         const seen = new Set<number>();
         for (const rect of animation.frameRectangles) {
+            // Rectangle indexes must be real cell indexes, not arbitrary numbers.
+            if (!Number.isInteger(rect.index)) {
+                out.push(issue('error', 'FRAME_RECT_INDEX_INVALID', target,
+                    `Frame rectangle index ${rect.index} is not an integer.`));
+                continue;
+            }
+            if (rect.index < 0 || rect.index >= animation.totalCellCount) {
+                out.push(issue('error', 'FRAME_RECT_INDEX_OUT_OF_RANGE', target,
+                    `Frame rectangle index ${rect.index} is outside 0..${animation.totalCellCount - 1}.`));
+                continue;
+            }
             if (seen.has(rect.index)) {
                 out.push(issue('error', 'FRAME_RECT_DUPLICATE', target,
                     `Duplicate frame rectangle index ${rect.index}.`));
@@ -167,6 +182,18 @@ function validateAnimation(
             seen.add(rect.index);
             validateFrameRectangle(rect, asset, target, out);
         }
+
+        // Coverage: anything the animation can actually display must have
+        // geometry now, rather than silently falling back at render time.
+        const requireRect = (index: number, reason: string) => {
+            if (Number.isInteger(index) && index >= 0 && !seen.has(index)) {
+                out.push(issue('error', 'FRAME_RECT_MISSING', target,
+                    `No frame rectangle defined for ${reason} index ${index}.`));
+            }
+        };
+        for (const index of animation.frameOrder) requireRect(index, 'frameOrder');
+        for (const index of animation.usedFrameIndexes) requireRect(index, 'usedFrameIndexes');
+        requireRect(animation.reducedMotionFrameIndex, 'reducedMotionFrameIndex');
     } else if (animation.uniformGrid && asset) {
         // A uniform grid must physically fit inside the source image.
         const neededWidth = animation.columns * animation.frameWidth;
@@ -219,6 +246,12 @@ function validateAnimation(
             out.push(issue('error', 'FRAME_ORDER_NOT_MARKED_USED', target,
                 `Frame index ${index} is played but not listed in usedFrameIndexes.`));
         }
+    }
+
+    // Complete cell accounting: used + unused must describe every declared cell.
+    if (usedSet.size + unusedSet.size !== animation.totalCellCount) {
+        out.push(issue('error', 'FRAME_ACCOUNTING_INCOMPLETE', target,
+            `Used (${usedSet.size}) + unused (${unusedSet.size}) frames do not account for all ${animation.totalCellCount} declared cells.`));
     }
 
     if (!isFiniteNumber(animation.defaultFrameDurationMs) || animation.defaultFrameDurationMs <= 0) {
@@ -276,6 +309,15 @@ function validateAnimation(
         out.push(issue('error', 'PRODUCTION_BACKED_BY_REFERENCE', target,
             `Production animation is backed by non-approved asset set "${asset.id}".`));
     }
+    // Approval is an authored decision; the two flags must never disagree.
+    if (animation.production && animation.approvalStatus !== 'production-approved') {
+        out.push(issue('error', 'PRODUCTION_WITHOUT_APPROVAL', target,
+            `Animation is marked production but approvalStatus is "${animation.approvalStatus}".`));
+    }
+    if (animation.production && animation.sequenceAuthorship !== 'source-verified') {
+        out.push(issue('error', 'PRODUCTION_SEQUENCE_UNVERIFIED', target,
+            'Production animation cannot use an unverified curated frame order.'));
+    }
 
     for (const warning of animation.warnings) {
         out.push(issue('warning', 'ANIMATION_NOTE', target, warning));
@@ -311,11 +353,25 @@ export function validateSpriteManifest(manifest: SpriteManifest): SpriteValidati
         validateAnimation(animation, assetsById, collected);
     }
 
-    // Fallback references must resolve to a real animation.
+    // Fallback references must resolve to a real animation, and must terminate.
+    const byId = new Map(manifest.animations.map(a => [a.id, a]));
     for (const animation of manifest.animations) {
         if (animation.fallbackAnimationId && !animationIds.has(animation.fallbackAnimationId)) {
             collected.push(issue('error', 'FALLBACK_ANIMATION_MISSING', animation.id,
                 `Fallback animation "${animation.fallbackAnimationId}" does not exist.`));
+            continue;
+        }
+        // Walk the chain; a repeat means a cycle that would otherwise recurse forever.
+        const visited = new Set<string>([animation.id]);
+        let cursor = animation.fallbackAnimationId;
+        while (cursor) {
+            if (visited.has(cursor)) {
+                collected.push(issue('error', 'FALLBACK_ANIMATION_CYCLE', animation.id,
+                    `Fallback chain forms a cycle at "${cursor}".`));
+                break;
+            }
+            visited.add(cursor);
+            cursor = byId.get(cursor)?.fallbackAnimationId ?? null;
         }
     }
 
@@ -333,4 +389,37 @@ export function assertValidSpriteManifest(manifest: SpriteManifest): void {
             .join('\n');
         throw new Error(`Invalid sprite manifest:\n${detail}`);
     }
+}
+
+/**
+ * Minimal sub-manifest containing one animation, its asset set and every
+ * recursively referenced fallback animation (plus their assets).
+ *
+ * The renderer uses this so validating a single entry does not spuriously
+ * report `FALLBACK_ANIMATION_MISSING` for a fallback that exists in the full
+ * manifest. Fallback validation stays enabled rather than being disabled.
+ */
+export function buildAnimationDependencyClosure(
+    manifest: SpriteManifest,
+    animationId: string,
+): SpriteManifest {
+    const byId = new Map(manifest.animations.map(a => [a.id, a]));
+    const animations: SpriteAnimation[] = [];
+    const seen = new Set<string>();
+
+    let cursor: string | null = animationId;
+    while (cursor && !seen.has(cursor)) {
+        seen.add(cursor);
+        const found: SpriteAnimation | undefined = byId.get(cursor);
+        if (!found) break;
+        animations.push(found);
+        cursor = found.fallbackAnimationId;
+    }
+
+    const neededAssets = new Set(animations.map(a => a.assetSetId));
+    return {
+        schemaVersion: manifest.schemaVersion,
+        assetSets: manifest.assetSets.filter(a => neededAssets.has(a.id)),
+        animations,
+    };
 }

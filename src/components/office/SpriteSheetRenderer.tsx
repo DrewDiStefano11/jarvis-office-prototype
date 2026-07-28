@@ -7,7 +7,10 @@ import {
     frameRectangle,
     reducedMotionFrame,
 } from '../../office/sprites/playback';
-import { validateSpriteManifest } from '../../office/sprites/manifestValidation';
+import {
+    buildAnimationDependencyClosure,
+    validateSpriteManifest,
+} from '../../office/sprites/manifestValidation';
 import { SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import './sprite-sheet-renderer.css';
 
@@ -111,12 +114,24 @@ export function SpriteSheetRenderer({
 
     const assetSet = getAssetSet(animation.assetSetId);
 
-    // Manifest problems must fail closed rather than render a guessed frame.
-    const validation = useMemo(() => validateSpriteManifest({
-        ...SPRITE_MANIFEST,
-        animations: [animation],
-        assetSets: assetSet ? [assetSet] : [],
-    }), [animation, assetSet]);
+    /**
+     * Validate the animation together with its fallback dependency closure.
+     *
+     * Validating the entry in isolation would report FALLBACK_ANIMATION_MISSING
+     * for any animation whose fallback lives elsewhere in the manifest, so
+     * fallback checking stays on but sees the animations it needs.
+     */
+    const validation = useMemo(() => {
+        const closure = buildAnimationDependencyClosure(
+            { ...SPRITE_MANIFEST, animations: [animation, ...SPRITE_MANIFEST.animations.filter(a => a.id !== animation.id)] },
+            animation.id,
+        );
+        const assetSets = assetSet
+            && !closure.assetSets.some(a => a.id === assetSet.id)
+            ? [...closure.assetSets, assetSet]
+            : closure.assetSets;
+        return validateSpriteManifest({ ...closure, assetSets });
+    }, [animation, assetSet]);
 
     const src = assetSet ? resolvePublicAssetPath(assetSet.publicPath) : '';
 
@@ -208,7 +223,45 @@ export function SpriteSheetRenderer({
     }
 
     const scale = animation.worldScale * displayScale;
-    const style: CSSProperties = {
+
+    // Stable logical frame box: identical outer size for every frame, so
+    // variable-width ink rectangles cannot shift the sprite between frames.
+    const boxWidth = animation.frameWidth * scale;
+    const boxHeight = animation.frameHeight * scale;
+
+    /*
+     * Alignment of the trimmed source rectangle inside the logical box.
+     * For measured ink bounds we centre horizontally and sit content on the
+     * box floor, matching the bottom-centre anchor. Untrimmed sheets already
+     * fill the box, so no offset is applied.
+     */
+    const trimmed = animation.trimBehavior === 'trimmed-ink-bounds';
+    const offsetX = trimmed ? Math.round((animation.frameWidth - rect.width) / 2) : 0;
+    const offsetY = trimmed ? animation.frameHeight - rect.height : 0;
+
+    /*
+     * Layers are kept separate so each concern can change independently:
+     *   outer  -> anchor translation (world attachment point)
+     *   float  -> optional vertical bob (never overwrites the anchor)
+     *   box    -> stable logical frame box
+     *   inner  -> trimmed frame content at its offset
+     */
+    const anchorStyle: CSSProperties = {
+        position: 'relative',
+        display: 'block',
+        width: `${boxWidth}px`,
+        height: `${boxHeight}px`,
+        transform: `translate(${-animation.anchor.x * boxWidth}px, ${-animation.anchor.y * boxHeight}px)`,
+        opacity: opacity ?? animation.opacity,
+        mixBlendMode: animation.blendMode === 'normal' ? undefined : animation.blendMode,
+        zIndex,
+        pointerEvents: 'none',
+    };
+
+    const contentStyle: CSSProperties = {
+        position: 'absolute',
+        left: `${offsetX * scale}px`,
+        top: `${offsetY * scale}px`,
         width: `${rect.width * scale}px`,
         height: `${rect.height * scale}px`,
         backgroundImage: `url("${src}")`,
@@ -216,26 +269,30 @@ export function SpriteSheetRenderer({
         backgroundSize: `${assetSet.sourceDimensions.width * scale}px ${assetSet.sourceDimensions.height * scale}px`,
         backgroundRepeat: 'no-repeat',
         imageRendering: animation.pixelArt ? 'pixelated' : 'auto',
-        opacity: opacity ?? animation.opacity,
-        mixBlendMode: animation.blendMode === 'normal' ? undefined : animation.blendMode,
-        zIndex,
         filter: glow ? `drop-shadow(0 0 ${Math.round(6 * scale)}px ${glow})` : undefined,
     };
 
     return (
         <div
             ref={containerRef}
-            className={[
-                'sprite-sheet-renderer',
-                floatTransform && animating ? 'sprite-sheet-renderer--float' : '',
-                className ?? '',
-            ].filter(Boolean).join(' ')}
-            style={style}
+            className={['sprite-sheet-renderer', className ?? ''].filter(Boolean).join(' ')}
+            style={anchorStyle}
             role="img"
             aria-label={label ?? animation.id}
             data-sprite-state={state === 'ready' ? 'ready' : state}
             data-frame-index={frameIndex}
-        />
+            data-box-width={boxWidth}
+            data-box-height={boxHeight}
+        >
+            <div
+                className={[
+                    'sprite-sheet-renderer__float',
+                    floatTransform && animating ? 'sprite-sheet-renderer--float' : '',
+                ].filter(Boolean).join(' ')}
+            >
+                <div className="sprite-sheet-renderer__frame" style={contentStyle} />
+            </div>
+        </div>
     );
 }
 

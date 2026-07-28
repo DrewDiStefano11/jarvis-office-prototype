@@ -4,6 +4,7 @@ import {
     ANIM_CENTRAL_NEXUS_IDLE,
     ASSETSET_CENTRAL_NEXUS_HOLOGRAM,
     CENTRAL_NEXUS_PUBLIC_PATH,
+    LEGACY_OFFICE_HOLOGRAM_PATH,
     SPRITE_MANIFEST,
     getAnimation,
     getAssetSet,
@@ -33,11 +34,70 @@ describe('sprite manifest', () => {
         expect(() => assertValidSpriteManifest(SPRITE_MANIFEST)).not.toThrow();
     });
 
-    it('uses the public path expected by the existing asset registry', () => {
+    it('uses an isolated candidate path, not the legacy registry path', () => {
         expect(CENTRAL_NEXUS_PUBLIC_PATH)
-            .toBe('assets/office/sprites/central-blue-tube-hologram.png');
+            .toBe('assets/office/sprites/holograms/candidates/central-nexus-pose-grid.png');
         expect(assetSet.publicPath).toBe(CENTRAL_NEXUS_PUBLIC_PATH);
         expect(assetSet.publicPath.startsWith('/')).toBe(false);
+        expect(assetSet.publicPath).not.toBe(LEGACY_OFFICE_HOLOGRAM_PATH);
+    });
+
+    it('ships the Nexus entries as candidate-unverified, never production', () => {
+        expect(assetSet.approvalStatus).toBe('candidate-unverified');
+        expect(assetSet.productionApproved).toBe(false);
+        for (const id of [ANIM_CENTRAL_NEXUS_IDLE, ANIM_CENTRAL_NEXUS_FLOAT]) {
+            const animation = getAnimation(id)!;
+            expect(animation.production, id).toBe(false);
+            expect(animation.approvalStatus, id).toBe('candidate-unverified');
+            expect(animation.sequenceAuthorship, id).toBe('curated-preview-unverified');
+        }
+    });
+
+    it('keeps the candidate valid for the review lab while barring production', () => {
+        // Structurally valid...
+        expect(validateSpriteManifest(SPRITE_MANIFEST).valid).toBe(true);
+        // ...but flipping it to production must fail closed.
+        const forced = validateSpriteManifest({
+            schemaVersion: 1,
+            assetSets: [assetSet],
+            animations: [{ ...idle, production: true }],
+        });
+        expect(forced.valid).toBe(false);
+        const codes = forced.errors.map(e => e.code);
+        expect(codes).toContain('PRODUCTION_WITHOUT_APPROVAL');
+        expect(codes).toContain('PRODUCTION_BACKED_BY_REFERENCE');
+    });
+
+    it('cannot mark a conditionally_usable asset as production-approved', () => {
+        const result = validateSpriteManifest({
+            schemaVersion: 1,
+            assetSets: [{
+                ...assetSet,
+                productionApproved: true,
+                approvalStatus: 'production-approved',
+            }],
+            animations: [],
+        });
+        // Nexus measures as conditionally_usable, so approval must be refused.
+        expect(result.errors.map(e => e.code)).toContain('ASSET_REFERENCE_ONLY');
+    });
+
+    it('rejects an asset whose approval flags disagree', () => {
+        const result = validateSpriteManifest({
+            schemaVersion: 1,
+            assetSets: [{ ...assetSet, productionApproved: true }],
+            animations: [],
+        });
+        expect(result.errors.map(e => e.code)).toContain('ASSET_APPROVAL_INCONSISTENT');
+    });
+
+    it('rejects a production animation built on an unverified curated order', () => {
+        const codes = codesFor({
+            ...idle,
+            production: true,
+            approvalStatus: 'production-approved',
+        });
+        expect(codes).toContain('PRODUCTION_SEQUENCE_UNVERIFIED');
     });
 
     it('describes the Central Nexus sheet with measured, non-uniform geometry', () => {
@@ -192,7 +252,7 @@ describe('sprite manifest', () => {
         const result = validateSpriteManifest({
             schemaVersion: 1,
             assetSets: [{ ...assetSet, productionApproved: false }],
-            animations: [idle],
+            animations: [{ ...idle, production: true }],
         });
         expect(result.errors.map(e => e.code)).toContain('PRODUCTION_BACKED_BY_REFERENCE');
     });

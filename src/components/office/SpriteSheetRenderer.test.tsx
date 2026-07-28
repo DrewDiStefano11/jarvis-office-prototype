@@ -3,7 +3,11 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SpriteSheetRenderer } from './SpriteSheetRenderer';
 import { resolvePublicAssetPath } from '../../office/assets';
-import { ANIM_CENTRAL_NEXUS_IDLE, getAnimation } from '../../office/sprites/manifest';
+import {
+    ANIM_CENTRAL_NEXUS_IDLE,
+    CENTRAL_NEXUS_PUBLIC_PATH,
+    getAnimation,
+} from '../../office/sprites/manifest';
 import { SpriteAnimation } from '../../office/sprites/manifestTypes';
 
 const idle = getAnimation(ANIM_CENTRAL_NEXUS_IDLE) as SpriteAnimation;
@@ -44,7 +48,8 @@ describe('SpriteSheetRenderer', () => {
         const node = await screen.findByRole('img', { name: 'Central Nexus hologram' });
         await waitFor(() => expect(node.getAttribute('data-sprite-state')).toBe('ready'));
         expect(node.getAttribute('data-frame-index')).toBe(String(idle.reducedMotionFrameIndex));
-        expect(node.style.imageRendering).toBe('pixelated');
+        const content = node.querySelector('.sprite-sheet-renderer__frame') as HTMLElement;
+        expect(content.style.imageRendering).toBe('pixelated');
     });
 
     it('displays the requested manual frame using measured rectangles', async () => {
@@ -54,9 +59,13 @@ describe('SpriteSheetRenderer', () => {
         await waitFor(() => expect(node.getAttribute('data-sprite-state')).toBe('ready'));
         expect(node.getAttribute('data-frame-index')).toBe('3');
         const rect = idle.frameRectangles!.find(r => r.index === 3)!;
-        expect(node.style.width).toBe(`${rect.width}px`);
-        expect(node.style.height).toBe(`${rect.height}px`);
-        expect(node.style.backgroundPosition).toBe(`${-rect.x}px ${-rect.y}px`);
+        // Outer element is the stable logical frame box, not the tight rect.
+        expect(node.style.width).toBe(`${idle.frameWidth}px`);
+        expect(node.style.height).toBe(`${idle.frameHeight}px`);
+        const content = node.querySelector('.sprite-sheet-renderer__frame') as HTMLElement;
+        expect(content.style.width).toBe(`${rect.width}px`);
+        expect(content.style.height).toBe(`${rect.height}px`);
+        expect(content.style.backgroundPosition).toBe(`${-rect.x}px ${-rect.y}px`);
     });
 
     it('resolves the public asset path through the BASE_URL mechanism', async () => {
@@ -65,10 +74,12 @@ describe('SpriteSheetRenderer', () => {
         const node = await screen.findByRole('img', { name: 'Path check' });
         await waitFor(() => expect(node.getAttribute('data-sprite-state')).toBe('ready'));
         // Path is built from BASE_URL, so nested deployment bases keep working.
-        expect(node.style.backgroundImage)
-            .toContain('assets/office/sprites/central-blue-tube-hologram.png');
-        expect(node.style.backgroundImage)
-            .toBe(`url("${resolvePublicAssetPath('assets/office/sprites/central-blue-tube-hologram.png')}")`);
+        const content = node.querySelector('.sprite-sheet-renderer__frame') as HTMLElement;
+        expect(content.style.backgroundImage)
+            .toBe(`url("${resolvePublicAssetPath(CENTRAL_NEXUS_PUBLIC_PATH)}")`);
+        // The legacy runtime path must never be referenced.
+        expect(content.style.backgroundImage)
+            .not.toContain('central-blue-tube-hologram.png');
     });
 
     it('starts in the loading state before the image resolves', () => {

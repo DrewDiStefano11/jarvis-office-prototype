@@ -2,12 +2,29 @@
 
 Measured metadata for `Nexus Tube Sprite.png` and the animations derived from it.
 
+> **STATUS: CANDIDATE — HUMAN REVIEW REQUIRED.**
+> This asset is **not** production-approved and is **not** used by the office
+> runtime. It is reachable only through the isolated sprite manifest and the
+> sprite review lab.
+>
+> The legacy office registry path
+> `public/assets/office/sprites/central-blue-tube-hologram.png` is
+> **intentionally left absent**. The non-production sample overlay declares that
+> asset ID as a uniform **128x192 / 8-frame / 8-column** sheet (a 1024x1536
+> image). This 1254x1254 non-uniform pose grid does not satisfy that metadata, so
+> placing it there would change runtime loading and defeat the engine's
+> intentional missing-asset fallback. Populating that path is the job of a
+> separate, reviewed Floor 1 integration task that also updates the runtime
+> metadata and renderer.
+
 ## 1. Source facts (all measured, none assumed)
 
 | Property | Measured value |
 |---|---|
 | Source path | `Nexus Tube Sprite.png` |
-| Production path | `public/assets/office/sprites/central-blue-tube-hologram.png` |
+| Candidate path | `public/assets/office/sprites/holograms/candidates/central-nexus-pose-grid.png` |
+| Approval status | **`candidate-unverified` — NOT production-approved** |
+| Legacy registry path | `assets/office/sprites/central-blue-tube-hologram.png` — **deliberately absent** |
 | SHA-256 | `bf17e81c95cf3c54d4f972eafca980fe6af0958d476915f57e621a50593018d6` |
 | File size | 2,596,931 bytes |
 | Source dimensions | **1254 x 1254** |
@@ -102,7 +119,7 @@ rather than a verified sequence.
 | Public path | `assets/office/sprites/central-blue-tube-hologram.png` |
 | Source dimensions | 1254 x 1254 |
 | Rows / columns / cells | 9 / 10 / 90 |
-| Nominal frame box | 103 x 123 (largest measured cell) |
+| Logical frame box | 103 x 123 (largest played cell); every frame renders at this outer size |
 | Frame index base | 0 |
 | Frame order | `0,1,2,3,4,5,6,7,8,9` |
 | Used frames | 10 (row 0) |
@@ -110,21 +127,51 @@ rather than a verified sequence.
 | Default frame duration | 120 ms |
 | Per-frame durations | none (uniform) |
 | Loop mode | `ping-pong` |
+| Approval status | `candidate-unverified` |
+| Sequence authorship | `curated-preview-unverified` |
 | Playback direction | `forward` |
 | Hold behaviour | `first-frame` |
 | Anchor | `{ x: 0.5, y: 1 }` (bottom-centre) |
-| Trim behaviour | `none` |
+| Trim behaviour | `trimmed-ink-bounds` (rectangles are measured ink bounds) |
+| Logical frame box | 103 x 123 — identical for every played frame |
 | World scale | 1 |
 | Pixel art / interpolation | true / `nearest` |
 | Z-layer / blend / opacity | `sprites` / `normal` / 1 |
 | Preload | `lazy` |
 | Reduced-motion frame | 0 |
 | Fallback animation | none |
-| Production | true |
+| Production | **false** |
 
 Row 0 was chosen because it is the only run of ten consecutive cells sharing a
 single measured height (123 px) on a common baseline. `ping-pong` avoids a hard
 visual cut between frame 9 and frame 0, which are not continuous.
+
+**This ten-frame order is a curated review choice, not an authored animation
+sequence.** It is marked `sequenceAuthorship: 'curated-preview-unverified'`, and
+validation rejects any attempt to promote it to production while that holds.
+
+### Trim, logical frame box and alignment
+
+The measured rectangles are **tight ink bounds**, not complete authored cells,
+which is why `trimBehavior` is `trimmed-ink-bounds` rather than `none`. Widths
+range 86–103 px and heights 97–123 px, so rendering each rectangle at its own
+size would move the sprite between frames.
+
+The renderer therefore separates five concerns into distinct layers:
+
+1. **world attachment** — where the caller mounts the element;
+2. **anchor translation** — `translate(-anchorX * boxW, -anchorY * boxH)`;
+3. **logical frame box** — a constant 103 x 123 outer element;
+4. **frame-content offset** — the trimmed rectangle placed inside the box,
+   horizontally centred and bottom-aligned;
+5. **optional vertical float** — a nested element, so its transform *composes
+   with* rather than *replaces* the anchor translation.
+
+**Unresolved alignment uncertainty:** the source provides no authored
+registration point per cell. Horizontal centring and bottom alignment are
+review-time choices consistent with the bottom-centre anchor, not measured
+facts. Sub-pixel per-frame registration remains unverified and is recorded in
+the animation's `warnings`.
 
 ### `ANIM_CENTRAL_NEXUS_FLOAT`
 
@@ -159,6 +206,11 @@ change. Integration remains blocked until all of the following are true:
 
 ### Integration steps once PR #19 is merged and the above are satisfied
 
+0. Promote the asset from `candidate-unverified` to `production-approved` (a
+   human decision), resolve the sequence authorship question, and update the
+   runtime metadata so the office registry entry matches the real sheet
+   geometry. Only then populate
+   `public/assets/office/sprites/central-blue-tube-hologram.png`.
 1. Read the approved sprite anchor for the Central Nexus from the registered
    Floor 1 data. Do not hand-author coordinates.
 2. Add a `sprite_anchor` overlay entry referencing

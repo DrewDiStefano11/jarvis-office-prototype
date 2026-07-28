@@ -185,6 +185,7 @@
 .status { font-weight: 700; }
 .status--ok { color: #4fd18b; }
 .status--bad { color: #ff5c5c; }
+.status--warn { color: #ffb340; }
 
 .badge {
     display: inline-block;

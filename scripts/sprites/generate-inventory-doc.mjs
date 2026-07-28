@@ -33,12 +33,17 @@ function structureSummary(asset) {
     return 'no measurable cell structure';
 }
 
+/**
+ * Deliberately hedged wording. The grids are measured; the *meaning* of the
+ * rows (facing direction, playback order, identity) is not established by the
+ * source, so it is never asserted here as fact.
+ */
 function assetKind(asset) {
-    if (asset.nexusGrid) return 'sprite sheet (non-uniform grid)';
+    if (asset.nexusGrid) return 'non-uniform pose grid (measured); sequence semantics unverified';
     if (asset.agentGrid) {
         return asset.agentGrid.equalCellExtractionValid
-            ? 'sprite sheet (uniform grid)'
-            : 'sprite sheet (irregular / ambiguous)';
+            ? '6-column x 8-row character pose grid (measured uniform cells), visually consistent with a directional animation sheet, but direction semantics and row ordering remain unverified'
+            : 'character pose grid with an irregular measured layout; frame extraction unavailable pending human review';
     }
     return 'concept / role reference sheet';
 }
@@ -116,6 +121,24 @@ lines.push('  reason it is reference-only rather than an animation sheet.');
 lines.push('- No character names, job assignments, facing directions or animation state names');
 lines.push('  were invented. Where the source does not state something, it is recorded as');
 lines.push('  unresolved rather than guessed.');
+lines.push('');
+lines.push('### Measured fact vs. interpretation');
+lines.push('');
+lines.push('**Measured:** image dimensions, checksums, bit depth, colour type, alpha presence');
+lines.push('and usage, transparent-pixel counts, ink-band positions, cell counts, cell sizes,');
+lines.push('blank cells and boundary spill.');
+lines.push('');
+lines.push('**Not established by the source (interpretation only):** which row corresponds to');
+lines.push('which facing direction, whether every row is a direction at all, the authoritative');
+lines.push('playback order within a row, and any job/identity mapping for a given character.');
+lines.push('The `d85660f4` sheets are therefore described as 6-column x 8-row character pose');
+lines.push('grids that are *visually consistent with* directional animation sheets — not as');
+lines.push('confirmed "8 directions x 6-frame walk cycles".');
+lines.push('');
+lines.push('**Approval:** no asset in this pipeline is production-approved. The Nexus grid is');
+lines.push('`candidate-unverified`; everything else is reference-only. The legacy office');
+lines.push('registry path `assets/office/sprites/central-blue-tube-hologram.png` is');
+lines.push('deliberately left absent so the office engine keeps its missing-asset fallback.');
 lines.push('');
 
 const outDir = join(REPO_ROOT, 'docs', 'sprites');

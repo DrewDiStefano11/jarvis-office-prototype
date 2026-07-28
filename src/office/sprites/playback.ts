@@ -29,33 +29,60 @@ export function toAnimationDefinition(animation: SpriteAnimation): AnimationDefi
     };
 }
 
+/**
+ * One resolved step of playback.
+ *
+ * `sourcePosition` is the index into `frameOrder` that this step came from,
+ * which is what lets durations stay keyed by position rather than by frame ID.
+ * That distinction matters whenever a frame index repeats within one order.
+ */
+export type ResolvedPlaybackStep = Readonly<{
+    frameIndex: number;
+    durationMs: number;
+    sourcePosition: number;
+}>;
+
+/** Positions into `frameOrder`, after direction and ping-pong expansion. */
+function resolveSourcePositions(animation: SpriteAnimation): readonly number[] {
+    const order = animation.frameOrder;
+    if (order.length === 0) return [];
+
+    const forward = animation.playbackDirection === 'reverse'
+        ? order.map((_, i) => order.length - 1 - i)
+        : order.map((_, i) => i);
+
+    // Expand *positions* (not frame IDs) through the existing shared helper so
+    // the ping-pong contract stays defined in one place, while durations remain
+    // addressable per position even when a frame index repeats.
+    return buildPlaybackSequence({
+        ...toAnimationDefinition(animation),
+        frameSequence: forward,
+    });
+}
+
+/** Full ordered playback, with each step carrying its own duration. */
+export function resolvePlaybackSteps(animation: SpriteAnimation): readonly ResolvedPlaybackStep[] {
+    const durations = animation.frameDurationsMs;
+    return resolveSourcePositions(animation).map(sourcePosition => {
+        const authored = durations[sourcePosition];
+        return {
+            frameIndex: animation.frameOrder[sourcePosition],
+            durationMs: typeof authored === 'number' && authored > 0
+                ? authored
+                : animation.defaultFrameDurationMs,
+            sourcePosition,
+        };
+    });
+}
+
 /** Expands the manifest frame order into the concrete played sequence. */
 export function resolvePlaybackSequence(animation: SpriteAnimation): readonly number[] {
-    const base = animation.playbackDirection === 'reverse'
-        ? [...animation.frameOrder].reverse()
-        : animation.frameOrder;
-    const expanded = buildPlaybackSequence({
-        ...toAnimationDefinition(animation),
-        frameSequence: base,
-    });
-    return expanded;
+    return resolvePlaybackSteps(animation).map(step => step.frameIndex);
 }
 
 /** Duration for each entry of the resolved sequence, in milliseconds. */
 export function resolveFrameDurations(animation: SpriteAnimation): readonly number[] {
-    const sequence = resolvePlaybackSequence(animation);
-    if (animation.frameDurationsMs.length === 0) {
-        return sequence.map(() => animation.defaultFrameDurationMs);
-    }
-    // Per-frame durations are authored against frameOrder; map them onto the
-    // expanded (possibly ping-ponged) sequence by frame index position.
-    const orderDurations = new Map<number, number>();
-    animation.frameOrder.forEach((frameIndex, position) => {
-        const duration = animation.frameDurationsMs[position];
-        if (typeof duration === 'number') orderDurations.set(frameIndex, duration);
-    });
-    return sequence.map(frameIndex =>
-        orderDurations.get(frameIndex) ?? animation.defaultFrameDurationMs);
+    return resolvePlaybackSteps(animation).map(step => step.durationMs);
 }
 
 export function totalCycleDurationMs(animation: SpriteAnimation): number {

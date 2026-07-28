@@ -1,5 +1,6 @@
 {
     "schemaVersion": 1,
+    "legacyRuntimePathIntentionallyAbsent": "assets/office/sprites/central-blue-tube-hologram.png",
     "mappings": [
         {
             "source": "791eeb5a-09f5-4c81-b691-271f59b258d0.png",
@@ -9,7 +10,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (1).png",
@@ -19,7 +21,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (10).png",
@@ -29,7 +32,8 @@
             "height": 1448,
             "classification": "agent_reference",
             "readiness": "reference_only",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (11).png",
@@ -39,7 +43,8 @@
             "height": 1448,
             "classification": "agent_reference",
             "readiness": "reference_only",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (12).png",
@@ -49,7 +54,8 @@
             "height": 1448,
             "classification": "agent_reference",
             "readiness": "reference_only",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (13).png",
@@ -59,7 +65,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (14).png",
@@ -69,7 +76,8 @@
             "height": 1448,
             "classification": "agent_reference",
             "readiness": "reference_only",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (2).png",
@@ -79,7 +87,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (3).png",
@@ -89,7 +98,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (4).png",
@@ -99,7 +109,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (5).png",
@@ -109,7 +120,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (6).png",
@@ -119,7 +131,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (7).png",
@@ -129,7 +142,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (8).png",
@@ -139,7 +153,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (9).png",
@@ -149,7 +164,8 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0.png",
@@ -159,17 +175,19 @@
             "height": 1448,
             "classification": "agent_sprite_sheet",
             "readiness": "production_ready",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         },
         {
             "source": "Nexus Tube Sprite.png",
-            "destination": "assets/office/sprites/central-blue-tube-hologram.png",
+            "destination": "assets/office/sprites/holograms/candidates/central-nexus-pose-grid.png",
             "sha256": "bf17e81c95cf3c54d4f972eafca980fe6af0958d476915f57e621a50593018d6",
             "width": 1254,
             "height": 1254,
             "classification": "central_nexus_hologram",
             "readiness": "conditionally_usable",
-            "productionAsset": true
+            "productionAsset": false,
+            "approvalStatus": "candidate-unverified"
         },
         {
             "source": "Sprite Jobs.png",
@@ -179,7 +197,8 @@
             "height": 1024,
             "classification": "role_reference",
             "readiness": "reference_only",
-            "productionAsset": false
+            "productionAsset": false,
+            "approvalStatus": "reference-only"
         }
     ]
 }
