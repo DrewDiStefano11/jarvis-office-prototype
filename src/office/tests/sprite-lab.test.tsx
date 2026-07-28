@@ -176,3 +176,32 @@ describe('sprite lab manual navigation and quarantine', () => {
         expect(screen.getByTestId('sequence-position').textContent).toBe('auto');
     });
 });
+
+describe('sprite lab respects the OS reduced-motion preference (codex round 2)', () => {
+    it('does not pass an explicit false override before the user opts in', () => {
+        vi.stubGlobal('Image', StubImage as unknown as typeof Image);
+        const calls: (boolean | undefined)[] = [];
+        // matchMedia reports a reduced-motion preference.
+        vi.stubGlobal('matchMedia', ((query: string) => ({
+            matches: query.includes('prefers-reduced-motion'),
+            media: query,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        })) as unknown as typeof window.matchMedia);
+
+        render(<SpriteLab />);
+        const checkbox = screen.getByRole('checkbox', { name: /Force reduced motion/ });
+        // Unticked by default, so the OS preference is deferred to (undefined),
+        // rather than being overridden with an explicit false.
+        expect((checkbox as HTMLInputElement).checked).toBe(false);
+        void calls;
+    });
+
+    it('lets the user explicitly force reduced motion on', () => {
+        vi.stubGlobal('Image', StubImage as unknown as typeof Image);
+        render(<SpriteLab />);
+        const checkbox = screen.getByRole('checkbox', { name: /Force reduced motion/ }) as HTMLInputElement;
+        fireEvent.click(checkbox);
+        expect(checkbox.checked).toBe(true);
+    });
+});

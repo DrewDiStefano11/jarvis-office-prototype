@@ -236,6 +236,12 @@ function validateAnimation(
                 `Duplicate unused frame index ${index}.`));
         }
         unusedSet.add(index);
+        // Range-check unused indexes too: an out-of-range value would otherwise
+        // preserve the set-size accounting below while omitting a real cell.
+        if (!Number.isInteger(index) || index < 0 || index > maxIndex) {
+            out.push(issue('error', 'FRAME_INDEX_OUT_OF_RANGE', target,
+                `Unused frame index ${index} is outside the valid range 0..${maxIndex}.`));
+        }
         if (usedSet.has(index)) {
             out.push(issue('error', 'FRAME_USED_UNUSED_OVERLAP', target,
                 `Frame index ${index} appears in both used and unused lists.`));

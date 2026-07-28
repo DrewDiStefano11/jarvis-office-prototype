@@ -101,7 +101,9 @@ export function SpriteLab() {
     const [playing, setPlaying] = useState(true);
     const [speed, setSpeed] = useState(1);
     const [previewScale, setPreviewScale] = useState(2);
-    const [reducedMotion, setReducedMotion] = useState(false);
+    // `undefined` means "defer to the OS preference"; only an explicit tick
+    // overrides it, so a reduced-motion visitor is not silently animated.
+    const [reducedMotion, setReducedMotion] = useState<boolean | undefined>(undefined);
     const [floatOn, setFloatOn] = useState(true);
     // Stored as a SEQUENCE POSITION. For ping-pong these differ from sheet
     // frame indexes, so the position is resolved through the sequence below.
@@ -253,10 +255,10 @@ export function SpriteLab() {
                     </label>
                     <label>
                         <input
-                            type="checkbox" checked={reducedMotion}
-                            onChange={e => setReducedMotion(e.target.checked)}
+                            type="checkbox" checked={reducedMotion ?? false}
+                            onChange={e => setReducedMotion(e.target.checked ? true : undefined)}
                         />
-                        Reduced motion
+                        Force reduced motion (OS preference respected by default)
                     </label>
                     <label>
                         <input

@@ -257,3 +257,41 @@ describe('regression: durations keyed by sequence position', () => {
         expect(resolveFrameDurations(a)).toEqual([75, 75]);
     });
 });
+
+describe('regression: out-of-range unused frame indexes (codex round 2)', () => {
+    const uniform: SpriteAnimation = {
+        ...idle,
+        uniformGrid: true,
+        frameRectangles: null,
+        rows: 1,
+        columns: 4,
+        totalCellCount: 4,
+        frameWidth: 10,
+        frameHeight: 10,
+        frameOrder: [0],
+        usedFrameIndexes: [0],
+        unusedFrameIndexes: [1, 2, 3],
+        reducedMotionFrameIndex: 0,
+    };
+
+    it('accepts a correctly accounted uniform animation', () => {
+        expect(codesFor(uniform)).toEqual([]);
+    });
+
+    it('rejects an unused index above the maximum even when the count still adds up', () => {
+        // Swapping a real cell for an out-of-range value keeps set sizes at 4,
+        // so accounting alone would not catch it.
+        const codes = codesFor({ ...uniform, unusedFrameIndexes: [1, 2, 99] });
+        expect(codes).toContain('FRAME_INDEX_OUT_OF_RANGE');
+    });
+
+    it('rejects a negative unused index', () => {
+        expect(codesFor({ ...uniform, unusedFrameIndexes: [1, 2, -1] }))
+            .toContain('FRAME_INDEX_OUT_OF_RANGE');
+    });
+
+    it('rejects a non-integer unused index', () => {
+        expect(codesFor({ ...uniform, unusedFrameIndexes: [1, 2, 2.5] }))
+            .toContain('FRAME_INDEX_OUT_OF_RANGE');
+    });
+});

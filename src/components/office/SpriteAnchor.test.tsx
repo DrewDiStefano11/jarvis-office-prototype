@@ -190,3 +190,42 @@ describe('fallback dependency rendering', () => {
         expect(node.getAttribute('data-sprite-state')).toBe('invalid');
     });
 });
+
+describe('declared fallback animations are followed (codex round 2)', () => {
+    it('renders the declared fallback when the primary metadata is invalid', async () => {
+        vi.stubGlobal('Image', StubImage as unknown as typeof Image);
+        // Float declares idle as its fallback; break float only.
+        render(
+            <SpriteSheetRenderer
+                animation={{ ...float, frameWidth: 0, frameHeight: -1 }}
+                label="fallback-follow"
+            />,
+        );
+        const node = await screen.findByRole('img', { name: 'fallback-follow' });
+        await waitFor(() => expect(node.getAttribute('data-sprite-state')).toBe('ready'));
+        // It fell back to idle instead of showing the placeholder.
+        expect(node.getAttribute('data-animation-id')).toBe(ANIM_CENTRAL_NEXUS_IDLE);
+        expect(node.getAttribute('data-fallback-active')).toBe('true');
+    });
+
+    it('still shows the placeholder when neither primary nor fallback is usable', async () => {
+        vi.stubGlobal('Image', StubImage as unknown as typeof Image);
+        render(
+            <SpriteSheetRenderer
+                animation={{ ...idle, frameWidth: 0, frameHeight: -1, fallbackAnimationId: null }}
+                label="no-fallback"
+            />,
+        );
+        const node = await screen.findByRole('img', { name: /unavailable/ });
+        expect(node.getAttribute('data-sprite-state')).toBe('invalid');
+    });
+
+    it('does not mark a fallback as active when the primary renders fine', async () => {
+        vi.stubGlobal('Image', StubImage as unknown as typeof Image);
+        render(<SpriteSheetRenderer animation={float} label="primary-ok" />);
+        const node = await screen.findByRole('img', { name: 'primary-ok' });
+        await waitFor(() => expect(node.getAttribute('data-sprite-state')).toBe('ready'));
+        expect(node.getAttribute('data-animation-id')).toBe(ANIM_CENTRAL_NEXUS_FLOAT);
+        expect(node.getAttribute('data-fallback-active')).toBeNull();
+    });
+});
