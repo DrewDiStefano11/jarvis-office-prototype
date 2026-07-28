@@ -114,10 +114,10 @@ export function constrainTransform(
 ): ViewTransform {
     const contentWidth = sourceWidth * transform.scale;
     const contentHeight = sourceHeight * transform.scale;
-    const minX = Math.min(padding, viewport.width - contentWidth - padding);
-    const maxX = Math.max(viewport.width - padding, padding - contentWidth);
-    const minY = Math.min(padding, viewport.height - contentHeight - padding);
-    const maxY = Math.max(viewport.height - padding, padding - contentHeight);
+    const minX = Math.min(padding - contentWidth, viewport.width - padding);
+    const maxX = Math.max(padding - contentWidth, viewport.width - padding);
+    const minY = Math.min(padding - contentHeight, viewport.height - padding);
+    const maxY = Math.max(padding - contentHeight, viewport.height - padding);
     return {
         ...transform,
         x: Math.min(maxX, Math.max(minX, transform.x)),

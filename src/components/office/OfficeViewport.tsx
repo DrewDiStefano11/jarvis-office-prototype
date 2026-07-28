@@ -60,6 +60,10 @@ export function OfficeViewport({
     const [reducedMotion, setReducedMotion] = useState(
         () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     );
+    const minimumZoom = Math.min(
+        DEFAULT_VIEWPORT_OPTIONS.minimumZoom,
+        fitTransform(viewport).scale,
+    );
 
     const commitTransform = useCallback((next: ViewTransform) => {
         const constrained = constrainTransform(next, viewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
@@ -158,7 +162,7 @@ export function OfficeViewport({
         event.preventDefault();
         const point = localPoint(event.clientX, event.clientY);
         const multiplier = Math.exp(-event.deltaY * 0.0015);
-        const nextScale = Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, Math.max(DEFAULT_VIEWPORT_OPTIONS.minimumZoom, transformRef.current.scale * multiplier));
+        const nextScale = Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, Math.max(minimumZoom, transformRef.current.scale * multiplier));
         commitTransform(zoomAtScreenPoint(transformRef.current, point, nextScale));
     };
 
@@ -197,7 +201,7 @@ export function OfficeViewport({
                 pinchRef.current,
                 a,
                 b,
-                DEFAULT_VIEWPORT_OPTIONS.minimumZoom,
+                minimumZoom,
                 DEFAULT_VIEWPORT_OPTIONS.maximumZoom,
             ));
             return;
@@ -248,7 +252,7 @@ export function OfficeViewport({
 
     const zoomBy = (factor: number) => {
         const center = { x: viewport.width / 2, y: viewport.height / 2 };
-        const nextScale = Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, Math.max(DEFAULT_VIEWPORT_OPTIONS.minimumZoom, transform.scale * factor));
+        const nextScale = Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, Math.max(minimumZoom, transform.scale * factor));
         commitTransform(zoomAtScreenPoint(transform, center, nextScale));
     };
 

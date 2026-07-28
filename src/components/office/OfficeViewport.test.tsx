@@ -22,6 +22,7 @@ let setPointerCapture: ReturnType<typeof vi.fn>;
 let releasePointerCapture: ReturnType<typeof vi.fn>;
 let reducedMotionMatches: boolean;
 let reducedMotionListeners: Set<(event: MediaQueryListEvent) => void>;
+let observedViewportSize: { width: number; height: number };
 
 function restorePrototypeProperty(
     name: 'setPointerCapture' | 'releasePointerCapture' | 'hasPointerCapture',
@@ -82,6 +83,7 @@ beforeEach(() => {
     nextAnimationFrame = 1;
     reducedMotionMatches = false;
     reducedMotionListeners = new Set();
+    observedViewportSize = { width: 1200, height: 800 };
     setPointerCapture = vi.fn((pointerId: number) => capturedPointers.add(pointerId));
     releasePointerCapture = vi.fn((pointerId: number) => capturedPointers.delete(pointerId));
     Object.defineProperties(HTMLElement.prototype, {
@@ -103,7 +105,7 @@ beforeEach(() => {
         constructor(private readonly callback: ResizeObserverCallback) {}
         observe(): void {
             this.callback(
-                [{ contentRect: { width: 1200, height: 800 } } as ResizeObserverEntry],
+                [{ contentRect: observedViewportSize } as ResizeObserverEntry],
                 this as unknown as ResizeObserver,
             );
         }
@@ -295,5 +297,15 @@ describe('OfficeViewport pointer interactions', () => {
             } as MediaQueryListEvent));
         });
         expect(sprite.classList.contains('office-sprite--idle')).toBe(true);
+    });
+
+    it('does not enlarge a below-floor fitted office when zooming out', () => {
+        observedViewportSize = { width: 240, height: 180 };
+        const { container } = renderViewport();
+        const surface = container.querySelector('.office-surface') as HTMLDivElement;
+        const fittedTransform = surface.style.transform;
+
+        fireEvent.click(container.querySelector('[aria-label="Zoom out"]') as HTMLButtonElement);
+        expect(surface.style.transform).toBe(fittedTransform);
     });
 });

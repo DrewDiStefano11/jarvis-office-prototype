@@ -144,7 +144,7 @@ describe('inactive office lifecycle', () => {
             DEFAULT_VIEWPORT_OPTIONS.boundaryPadding,
         );
         expect(surface.style.transform).toBe(transformStyle(constrainedTransform));
-        expect(constrainedTransform).not.toEqual(preservedTransform);
+        expect(constrainedTransform).toEqual(preservedTransform);
     });
 
     it('uses the first valid positive-size measurement for the initial fit', () => {

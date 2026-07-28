@@ -67,4 +67,17 @@ describe('office coordinate utilities', () => {
         expect(constrained.x).toBeGreaterThan(-2000);
         expect(constrained.y).toBeLessThan(800);
     });
+
+    it('applies symmetric content-edge constraints when fitted content is smaller than the viewport', () => {
+        const viewport = { width: 1200, height: 675 };
+        const fitted = fitTransform(viewport);
+        const contentWidth = 8192 * fitted.scale;
+        const leftLimit = constrainTransform({ ...fitted, x: -100000 }, viewport);
+        const rightLimit = constrainTransform({ ...fitted, x: 100000 }, viewport);
+
+        expect(leftLimit.x).toBeCloseTo(72 - contentWidth);
+        expect(rightLimit.x).toBeCloseTo(viewport.width - 72);
+        expect(leftLimit.x + contentWidth).toBeCloseTo(72);
+        expect(rightLimit.x).toBeCloseTo(viewport.width - 72);
+    });
 });
