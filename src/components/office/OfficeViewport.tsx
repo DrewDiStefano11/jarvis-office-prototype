@@ -21,6 +21,7 @@ type Props = Readonly<{
     active: boolean;
     document: OfficeOverlayDocument;
     debug: boolean;
+    reviewMode?: boolean;
     selectedId: string | null;
     hoveredId: string | null;
     visibleLayers: ReadonlySet<OfficeLayer>;
@@ -35,6 +36,7 @@ export function OfficeViewport({
     active,
     document,
     debug,
+    reviewMode = false,
     selectedId,
     hoveredId,
     visibleLayers,
@@ -314,9 +316,10 @@ export function OfficeViewport({
                         entities={document.entities}
                         visibleLayers={visibleLayers}
                         debug={debug}
+                        reviewMode={reviewMode}
                         selectedId={selectedId}
                         hoveredId={hoveredId}
-                        showLabels={transform.scale >= 0.15}
+                        showLabels={transform.scale >= (reviewMode ? 0.08 : 0.15)}
                         reducedMotion={reducedMotion}
                         onHover={onHover}
                         onSelect={onSelect}

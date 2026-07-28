@@ -19,6 +19,7 @@ type Props = Readonly<{
     entities: readonly OfficeEntity[];
     visibleLayers: ReadonlySet<OfficeLayer>;
     debug: boolean;
+    reviewMode?: boolean;
     selectedId: string | null;
     hoveredId: string | null;
     showLabels: boolean;
@@ -56,11 +57,12 @@ function pointsAttribute(points: readonly { x: number; y: number }[]): string {
 function EntityGeometry({
     entity,
     debug,
+    reviewMode,
     emphasized,
-}: Readonly<{ entity: OfficeEntity; debug: boolean; emphasized: boolean }>) {
+}: Readonly<{ entity: OfficeEntity; debug: boolean; reviewMode: boolean; emphasized: boolean }>) {
     const accessState = resolveEntityAccessState(entity);
     const color = accessState ? ACCESS_COLORS[accessState] : DEBUG_COLORS[entity.sourceLayer];
-    const visible = debug || emphasized || ['access_light', 'effect_zone'].includes(entity.type);
+    const visible = reviewMode || debug || emphasized || ['access_light', 'effect_zone'].includes(entity.type);
     const fillOpacity = visible ? (entity.type === 'room' || entity.type === 'restricted_zone' || entity.type === 'effect_zone' ? 0.18 : 0.1) : 0;
     const strokeOpacity = visible ? 0.95 : 0;
     const common = {
@@ -211,6 +213,7 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
 const OverlayEntityView = memo(function OverlayEntityView({
     entity,
     debug,
+    reviewMode,
     selected,
     hovered,
     showLabels,
@@ -220,6 +223,7 @@ const OverlayEntityView = memo(function OverlayEntityView({
 }: Readonly<{
     entity: OfficeEntity;
     debug: boolean;
+    reviewMode: boolean;
     selected: boolean;
     hovered: boolean;
     showLabels: boolean;
@@ -233,6 +237,7 @@ const OverlayEntityView = memo(function OverlayEntityView({
     return (
         <g
             data-entity-id={entity.id}
+            data-candidate-category={String(entity.metadata.candidateCategory ?? '')}
             className={interactive ? 'office-entity office-entity--interactive' : 'office-entity'}
             role={interactive ? 'button' : undefined}
             tabIndex={interactive ? 0 : undefined}
@@ -252,7 +257,7 @@ const OverlayEntityView = memo(function OverlayEntityView({
                 }
             }}
         >
-            <EntityGeometry entity={entity} debug={debug} emphasized={emphasized} />
+            <EntityGeometry entity={entity} debug={debug} reviewMode={reviewMode} emphasized={emphasized} />
             <SeatPriorityMarker entity={entity} />
             {debug && <VertexMarkers entity={entity} />}
             {entity.type === 'sprite_anchor' && <SpriteAnchor entity={entity} debug={debug} reducedMotion={reducedMotion} />}
@@ -268,8 +273,19 @@ const OverlayEntityView = memo(function OverlayEntityView({
                     {entity.name}
                 </text>
             )}
+            {reviewMode && showLabels && entity.type !== 'label_anchor' && (
+                <text
+                    data-review-label={entity.id}
+                    x={labelPoint.x}
+                    y={labelPoint.y - 72}
+                    textAnchor="middle"
+                    className="office-overlay-label office-overlay-label--candidate"
+                >
+                    {entity.name}
+                </text>
+            )}
             {debug && showLabels && (
-                <text x={labelPoint.x} y={labelPoint.y - 72} textAnchor="middle" className="office-overlay-label">
+                <text x={labelPoint.x} y={labelPoint.y - (reviewMode ? 140 : 72)} textAnchor="middle" className="office-overlay-label">
                     {entity.id}
                 </text>
             )}
@@ -281,6 +297,7 @@ export const OverlayRenderer = memo(function OverlayRenderer({
     entities,
     visibleLayers,
     debug,
+    reviewMode = false,
     selectedId,
     hoveredId,
     showLabels,
@@ -299,6 +316,7 @@ export const OverlayRenderer = memo(function OverlayRenderer({
                     key={entity.id}
                     entity={entity}
                     debug={debug}
+                    reviewMode={reviewMode}
                     selected={selectedId === entity.id}
                     hovered={hoveredId === entity.id}
                     showLabels={showLabels}
