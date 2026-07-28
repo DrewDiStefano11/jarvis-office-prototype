@@ -128,6 +128,18 @@ export function OfficeViewport({
         return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) };
     };
 
+    const capturePointer = (pointerId: number) => {
+        const element = viewportRef.current;
+        if (!element || element.hasPointerCapture(pointerId)) return;
+        element.setPointerCapture(pointerId);
+    };
+
+    const releaseCapturedPointer = (pointerId: number) => {
+        const element = viewportRef.current;
+        if (!element?.hasPointerCapture(pointerId)) return;
+        element.releasePointerCapture(pointerId);
+    };
+
     const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
         event.preventDefault();
         const point = localPoint(event.clientX, event.clientY);
@@ -138,7 +150,6 @@ export function OfficeViewport({
 
     const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
         if (event.button !== 0 && event.pointerType === 'mouse') return;
-        event.currentTarget.setPointerCapture(event.pointerId);
         const point = localPoint(event.clientX, event.clientY);
         touchesRef.current.set(event.pointerId, point);
         if (touchesRef.current.size === 1) {
@@ -154,6 +165,7 @@ export function OfficeViewport({
             pinchRef.current = beginPinchGesture(a, b, initialTransform);
             panRef.current = null;
             suppressClickRef.current = true;
+            touchesRef.current.forEach((_point, pointerId) => capturePointer(pointerId));
         }
     };
 
@@ -180,7 +192,10 @@ export function OfficeViewport({
         if (!pan || pan.pointerId !== event.pointerId) return;
         const updated = updatePanGesture(pan, local);
         panRef.current = updated.gesture;
-        if (shouldSuppressSelection(updated.gesture)) suppressClickRef.current = true;
+        if (shouldSuppressSelection(updated.gesture)) {
+            suppressClickRef.current = true;
+            capturePointer(event.pointerId);
+        }
         const base = pendingTransformRef.current ?? transformRef.current;
         pendingTransformRef.current = panTransform(base, updated.delta.x, updated.delta.y, viewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
         if (frameRef.current === null) {
@@ -193,18 +208,28 @@ export function OfficeViewport({
         }
     };
 
-    const releasePointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const finishPointer = (pointerId: number, releaseCapture: boolean) => {
+        if (!touchesRef.current.has(pointerId)) return;
         const hadPinch = pinchRef.current !== null;
-        if (panRef.current?.pointerId === event.pointerId && shouldSuppressSelection(panRef.current)) {
+        if (panRef.current?.pointerId === pointerId && shouldSuppressSelection(panRef.current)) {
             suppressClickRef.current = true;
         }
-        touchesRef.current.delete(event.pointerId);
+        touchesRef.current.delete(pointerId);
         if (hadPinch && touchesRef.current.size === 1) {
             panRef.current = resumePanGesture(touchesRef.current);
-        } else if (panRef.current?.pointerId === event.pointerId) {
+        } else if (panRef.current?.pointerId === pointerId) {
             panRef.current = null;
         }
         if (touchesRef.current.size < 2) pinchRef.current = null;
+        if (releaseCapture) releaseCapturedPointer(pointerId);
+    };
+
+    const releasePointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+        finishPointer(event.pointerId, true);
+    };
+
+    const handleLostPointerCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
+        finishPointer(event.pointerId, false);
     };
 
     const zoomBy = (factor: number) => {
@@ -229,7 +254,7 @@ export function OfficeViewport({
                 onPointerMove={handlePointerMove}
                 onPointerUp={releasePointer}
                 onPointerCancel={releasePointer}
-                onLostPointerCapture={releasePointer}
+                onLostPointerCapture={handleLostPointerCapture}
                 onClickCapture={event => {
                     if (!suppressClickRef.current) return;
                     event.preventDefault();
