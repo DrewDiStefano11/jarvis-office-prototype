@@ -1,4 +1,4 @@
-export type OfficeAsset = Readonly<{
+﻿export type OfficeAsset = Readonly<{
     id: string;
     path: string;
     kind: 'background' | 'sprite-sheet';
@@ -9,13 +9,13 @@ export type OfficeAsset = Readonly<{
 export const OFFICE_ASSETS = {
     background: {
         id: 'office-background-8k',
-        path: 'assets/office/office-8192x5460.png',
+        path: '/assets/office/office-8192x5460.png',
         kind: 'background',
         required: true,
     },
     hologram: {
         id: 'central-blue-tube-hologram',
-        path: 'assets/office/sprites/central-blue-tube-hologram.png',
+        path: '/assets/office/sprites/central-blue-tube-hologram.png',
         kind: 'sprite-sheet',
         required: false,
         pixelated: true,
@@ -44,3 +44,4 @@ export function getSpriteSheetAsset(value: unknown): SpriteSheetAsset | undefine
         (asset): asset is SpriteSheetAsset => asset.kind === 'sprite-sheet' && asset.id === value,
     );
 }
+
