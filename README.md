@@ -6,6 +6,8 @@ This repository is the visual office prototype for the standalone Jarvis Agent E
 **Note:** The office is a visual simulation prototype. It is not a game. Phaser acts purely as a renderer, not as the source of truth for agent decisions or real AI tasks.
 
 ## Capabilities
+- **Interactive 8K Office Engine**: Exact 8192×5460 source-space rendering with pan, zoom, touch pinch, selection, debug overlays, and runtime-validated annotation data.
+- **Explicit Asset Failures**: Missing or dimensionally invalid production imagery is reported; the 1024×768 template background is never silently substituted.
 - **React-to-Phaser Bridge**: State is managed externally via React, communicating rendering updates to Phaser via an EventBus.
 - **Top-Down Office**: Procedurally rendered pixel-art style office, including an Executive Department, Research & Knowledge, Governance & Security, and more.
 - **Agent Simulation**: 5 placeholder agents (Jarvis, Atlas, Scout, Archive, Sentinel) each with unique domain data.
@@ -21,6 +23,7 @@ This repository is the visual office prototype for the standalone Jarvis Agent E
 - Movement is simple deterministic waypoints without collision.
 
 ## Architecture
+- **Office Engine (`src/office`, `src/components/office`)**: Renderer-independent coordinates, schema, ordering, interaction helpers, asset manifest, React viewport, SVG overlays, and inspector. See [the engine guide](docs/INTERACTIVE_OFFICE_ENGINE.md).
 - **Domain Layer (`src/domain`, `src/types`)**: Holds authoritative state types, office geometry logic, and seed data.
 - **React Layer (`src/App.tsx`, `src/components`)**: Renders the developer control panel and informational interface. Handles interactions like selecting and directing agents.
 - **Phaser Rendering Layer (`src/game/scenes/OfficeScene.ts`)**: Render only logic. No business logic! Receives events to update sprites visually.
@@ -33,10 +36,14 @@ This repository is the visual office prototype for the standalone Jarvis Agent E
 
 - `npm run dev` - Starts the development server with Hot Module Replacement (HMR).
 - `npm run build` - Produces a production-ready build into the `dist` folder.
-- `npm run lint` (using eslint, if configured).
-- `tsc` - Run TypeScript compiler checks.
+- `npm run lint` - Runs ESLint over `src`.
+- `npm run typecheck` - Runs the strict TypeScript compiler check.
+- `npm test` - Runs all Vitest suites once.
 
 ## Interacting with the prototype
-1. Click an agent in the canvas (left) or select them in the React dropdown (right).
-2. Use the "Send to..." buttons or the dropdown to dispatch the selected agent.
-3. Use the Reset button to return all agents to their home desks.
+1. Use the mouse wheel or trackpad to zoom around the pointer; drag to pan.
+2. Select an interaction region in the office or with the keyboard to inspect it.
+3. Enable Debug overlays to inspect layers, IDs, source coordinates, hover, and selection.
+4. Use Fit or Reset to return to the centered full-office view.
+
+Use the application view switch to open the earlier Phaser agent simulation. Its React/domain state and movement controls remain available while the interactive office engine is developed.
