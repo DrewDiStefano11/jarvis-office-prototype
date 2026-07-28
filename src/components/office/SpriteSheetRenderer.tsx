@@ -108,6 +108,21 @@ export function SpriteSheetRenderer({
     const [state, setState] = useState<SpriteRenderState>('loading');
     const [elapsedMs, setElapsedMs] = useState(0);
 
+    /**
+     * Animation IDs whose image failed to load or whose natural dimensions
+     * contradicted the manifest. Recording the failure here re-runs the
+     * resolver below, which then continues down the declared fallback chain.
+     */
+    const [imageFailedIds, setImageFailedIds] = useState<ReadonlySet<string>>(() => new Set());
+    const [failureReason, setFailureReason] = useState<'missing' | 'invalid-dimensions' | null>(null);
+
+    // A new requested animation starts from a clean slate.
+    const requestedId = animation.id;
+    useEffect(() => {
+        setImageFailedIds(new Set());
+        setFailureReason(null);
+    }, [requestedId]);
+
     const reducedMotion = usePrefersReducedMotion(forceReducedMotion);
     const documentHidden = useDocumentHidden();
     const offscreen = useOffscreen(containerRef, pauseWhenOffscreen);
@@ -115,10 +130,11 @@ export function SpriteSheetRenderer({
     /**
      * Follow `fallbackAnimationId` when the requested animation cannot render.
      *
-     * The manifest models fallbacks, so honour them rather than jumping straight
-     * to the placeholder. Only structurally valid candidates with a resolvable
-     * asset are considered; the chain is walked with a visited set so a cyclic
-     * manifest cannot loop here.
+     * A candidate is rejected either because its metadata fails validation, or
+     * because its image already failed to load / mismatched its declared
+     * dimensions (tracked in `imageFailedIds`). Either way the chain continues,
+     * so a declared fallback backed by a usable asset is actually attempted.
+     * The walk uses a visited set, so a cyclic manifest terminates.
      */
     const effective = useMemo(() => {
         const byId = new Map(SPRITE_MANIFEST.animations.map(a => [a.id, a]));
@@ -144,7 +160,7 @@ export function SpriteSheetRenderer({
                 : closure.assetSets;
             const result = validateSpriteManifest({ ...closure, assetSets });
 
-            if (result.valid && candidateAsset) {
+            if (result.valid && candidateAsset && !imageFailedIds.has(candidate.id)) {
                 return { animation: candidate, assetSet: candidateAsset, validation: result };
             }
             const next: SpriteAnimation | undefined = candidate.fallbackAnimationId
@@ -162,7 +178,7 @@ export function SpriteSheetRenderer({
                 schemaVersion: 1, assetSets: [], animations: [animation],
             }),
         };
-    }, [animation]);
+    }, [animation, imageFailedIds]);
 
     // Everything below renders the *effective* animation, which may be a fallback.
     const activeAnimation = effective.animation;
@@ -172,32 +188,58 @@ export function SpriteSheetRenderer({
 
     const src = assetSet ? resolvePublicAssetPath(assetSet.publicPath) : '';
 
-    // Load the sheet and confirm its real pixel dimensions match the manifest.
+    /**
+     * Load the sheet and confirm its real pixel dimensions match the manifest.
+     *
+     * On failure the active animation ID is recorded so the resolver can move to
+     * the next declared fallback. `cancelled` guards against a stale callback
+     * from a superseded candidate overwriting a newer one's state.
+     */
+    const activeId = activeAnimation.id;
     useEffect(() => {
         if (!assetSet || !validation.valid) {
             setState('invalid');
             return;
         }
         if (typeof Image === 'undefined') return;
+
         let cancelled = false;
         setState('loading');
+
+        const recordFailure = (reason: 'missing' | 'invalid-dimensions') => {
+            if (cancelled) return;
+            setFailureReason(reason);
+            setState(reason === 'missing' ? 'missing' : 'invalid');
+            // Marking this ID re-runs the resolver; if a declared fallback
+            // exists it becomes the new active animation.
+            setImageFailedIds(previous => {
+                if (previous.has(activeId)) return previous;
+                const next = new Set(previous);
+                next.add(activeId);
+                return next;
+            });
+        };
+
         const image = new Image();
         image.onload = () => {
             if (cancelled) return;
             const matches = image.naturalWidth === assetSet.sourceDimensions.width
                 && image.naturalHeight === assetSet.sourceDimensions.height;
-            setState(matches ? 'ready' : 'invalid');
+            if (!matches) {
+                recordFailure('invalid-dimensions');
+                return;
+            }
+            setState('ready');
         };
-        image.onerror = () => {
-            if (!cancelled) setState('missing');
-        };
+        image.onerror = () => recordFailure('missing');
         image.src = src;
+
         return () => {
             cancelled = true;
             image.onload = null;
             image.onerror = null;
         };
-    }, [assetSet, src, validation.valid]);
+    }, [assetSet, src, validation.valid, activeId]);
 
     useEffect(() => {
         onStateChange?.(state);
@@ -244,6 +286,7 @@ export function SpriteSheetRenderer({
                 role="img"
                 aria-label={`${label ?? animation.id} unavailable`}
                 data-sprite-state="invalid"
+                data-failure-reason={failureReason ?? 'invalid-metadata'}
             />
         );
     }
@@ -255,6 +298,7 @@ export function SpriteSheetRenderer({
                 role="img"
                 aria-label={`${label ?? animation.id} asset missing`}
                 data-sprite-state="missing"
+                data-failure-reason={failureReason ?? 'missing'}
             />
         );
     }
@@ -319,6 +363,7 @@ export function SpriteSheetRenderer({
             data-sprite-state={state === 'ready' ? 'ready' : state}
             data-animation-id={activeAnimation.id}
             data-fallback-active={activeAnimation.id !== animation.id ? 'true' : undefined}
+            data-failure-reason={failureReason ?? undefined}
             data-frame-index={frameIndex}
             data-box-width={boxWidth}
             data-box-height={boxHeight}
