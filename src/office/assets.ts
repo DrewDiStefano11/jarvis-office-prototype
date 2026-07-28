@@ -21,3 +21,26 @@ export const OFFICE_ASSETS = {
         pixelated: true,
     },
 } as const satisfies Record<string, OfficeAsset>;
+
+export type SpriteSheetAsset = Extract<
+    (typeof OFFICE_ASSETS)[keyof typeof OFFICE_ASSETS],
+    { readonly kind: 'sprite-sheet' }
+>;
+export type SpriteSheetAssetId = SpriteSheetAsset['id'];
+
+export const SPRITE_SHEET_ASSET_IDS: ReadonlySet<SpriteSheetAssetId> = new Set(
+    Object.values(OFFICE_ASSETS)
+        .filter((asset): asset is SpriteSheetAsset => asset.kind === 'sprite-sheet')
+        .map(asset => asset.id),
+);
+
+export function isSpriteSheetAssetId(value: unknown): value is SpriteSheetAssetId {
+    return typeof value === 'string' && SPRITE_SHEET_ASSET_IDS.has(value as SpriteSheetAssetId);
+}
+
+export function getSpriteSheetAsset(value: unknown): SpriteSheetAsset | undefined {
+    if (!isSpriteSheetAssetId(value)) return undefined;
+    return Object.values(OFFICE_ASSETS).find(
+        (asset): asset is SpriteSheetAsset => asset.kind === 'sprite-sheet' && asset.id === value,
+    );
+}

@@ -1,5 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import {
+    shouldRenderMissingSpriteFallback,
+    spriteAssetStateAfterRuntimeLoad,
+} from '../../office/animation';
+import { getSpriteSheetAsset, OFFICE_ASSETS } from '../../office/assets';
 import { NON_PRODUCTION_OVERLAY } from '../../office/sampleOverlay';
 import { OfficeEntity, OfficeLayer } from '../../office/types';
 import { OverlayRenderer } from './OverlayRenderer';
@@ -36,5 +41,15 @@ describe('production overlay rendering', () => {
         const markup = render(false);
         expect(markup).toContain('data-seat-priority="yellow"');
         expect(markup).toContain('>P</text>');
+    });
+
+    it('keeps a registered but unavailable sprite file on the visible fallback path', () => {
+        expect(getSpriteSheetAsset(OFFICE_ASSETS.hologram.id)).toBe(OFFICE_ASSETS.hologram);
+        const missingFileState = spriteAssetStateAfterRuntimeLoad(false);
+        const invalidDimensionsState = spriteAssetStateAfterRuntimeLoad(true, false);
+        expect(missingFileState).toBe('missing');
+        expect(invalidDimensionsState).toBe('missing');
+        expect(shouldRenderMissingSpriteFallback(missingFileState)).toBe(true);
+        expect(shouldRenderMissingSpriteFallback(invalidDimensionsState)).toBe(true);
     });
 });

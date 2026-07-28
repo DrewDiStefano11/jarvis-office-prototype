@@ -1,5 +1,18 @@
 import { AnimationDefinition } from './types';
 
+export type SpriteAssetState = 'loading' | 'ready' | 'missing';
+
+export function spriteAssetStateAfterRuntimeLoad(
+    loaded: boolean,
+    dimensionsAreValid = false,
+): SpriteAssetState {
+    return loaded && dimensionsAreValid ? 'ready' : 'missing';
+}
+
+export function shouldRenderMissingSpriteFallback(state: SpriteAssetState): boolean {
+    return state === 'missing';
+}
+
 export type SpriteFrameLayout = Readonly<{
     column: number;
     row: number;

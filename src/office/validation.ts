@@ -1,3 +1,4 @@
+import { isSpriteSheetAssetId } from './assets';
 import { OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from './constants';
 import { LAYER_ORDER } from './layers';
 import {
@@ -190,7 +191,11 @@ function validateSprite(value: unknown, path: string, errors: string[], required
         errors.push(`${path} must be an object.`);
         return;
     }
-    if (typeof value.assetId !== 'string' || value.assetId.trim() === '') errors.push(`${path}.assetId is required.`);
+    if (typeof value.assetId !== 'string' || value.assetId.trim() === '') {
+        errors.push(`${path}.assetId is required.`);
+    } else if (!isSpriteSheetAssetId(value.assetId)) {
+        errors.push(`${path}.assetId "${value.assetId}" is not a registered sprite-sheet asset.`);
+    }
     if (!finite(value.scale) || value.scale <= 0) errors.push(`${path}.scale must be a positive finite number.`);
     if (!finite(value.opacity) || value.opacity < 0 || value.opacity > 1) errors.push(`${path}.opacity must be between 0 and 1.`);
     if (value.glow !== undefined && (typeof value.glow !== 'string' || !CSS_COLOR_PATTERN.test(value.glow))) {

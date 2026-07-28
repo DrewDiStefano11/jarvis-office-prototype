@@ -1,9 +1,12 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { OFFICE_ASSETS } from '../../office/assets';
+import { getSpriteSheetAsset } from '../../office/assets';
 import {
     buildPlaybackSequence,
     hasValidSpriteSheetDimensions,
     nextPlaybackIndex,
+    shouldRenderMissingSpriteFallback,
+    spriteAssetStateAfterRuntimeLoad,
+    SpriteAssetState,
     spriteFrameLayout,
     spriteSheetDimensions,
 } from '../../office/animation';
@@ -120,7 +123,7 @@ function SeatPriorityMarker({ entity }: Readonly<{ entity: OfficeEntity }>) {
 }
 
 function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: OfficeEntity; debug: boolean; reducedMotion: boolean }>) {
-    const [assetState, setAssetState] = useState<'loading' | 'ready' | 'missing'>('loading');
+    const [assetState, setAssetState] = useState<SpriteAssetState>('loading');
     const [playbackIndex, setPlaybackIndex] = useState(0);
     const surfaceRef = useRef<HTMLDivElement>(null);
     const [onscreen, setOnscreen] = useState(true);
@@ -150,7 +153,7 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
 
     if (entity.geometry.kind !== 'point' || !sprite) return null;
     const point = entity.geometry.point;
-    const asset = Object.values(OFFICE_ASSETS).find(candidate => candidate.id === sprite.assetId);
+    const asset = getSpriteSheetAsset(sprite.assetId);
     if (!asset) return debug ? <text x={point.x} y={point.y} className="office-overlay-label">Unknown sprite asset</text> : null;
     const width = sprite.animation.frameWidth * sprite.scale;
     const height = sprite.animation.frameHeight * sprite.scale;
@@ -175,13 +178,16 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
                     draggable={false}
                     className="office-sprite__preload"
                     onLoad={event => {
-                        setAssetState(hasValidSpriteSheetDimensions(
-                            event.currentTarget.naturalWidth,
-                            event.currentTarget.naturalHeight,
-                            sprite.animation,
-                        ) ? 'ready' : 'missing');
+                        setAssetState(spriteAssetStateAfterRuntimeLoad(
+                            true,
+                            hasValidSpriteSheetDimensions(
+                                event.currentTarget.naturalWidth,
+                                event.currentTarget.naturalHeight,
+                                sprite.animation,
+                            ),
+                        ));
                     }}
-                    onError={() => setAssetState('missing')}
+                    onError={() => setAssetState(spriteAssetStateAfterRuntimeLoad(false))}
                 />
                 {assetState === 'ready' && (
                     <span
@@ -193,7 +199,8 @@ function SpriteAnchor({ entity, debug, reducedMotion }: Readonly<{ entity: Offic
                         }}
                     />
                 )}
-                {assetState === 'missing' && <span className="office-sprite__missing" aria-hidden="true">◇</span>}
+                {shouldRenderMissingSpriteFallback(assetState) &&
+                    <span className="office-sprite__missing" aria-hidden="true">◇</span>}
             </div>
         </foreignObject>
     );

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { OFFICE_ASSETS } from '../assets';
 import { NON_PRODUCTION_OVERLAY } from '../sampleOverlay';
 import { validateOverlayDocument } from '../validation';
 
@@ -123,6 +124,31 @@ describe('office overlay schema', () => {
         const missing = cloneDocument();
         delete (missing.entities as Record<string, unknown>[])[9].sprite;
         expect(validateOverlayDocument(missing).valid).toBe(false);
+    });
+
+    it('accepts a registered sprite-sheet asset ID', () => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        const sprite = entities[9].sprite as Record<string, unknown>;
+        sprite.assetId = OFFICE_ASSETS.hologram.id;
+        expect(validateOverlayDocument(document)).toMatchObject({ valid: true });
+    });
+
+    it.each([
+        ['unknown sprite ID', 'missing-hologram'],
+        ['background asset ID', OFFICE_ASSETS.background.id],
+    ])('rejects an unregistered or non-sprite asset ID: %s', (_label, invalidId) => {
+        const document = cloneDocument();
+        const entities = document.entities as Record<string, unknown>[];
+        const sprite = entities[9].sprite as Record<string, unknown>;
+        sprite.assetId = invalidId;
+        const result = validateOverlayDocument(document);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.errors).toContain(
+                `entities[9].sprite.assetId "${invalidId}" is not a registered sprite-sheet asset.`,
+            );
+        }
     });
 
     it('rejects malformed arrays and metadata values', () => {
