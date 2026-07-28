@@ -53,8 +53,8 @@ The office image must preserve its aspect ratio. Cropping, stretching, independe
 The implementation must use the following source-of-truth order:
 
 1. Clean 8192 × 5460 office image — visual appearance.
-2. `AI_HUB_MARKUP_LEGEND.md` — meaning of markup colors and symbols.
-3. `DOOR_ACCESS.csv` — authoritative door access and door-light behavior.
+2. `docs/AI_HUB_MARKUP_LEGEND.md` — meaning of markup colors and symbols.
+3. `docs/DOOR_ACCESS.csv` — authoritative door access and door-light behavior.
 4. Room, wall, object, door, walkable-area, computer, chair/standing, and interactive-object markup files — approximate geometry and identity.
 5. Structured layout data generated from the markups — runtime geometry.
 6. This document — runtime interaction behavior.
@@ -343,7 +343,7 @@ The door system remains authoritative for actual entry.
 
 ## 10. Door Interactions
 
-Door IDs and access behavior come from `DOOR_ACCESS.csv`.
+Door IDs and access behavior come from `docs/DOOR_ACCESS.csv`.
 
 ### 10.1 Door Light Meanings
 

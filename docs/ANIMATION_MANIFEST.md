@@ -267,7 +267,7 @@ Every animation entry should follow a structure similar to:
 {
   "animationId": "ANIM_MAIN_ROBOT_IDLE",
   "assetSetId": "ASSETSET_MAIN_ROBOT",
-  "file": "assets/sprites/holograms/main-robot/main-robot-idle.png",
+  "file": "src/office/sprites/holograms/main-robot/main-robot-idle.png",
   "assetType": "sprite_sheet",
   "sourceWidth": null,
   "sourceHeight": null,
@@ -1000,7 +1000,7 @@ animations:
 
 ## 16. Door Animation System
 
-Each door record from `DOOR_ACCESS.csv` must reference a door animation set.
+Each door record from `docs/DOOR_ACCESS.csv` must reference a door animation set.
 
 Recommended IDs:
 

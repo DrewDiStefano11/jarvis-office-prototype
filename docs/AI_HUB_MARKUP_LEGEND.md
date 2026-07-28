@@ -8,7 +8,14 @@ The finished application must use the clean, unmarked office image as the visibl
 
 ## 2. Shared Coordinate System
 
-- Every markup PDF uses the same `4608 x 3072` coordinate canvas.
+- The authoritative runtime/world coordinate system is 8192 × 5460.
+- The markup PDFs use a 4608 × 3072 reference canvas.
+- The markup files must cover the same uncropped office composition and maintain the same aspect ratio.
+- Markup coordinates must be converted into production source coordinates:
+  - sourceX = markupX × (8192 / 4608)
+  - sourceY = markupY × (5460 / 3072)
+- Runtime geometry must be stored in 8192 × 5460 source pixels.
+- The markup images themselves are development references and must never be rendered in production.
 - The top-left corner is coordinate `(0, 0)`.
 - X increases from left to right.
 - Y increases from top to bottom.
@@ -304,8 +311,8 @@ The implementation should produce structured data similar to:
 ```json
 {
   "canvas": {
-    "width": 4608,
-    "height": 3072,
+    "width": 8192,
+    "height": 5460,
     "origin": "top-left"
   },
   "rooms": [],
@@ -354,7 +361,7 @@ Before polishing the office, implement a developer overlay with toggles for:
 
 Validation requirements:
 
-- Every layer aligns with the clean `4608 x 3072` background.
+- Every layer aligns with the clean `8192 x 5460` background.
 - No agent can walk through a wall, object, or closed door.
 - Every door threshold connects the correct spaces.
 - Every permanent workstation anchor is reachable.

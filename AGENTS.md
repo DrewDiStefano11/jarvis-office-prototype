@@ -19,7 +19,15 @@ This file applies to the entire repository unless a more specific nested `AGENTS
 Nested instructions may add implementation-specific guidance, but they may not override the following non-negotiable rules:
 
 - preserve the clean office artwork;
-- preserve the 8192 × 5460 coordinate system;
+- The authoritative runtime/world coordinate system is 8192 × 5460.
+- The markup PDFs use a 4608 × 3072 reference canvas.
+- The markup files must cover the same uncropped office composition and maintain the same aspect ratio.
+- Markup coordinates must be converted into production source coordinates:
+  - sourceX = markupX × (8192 / 4608)
+  - sourceY = markupY × (5460 / 3072)
+- Runtime geometry must be stored in 8192 × 5460 source pixels.
+- The markup images themselves are development references and must never be rendered in production.
+- If the two canvases do not have exactly the same aspect ratio, explicitly require visual alignment verification and prohibit silently using non-uniform stretching as authoritative geometry.
 - preserve room and door identities;
 - preserve markup meanings;
 - preserve door-access color meanings;
@@ -50,9 +58,9 @@ docs/ANIMATION_MANIFEST.md
 Also inspect:
 
 ```text
-assets/base/
-assets/markups/
-assets/sprites/
+public/assets/office/
+docs/authoring/floor-1/
+src/office/
 data/
 src/
 tests/
@@ -1671,7 +1679,7 @@ Mark intentional isolation explicitly.
 
 ## 46. Door Review Flags
 
-`DOOR_ACCESS.csv` contains confidence and manual-review fields.
+`docs/DOOR_ACCESS.csv` contains confidence and manual-review fields.
 
 Codex must:
 

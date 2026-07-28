@@ -1,4 +1,4 @@
-# PLANS.md — Execution Plan Standard for the AI Hub Interactive Office
+# .agent/PLANS.md — Execution Plan Standard for the AI Hub Interactive Office
 
 ## 1. Purpose
 
@@ -314,9 +314,9 @@ Also list relevant markups and runtime data.
 Example:
 
 ```text
-assets/markups/png/Rooms.png
-assets/markups/png/Doors.png
-assets/markups/png/Walk paths.png
+docs/authoring/floor-1/Rooms.png
+docs/authoring/floor-1/Doors.png
+docs/authoring/floor-1/Walk paths.png
 data/rooms.json
 data/doors.json
 ```
@@ -1229,7 +1229,7 @@ elevator
 
 ### Required Review
 
-Manual-review rows in `DOOR_ACCESS.csv`.
+Manual-review rows in `docs/DOOR_ACCESS.csv`.
 
 ---
 
@@ -1264,7 +1264,7 @@ Implement standard and priority positions, reservation, occupancy, pose, facing,
 
 ### Goal
 
-Make marked computers, robot tubes, map, elevator, stairs, rooms, conference areas, and sandbox areas selectable and functional according to `INTERACTIONS.md`.
+Make marked computers, robot tubes, map, elevator, stairs, rooms, conference areas, and sandbox areas selectable and functional according to `docs/INTERACTIONS.md`.
 
 ### Required Panels
 
