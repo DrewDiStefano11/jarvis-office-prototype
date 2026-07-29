@@ -52,6 +52,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-01:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -118,6 +132,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-02:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }
@@ -188,6 +216,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-03:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -254,6 +296,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-04:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }
@@ -324,6 +380,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-05:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -390,6 +460,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-06:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }
@@ -460,6 +544,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-07:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -526,6 +624,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-08:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }
@@ -596,6 +708,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-09:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -662,6 +788,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-10:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }
@@ -732,6 +872,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-11:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -798,6 +952,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-12:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }
@@ -868,6 +1036,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-13:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -934,6 +1116,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-14:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }
@@ -1004,6 +1200,20 @@
           "state": "walking",
           "staticFallbackFrame": 0,
           "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-15:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
         }
       ],
       "columns": 6,
@@ -1070,6 +1280,20 @@
           "reducedMotionFallbackFrame": 0,
           "repeatDelayMs": 0,
           "state": "walking",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-sheet-16:offline",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
           "staticFallbackFrame": 0,
           "yoyo": false
         }

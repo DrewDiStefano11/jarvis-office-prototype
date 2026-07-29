@@ -7,6 +7,10 @@ const forbiddenMarkers = [
   'Agent sprite laboratory',
   'Inventory summary',
   'sprite-inventory.json',
+  'Sprite demonstration',
+  'spriteDemo',
+  'agent-sprite-layer',
+  'demo-agent__label',
 ];
 const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
 const matches = [];
@@ -39,7 +43,7 @@ try {
 }
 
 if (matches.length > 0) {
-  throw new Error(`Development-only sprite laboratory leaked into production:\n${matches.join('\n')}`);
+  throw new Error(`Development-only sprite review surface leaked into production:\n${matches.join('\n')}`);
 }
 
-process.stdout.write('Production bundle excludes development-only sprite laboratory markers.\n');
+process.stdout.write('Production bundle excludes development-only sprite lab and demo markers.\n');

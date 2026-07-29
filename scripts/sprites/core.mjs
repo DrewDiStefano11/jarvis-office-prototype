@@ -372,6 +372,18 @@ function runtimeManifest(inventory) {
           yoyo: false,
           reducedMotionFallbackFrame: 0,
           staticFallbackFrame: 0,
+        },
+        {
+          id: `${record.id}:offline`,
+          state: 'offline',
+          direction: 'none',
+          frames: [0],
+          framesPerSecond: 1,
+          loop: false,
+          repeatDelayMs: 0,
+          yoyo: false,
+          reducedMotionFallbackFrame: 0,
+          staticFallbackFrame: 0,
         }
       ],
     }));

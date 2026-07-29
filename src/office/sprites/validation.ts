@@ -148,6 +148,9 @@ function validateAsset(
     if (!Array.isArray(value.horizontalFlipDirections)) {
         issue(issues, `${path}.horizontalFlipDirections`, 'Horizontal flip directions must be explicit.');
     } else {
+        if (value.horizontalFlipDirections.length > 0) {
+            issue(issues, `${path}.horizontalFlipDirections`, 'Horizontal flip rendering is not supported; declare no flip directions.');
+        }
         value.horizontalFlipDirections.forEach((direction, index) => {
             if (!directionSet.has(String(direction)) || direction === 'none') {
                 issue(issues, `${path}.horizontalFlipDirections[${index}]`, 'Invalid horizontal flip direction.');

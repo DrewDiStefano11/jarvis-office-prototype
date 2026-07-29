@@ -109,7 +109,7 @@ It adds no image/native dependency, works on Node 18/20 CI, preserves exact byte
 
 ## Data Model
 
-The inventory records path, hash, bytes, PNG color type/mode, dimensions, alpha presence/use, opacity, nontransparent bounds, exact uniform border color, declared/discovered grid, embedded-marking flags, duplicate hash, status, blockers, generated destination, and manifest ID. Runtime manifest assets declare source/generated hashes and URLs, frame/grid/anchor/scale/pixel settings, approval/availability/effect classification/profile compatibility, clips, and state fallbacks. Clip IDs are unique per asset and include state, direction, ordered frames, FPS, loop, delay, yoyo, reduced-motion frame, static fallback, and optional explicit horizontal flip.
+The inventory records path, hash, bytes, PNG color type/mode, dimensions, alpha presence/use, opacity, nontransparent bounds, exact uniform border color, declared/discovered grid, embedded-marking flags, duplicate hash, status, blockers, generated destination, and manifest ID. Runtime manifest assets declare source/generated hashes and URLs, frame/grid/anchor/scale/pixel settings, approval/availability/effect classification/profile compatibility, clips, and state fallbacks. Clip IDs are unique per asset and include state, direction, ordered frames, FPS, loop, delay, yoyo, reduced-motion frame, and static fallback. Horizontal-flip declarations remain empty and are rejected until mirrored rendering is implemented.
 
 ## File and Directory Changes
 
@@ -285,6 +285,7 @@ Affected Files: manifest/resolver/demo.
 - Opened draft PR #21; CI exposed and the branch fixed a Node 18 incompatibility in module-directory resolution, then verified the sprite drift checker directly on Node 18.20.8.
 - Codex review cycle 1 reported five P2 findings; addressed all five with explicit unavailable resolution, complete required-field validation, production-safe texture failure behavior, cross-tree generator rollback, and compile-time production exclusion of the visual lab.
 - Added regression coverage for all review findings and a post-build production-bundle isolation check; final development and production browser routes were reverified.
+- Codex review cycle 2 reported four residual P2 findings; added explicit offline clips, scale-aware frame cropping, a fully bundle-isolated lazy demo boundary, and rejection of unsupported horizontal-flip declarations.
 
 ## Unexpected Discoveries
 

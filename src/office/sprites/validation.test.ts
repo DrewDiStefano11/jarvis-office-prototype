@@ -38,6 +38,9 @@ describe('sprite manifest validation', () => {
         ['missing blocked source reference', (value: Record<string, unknown>) => {
             delete (value.blockedAssets as Record<string, unknown>[])[0].sourceAssetReference;
         }],
+        ['unsupported horizontal flip declaration', (value: Record<string, unknown>) => {
+            assets(value)[0].horizontalFlipDirections = ['west'];
+        }],
     ])('rejects %s', (_name, mutate) => {
         const value = cloneManifest();
         mutate(value);

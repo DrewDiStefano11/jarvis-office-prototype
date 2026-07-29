@@ -29,19 +29,19 @@ afterEach(() => {
 });
 
 describe('office sprite demonstration mode', () => {
-    it('is query-gated and passes deterministic demo agents without mutating the office document', () => {
+    it('is query-gated and enables the lazy demo without mutating the office document', () => {
         window.history.replaceState({}, '', '/?spriteDemo=agents');
         render(<OfficeEngine active />);
         expect(screen.getByText('Sprite demonstration — positions are not assignments')).toBeTruthy();
         expect(screen.getByLabelText('Sprite demonstration inspector')).toBeTruthy();
-        expect(viewportProps.latest?.spriteDemoAgents).toHaveLength(5);
+        expect(viewportProps.latest?.developmentOverlayEnabled).toBe(true);
         expect((viewportProps.latest?.document as { production: boolean }).production).toBe(false);
     });
 
     it('leaves the normal office route unchanged without the query', () => {
         render(<OfficeEngine active />);
         expect(screen.queryByLabelText('Sprite demonstration inspector')).toBeNull();
-        expect(viewportProps.latest?.spriteDemoAgents).toEqual([]);
+        expect(viewportProps.latest?.developmentOverlayEnabled).toBe(false);
         expect(screen.getByText('Sample fallback — not production Floor 1')).toBeTruthy();
     });
 });

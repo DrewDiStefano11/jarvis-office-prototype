@@ -25,6 +25,13 @@ describe('sprite state resolution', () => {
         expect(resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'missing', 'idle', 'none')).toBeNull();
     });
 
+    it('resolves offline to its explicitly declared terminal frame', () => {
+        const resolved = resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'agent-sheet-01', 'offline', 'none');
+        expect(resolved?.resolvedState).toBe('offline');
+        expect(resolved?.clip.frames).toEqual([0]);
+        expect(frameAtElapsedTime(resolved!, 10_000)).toBe(0);
+    });
+
     it('returns explicit unavailability instead of guessing an unrelated clip', () => {
         const partial = structuredClone(AGENT_SPRITE_MANIFEST) as unknown as {
             assets: Array<{ clips: typeof AGENT_SPRITE_MANIFEST.assets[number]['clips'] }>;

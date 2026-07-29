@@ -38,6 +38,7 @@ export function SpritePlayer({
 }: Props) {
     const frameRef = useRef<HTMLDivElement>(null);
     const lastFrameRef = useRef<number | null>(null);
+    const lastRenderKeyRef = useRef<string | null>(null);
     const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
     const [loadFailure, setLoadFailure] = useState<string | null>(null);
     const resolved = useMemo(
@@ -82,13 +83,17 @@ export function SpritePlayer({
     useEffect(() => {
         if (!resolved || loadState !== 'ready') return;
         const update = (frame: number) => {
-            if (lastFrameRef.current === frame) return;
-            lastFrameRef.current = frame;
+            const renderKey = `${resolved.asset.id}:${frame}:${scale}`;
+            if (lastRenderKeyRef.current === renderKey) return;
+            lastRenderKeyRef.current = renderKey;
             const position = framePosition(resolved.asset, frame);
             if (frameRef.current) {
                 frameRef.current.style.backgroundPosition = `${position.x * scale}px ${position.y * scale}px`;
             }
-            onFrameChange?.(frame);
+            if (lastFrameRef.current !== frame) {
+                lastFrameRef.current = frame;
+                onFrameChange?.(frame);
+            }
         };
         if (manualFrame !== null) {
             update(Math.max(0, Math.min(resolved.asset.frameCount - 1, manualFrame)));

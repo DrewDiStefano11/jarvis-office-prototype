@@ -45,11 +45,11 @@ The generated manifest declares:
 - pixel-art rendering;
 - availability and approval;
 - profile compatibility;
-- authored and optionally flipped directions;
+- authored directions and an explicitly empty flip list until mirrored rendering is implemented;
 - ordered clips, FPS, looping, repeat delay, yoyo, reduced-motion frame, and static fallback;
 - an explicit state fallback graph.
 
-Strict validation rejects duplicate asset/clip IDs, missing or mismatched files/checksums, invalid dimensions/anchors/FPS, empty clips, out-of-range frames, unsupported directional claims, undefined fallbacks, cycles, and provisional/blocked production usage.
+Strict validation rejects duplicate asset/clip IDs, missing or mismatched files/checksums, invalid dimensions/anchors/FPS, empty clips, out-of-range frames, unsupported directional or horizontal-flip claims, undefined fallbacks, cycles, and provisional/blocked production usage.
 
 No compass direction is claimed for the current character sheets. Their authored direction is `none` until row direction metadata is provided and reviewed.
 
@@ -63,7 +63,7 @@ reviewing → working → idle
 waiting   → idle
 blocked   → idle
 error     → idle
-offline   → static fallback
+offline   → explicit one-frame offline clip
 idle      → static fallback when required
 ```
 
@@ -91,7 +91,7 @@ The office demonstration agents and positions are configured in `src/domain/seed
 ?spriteDemo=agents
 ```
 
-Both routes require `import.meta.env.DEV`; the queries are harmless in production builds.
+Both routes require `import.meta.env.DEV`; their components, fixture data, labels, and CSS are absent from production JavaScript/CSS bundles.
 
 The sprite lab provides inventory counts, asset/state/direction selection, play/pause/restart/stepping, current frame, speed, zoom, checker/light/dark backgrounds, nearest-neighbor control, source/generated sheet views, grid/content/anchor/ground/hitbox overlays, pixel dimensions, office-context scale, reduced-motion preview, fallback chains, warnings, checksums, and approval status.
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { SpriteDemoAgent } from '../../domain/seed';
+import { SPRITE_DEMO_AGENTS, SpriteDemoAgent } from '../../domain/seed';
 import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import { SpritePlayer } from './SpritePlayer';
@@ -7,13 +7,12 @@ import './agent-sprite-layer.css';
 
 type Props = Readonly<{
     active: boolean;
-    agents: readonly SpriteDemoAgent[];
     selectedId: string | null;
     reducedMotion: boolean;
-    onSelect: (id: string) => void;
+    onSelect: (agent: SpriteDemoAgent) => void;
 }>;
 
-export function AgentSpriteLayer({ active, agents, selectedId, reducedMotion, onSelect }: Props) {
+export function AgentSpriteLayer({ active, selectedId, reducedMotion, onSelect }: Props) {
     const [runtime] = useState(() => new SpriteSurfaceRuntime());
 
     useEffect(() => {
@@ -27,7 +26,7 @@ export function AgentSpriteLayer({ active, agents, selectedId, reducedMotion, on
 
     return (
         <div className="agent-sprite-layer" aria-label="Agent sprite demonstration">
-            {agents.map(agent => (
+            {SPRITE_DEMO_AGENTS.map(agent => (
                 <button
                     key={agent.id}
                     type="button"
@@ -35,7 +34,7 @@ export function AgentSpriteLayer({ active, agents, selectedId, reducedMotion, on
                     style={{ left: agent.position.x, top: agent.position.y }}
                     onClick={event => {
                         event.stopPropagation();
-                        onSelect(agent.id);
+                        onSelect(agent);
                     }}
                     aria-label={`${agent.displayName}, ${agent.state}. Demonstration position, not a production assignment.`}
                     aria-pressed={selectedId === agent.id}
