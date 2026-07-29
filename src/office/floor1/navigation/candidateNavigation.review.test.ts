@@ -16,7 +16,7 @@ const testRoute = (
     start: { x: number; y: number },
     destinationId: string,
     accessTier: 'standard' | 'priority' = 'priority',
-) => planCandidateRoute(graphValue, { start, destinationId, agent: { id: `test-${accessTier}`, accessTier } });
+) => planCandidateRoute(graphValue, { start, destinationId, agentId: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}` });
 
 
 describe('Codex review collision and access regressions', () => {
@@ -26,7 +26,7 @@ describe('Codex review collision and access regressions', () => {
         for (const computerNumber of ['022', '023', '024', '025']) {
             const destination = graph.destinations.find(item => item.label === `Computer ${computerNumber}`);
             expect(destination?.id).toBe(`computer:computers-${computerNumber}`);
-            const route = testRoute(graph, agent!.point, destination!.id);
+            const route = planCandidateRoute(graph, { start: agent!.point, destinationId: destination!.id, agentId: agent!.id });
             expect(route.status).toBe('blocked');
             expect(route.failureCategory).toBe('collision');
             expect(route.reason).toContain('object collision');
@@ -63,7 +63,7 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
             { id: 'D02', point: { x: 50, y: 100 }, zones: ['A', 'C'], zoneIds: ['A', 'C'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
             { id: 'D03', point: { x: 150, y: 100 }, zones: ['C', 'B'], zoneIds: ['C', 'B'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
         ],
-        agents: [],
+        agents: [{ id: 'fixture-priority', label: 'Fixture priority', positionId: 'P1', roomId: 'A', roomIds: ['A'], roomName: 'A', point: { x: 40, y: 40 }, accessTier: 'priority', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
         destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 160, y: 40 }, roomId: 'B', roomIds: ['B'], roomName: 'B' }],
         colliders: [],
         walkNodes: [],
@@ -157,7 +157,7 @@ describe('current merge-blocker regressions', () => {
         return {
             rooms: [{ id: 'ROOM', name: 'Room', polygon: [{ x: 0, y: 0 }, { x: 500, y: 0 }, { x: 500, y: 500 }, { x: 0, y: 500 }], center: { x: 250, y: 250 } }],
             doors: [],
-            agents: [],
+            agents: [{ id: 'fixture-priority', label: 'Fixture priority', positionId: 'P1', roomId: 'A', roomIds: ['A'], roomName: 'A', point: { x: 40, y: 40 }, accessTier: 'priority', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
             destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 260, y: 100 }, roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room' }],
             colliders: [],
             walkNodes: [],
@@ -201,10 +201,10 @@ describe('current merge-blocker regressions', () => {
         const agent = graph.agents.find(item => item.positionId === 'POSITION_117');
         expect(agent?.roomIds).toEqual(['ROOM_CENTRAL_NEXUS', 'ROOM_MAIN_CONNECTING_WALKWAY']);
         const destination = graph.destinations.find(item => item.id === 'position:POSITION_034');
-        const route = testRoute(graph, agent!.point, destination!.id);
+        const route = planCandidateRoute(graph, { start: agent!.point, destinationId: destination!.id, agentId: agent!.id });
         expect(route.status).toBe('valid');
         expect(route.crossedDoorIds).not.toContain('D38');
-        expect(testRoute(graph, agent!.point, destination!.id)).toEqual(route);
+        expect(planCandidateRoute(graph, { start: agent!.point, destinationId: destination!.id, agentId: agent!.id })).toEqual(route);
     });
 
     it('uses overlapping membership to choose an allowed edge instead of a restricted edge', () => {
@@ -218,7 +218,7 @@ describe('current merge-blocker regressions', () => {
                 { id: 'D38', point: { x: 220, y: 60 }, zones: ['Restricted', 'Target'], zoneIds: ['RESTRICTED', 'TARGET'], accessMode: 'restricted', manualReviewRequired: false, apertureRadius: 80 },
                 { id: 'D10', point: { x: 220, y: 160 }, zones: ['Walkway', 'Target'], zoneIds: ['WALKWAY', 'TARGET'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
             ],
-            agents: [],
+            agents: [{ id: 'fixture-priority', label: 'Fixture priority', positionId: 'P1', roomId: 'A', roomIds: ['A'], roomName: 'A', point: { x: 40, y: 40 }, accessTier: 'priority', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
             destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 320, y: 160 }, roomId: 'TARGET', roomIds: ['TARGET'], roomName: 'Target' }],
             colliders: [],
             walkNodes: [],
@@ -282,7 +282,7 @@ describe('final review access, alternate geometry, and computer approach regress
         expect(denied.points).toHaveLength(0);
         expect(testRoute(graph, priorityAgent!.point, priorityDestination!.id, 'priority').failureCategory).not.toBe('destination_access_restricted');
         expect(testRoute(graph, standardAgent!.point, standardDestination!.id, 'standard').status).toBe('valid');
-        expect(planCandidateRoute(graph, { start: standardAgent!.point, destinationId: priorityDestination!.id, agent: undefined as never }).failureCategory).toBe('destination_access_restricted');
+        expect(planCandidateRoute(graph, { start: standardAgent!.point, destinationId: priorityDestination!.id, agentId: '' }).failureCategory).toBe('agent_context_missing');
         expect(testRoute(graph, standardAgent!.point, priorityDestination!.id, 'standard')).toEqual(denied);
     });
 

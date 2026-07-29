@@ -172,7 +172,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
         const result = planCandidateRoute(graph, {
             start: selectedAgent.point,
             destinationId,
-            agent: { id: selectedAgent.fixture.id, accessTier: selectedAgent.fixture.accessTier },
+            agentId: selectedAgent.fixture.id,
         });
         setPreview({
             agentId: selectedAgent.fixture.id,
@@ -193,7 +193,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
         const route = planCandidateRoute(graph, {
             start: selectedAgent.point,
             destinationId,
-            agent: { id: selectedAgent.fixture.id, accessTier: selectedAgent.fixture.accessTier },
+            agentId: selectedAgent.fixture.id,
         });
         if (route.status !== 'valid') {
             setPreview({ ...preview, result: route });

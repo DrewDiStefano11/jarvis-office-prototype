@@ -23,7 +23,7 @@ const testRoute = (
     start: { x: number; y: number },
     destinationId: string,
     accessTier: 'standard' | 'priority' = 'priority',
-) => planCandidateRoute(graphValue, { start, destinationId, agent: { id: `test-${accessTier}`, accessTier } });
+) => planCandidateRoute(graphValue, { start, destinationId, agentId: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}` });
 
 
 describe('candidate Floor 1 navigation graph', () => {

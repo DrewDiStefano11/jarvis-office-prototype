@@ -7,7 +7,7 @@ const testRoute = (
     start: { x: number; y: number },
     destinationId: string,
     accessTier: 'standard' | 'priority' = 'priority',
-) => planCandidateRoute(graphValue, { start, destinationId, agent: { id: `test-${accessTier}`, accessTier } });
+) => planCandidateRoute(graphValue, { start, destinationId, agentId: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}` });
 
 
 function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {
@@ -21,7 +21,10 @@ function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {
             { id: 'D01', point: { x: 300, y: 150 }, zones: ['Room A', 'Room B'], zoneIds: ['ROOM_A', 'ROOM_B'], accessMode, manualReviewRequired: false, apertureRadius: 96 },
             { id: 'D02', point: { x: 600, y: 150 }, zones: ['Room B', 'Room C'], zoneIds: ['ROOM_B', 'ROOM_C'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 96 },
         ],
-        agents: [],
+        agents: [
+            { id: 'fixture-priority', label: 'Fixture priority', positionId: 'P1', roomId: 'ROOM_A', roomIds: ['ROOM_A'], roomName: 'Room A', point: { x: 80, y: 80 }, accessTier: 'priority', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true },
+            { id: 'fixture-standard', label: 'Fixture standard', positionId: 'S1', roomId: 'ROOM_A', roomIds: ['ROOM_A'], roomName: 'Room A', point: { x: 90, y: 90 }, accessTier: 'standard', spriteAssetId: 'agent-sheet-02', provisionalSpriteAssignment: true },
+        ],
         destinations: [
             { id: 'same-room', label: 'same room', kind: 'waypoint', point: { x: 220, y: 80 }, roomId: 'ROOM_A', roomIds: ['ROOM_A'], roomName: 'Room A' },
             { id: 'adjacent-room', label: 'adjacent room', kind: 'waypoint', point: { x: 450, y: 130 }, roomId: 'ROOM_B', roomIds: ['ROOM_B'], roomName: 'Room B' },

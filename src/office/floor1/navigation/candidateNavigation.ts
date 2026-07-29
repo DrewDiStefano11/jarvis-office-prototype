@@ -29,17 +29,16 @@ export type CandidateDestination = Readonly<{
     accessTier?: 'standard' | 'priority';
     markerPoint?: Point;
     approachPositionId?: string;
-}>;
-
-export type CandidateRouteAgentContext = Readonly<{
-    id: string;
-    accessTier: 'standard' | 'priority';
+    approachAccessTier?: 'standard' | 'priority';
+    approachResolution?: 'position-anchor';
+    availability?: 'available' | 'unavailable';
+    unavailableReason?: string;
 }>;
 
 export type CandidateRouteRequest = Readonly<{
     start: Point;
     destinationId: string;
-    agent: CandidateRouteAgentContext;
+    agentId: string;
 }>;
 
 export type CandidateDoorNode = Readonly<{
@@ -410,30 +409,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     }));
 
     const positionDestinations = positions.map((item): CandidateDestination => ({ id: `position:${item.id}`, label: `${item.id} (${item.tier})`, kind: 'position', point: item.point, roomId: item.room.id, roomIds: item.roomIds, roomName: item.room.name, accessTier: item.tier }));
-    const computerDestinations = array(computerData.records, 'computers.records').map((value, index): CandidateDestination | null => {
-        const item = record(value, `computer[${index}]`);
-        const native = nativePathsFromRecord(item, `computer[${index}]`)[0];
-        if (!native) return null;
-        const markerPoint = centroid(native.points);
-        const memberships = roomMembershipsForPoint(rooms, markerPoint);
-        const membershipSet = new Set(memberships.map(itemRoom => itemRoom.id));
-        const approach = positions
-            .filter(position => position.roomIds.some(roomId => membershipSet.has(roomId)))
-            .sort((a, b) => distance(a.point, markerPoint) - distance(b.point, markerPoint) || a.id.localeCompare(b.id))[0];
-        if (!approach) return null;
-        return {
-            id: `computer:${text(item.id, `COMPUTER_${index + 1}`)}`,
-            label: `Computer ${String(index + 1).padStart(3, '0')}`,
-            kind: 'computer',
-            point: approach.point,
-            roomId: approach.room.id,
-            roomIds: approach.roomIds,
-            roomName: approach.room.name,
-            accessTier: approach.tier,
-            markerPoint,
-            approachPositionId: approach.id,
-        };
-    }).filter((item): item is CandidateDestination => item !== null && bounded(item.point));
+    const computerRecords = array(computerData.records, 'computers.records');
     const roomDestinations = rooms.map((room): CandidateDestination => ({ id: `room:${room.id}`, label: room.name, kind: 'room', point: room.center, roomId: room.id, roomIds: [room.id], roomName: room.name }));
     const interactiveDestinations = array(interactiveData.interactiveObjects, 'interactiveObjects').map((value, index): CandidateDestination => {
         const item = record(value, `interactive[${index}]`);
@@ -490,6 +466,60 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
             });
         });
     });
+
+
+    const graphForApproach = {
+        rooms,
+        doors,
+        agents,
+        destinations: positionDestinations,
+        colliders,
+        walkNodes,
+        walkSegments,
+        roomDiagnostics: zoneResolver.diagnostics,
+        nodeCount: 0,
+        edgeCount: 0,
+    } satisfies CandidateNavigationGraph;
+    const computerDestinations = computerRecords.map((value, index): CandidateDestination | null => {
+        const item = record(value, `computer[${index}]`);
+        const native = nativePathsFromRecord(item, `computer[${index}]`)[0];
+        if (!native) return null;
+        const markerPoint = centroid(native.points);
+        const memberships = roomMembershipsForPoint(rooms, markerPoint);
+        const membershipSet = new Set(memberships.map(itemRoom => itemRoom.id));
+        const candidates = positions
+            .filter(position => position.roomIds.some(roomId => membershipSet.has(roomId)))
+            .map(position => {
+                const directSupport = isWalkSupported(graphForApproach, position.point);
+                const connectorSupport = directSupport || nearestWalkPoint(graphForApproach, position.point, position.roomIds) !== null;
+                const collisionFree = bounded(position.point)
+                    && !colliders.some(collider => pointOverlapsColliderFootprint(position.point, collider))
+                    && distance(position.point, markerPoint) > AGENT_FOOTPRINT_RADIUS;
+                return { position, directSupport, connectorSupport, collisionFree };
+            })
+            .filter(candidate => candidate.collisionFree && candidate.connectorSupport)
+            .sort((a, b) => (a.position.tier === 'standard' ? 0 : 1) - (b.position.tier === 'standard' ? 0 : 1)
+                || (a.directSupport === b.directSupport ? 0 : a.directSupport ? -1 : 1)
+                || distance(a.position.point, markerPoint) - distance(b.position.point, markerPoint)
+                || a.position.id.localeCompare(b.position.id));
+        const approach = candidates[0];
+        if (!approach) return null;
+        return {
+            id: `computer:${text(item.id, `COMPUTER_${index + 1}`)}`,
+            label: `Computer ${String(index + 1).padStart(3, '0')}`,
+            kind: 'computer',
+            point: approach.position.point,
+            roomId: approach.position.room.id,
+            roomIds: approach.position.roomIds,
+            roomName: approach.position.room.name,
+            accessTier: approach.position.tier === 'priority' ? 'priority' : 'standard',
+            markerPoint,
+            approachPositionId: approach.position.id,
+            approachAccessTier: approach.position.tier,
+            approachResolution: 'position-anchor',
+            availability: 'available',
+        };
+    }).filter((item): item is CandidateDestination => item !== null && bounded(item.point));
 
     return {
         rooms,
@@ -666,11 +696,12 @@ function routeForDoorPath(
     startRoomIds: readonly string[],
     destRoomIds: readonly string[],
     doorPath: readonly CandidateDoorNode[],
+    roomNodes: readonly string[],
     expandedNodeCount: number,
 ): CandidateRouteResult {
     const crossedDoorIds: string[] = [];
     const pointsOut: Point[] = [start];
-    const nodeSequence = [`point:start`, ...startRoomIds];
+    const nodeSequence = ['point:start', ...(roomNodes.length > 0 ? [roomNodes[0]] : startRoomIds)];
     const startWalk = nearestWalkPoint(graph, start, startRoomIds);
     if (startWalk && distance(startWalk, start) > 1) pointsOut.push(startWalk);
     for (const door of doorPath) {
@@ -685,7 +716,8 @@ function routeForDoorPath(
     const destWalk = nearestWalkPoint(graph, destination.point, destRoomIds);
     if (destWalk && distance(destWalk, destination.point) > 1) pointsOut.push(destWalk);
     pointsOut.push(destination.point);
-    nodeSequence.push(...destRoomIds, `destination:${destination.id}`);
+    for (const roomId of destRoomIds) { if (nodeSequence[nodeSequence.length - 1] !== roomId) nodeSequence.push(roomId); }
+    nodeSequence.push(`destination:${destination.id}`);
     const compact = pointsOut.filter((item, index, all) => index === 0 || distance(item, all[index - 1]) > 0.001);
     const segmentFailure = validateCandidateRouteSegments(graph, compact, crossedDoorIds);
     if (segmentFailure) return { ...segmentFailure, expandedNodeCount: Math.max(segmentFailure.expandedNodeCount, expandedNodeCount), crossedDoorIds };
@@ -704,12 +736,19 @@ function routeForDoorPath(
 
 export function planCandidateRoute(graph: CandidateNavigationGraph, request: CandidateRouteRequest): CandidateRouteResult {
     const { start, destinationId } = request;
-    const agent = request.agent;
+    if (!request.agentId) return routeFailure('malformed', 'Route planning requires a candidate agent identity.', 'agent_context_missing');
+    const agent = graph.agents.find(item => item.id === request.agentId);
+    if (!agent) return routeFailure('malformed', 'Route planning agent identity is not part of the candidate graph.', 'agent_context_unknown');
     const startValidation = validatePoint(graph, start, 'Route start');
     if (startValidation) return startValidation;
     const destination = destinationById(graph, destinationId);
     if (!destination) return routeFailure('malformed', 'Destination could not be resolved to a candidate review point.', 'destination');
-    if (destination.accessTier === 'priority' && (!agent || agent.accessTier !== 'priority')) {
+    const startMemberships = membershipIds(graph.rooms, start);
+    if (!startMemberships.some(roomId => agent.roomIds.includes(roomId)) && distance(start, agent.point) > CONNECTOR_MAX_DISTANCE) {
+        return routeFailure('malformed', 'Route start is not compatible with the selected candidate agent context.', 'agent_context_mismatch');
+    }
+    if (destination.availability === 'unavailable') return routeFailure('blocked', destination.unavailableReason ?? 'Destination is unavailable for candidate navigation.', 'destination_unavailable');
+    if (destination.accessTier === 'priority' && agent.accessTier !== 'priority') {
         return routeFailure('restricted', `Destination ${destination.label} requires a priority review agent.`, 'destination_access_restricted');
     }
     const destinationValidation = validatePoint(graph, destination.point, 'Route destination');
@@ -731,7 +770,7 @@ export function planCandidateRoute(graph: CandidateNavigationGraph, request: Can
     }
     let firstFailure: CandidateRouteResult | null = null;
     for (const candidate of doorSearch.paths) {
-        const result = routeForDoorPath(graph, start, destination, startRoomIds, destRoomIds, candidate.path, doorSearch.expanded);
+        const result = routeForDoorPath(graph, start, destination, startRoomIds, destRoomIds, candidate.path, candidate.nodes, doorSearch.expanded);
         if (result.status === 'valid') return result;
         if (!firstFailure) firstFailure = result;
     }
