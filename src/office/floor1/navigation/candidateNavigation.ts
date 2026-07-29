@@ -77,6 +77,7 @@ export type MarkupRegistration = Readonly<{
 
 export type CandidateNavigationBuildOptions = Readonly<{
     registration?: MarkupRegistration | null;
+    instrumentation?: CandidateGraphBuildInstrumentation;
 }>;
 
 export type CandidateDoorPermission = 'general' | 'restricted' | 'reserved' | 'blocked' | 'elevator' | 'manual_review_required' | 'malformed';
@@ -171,6 +172,9 @@ type CandidateDocuments = Readonly<{
 }>;
 
 type NativePath = Readonly<{ id: string; points: readonly Point[]; thickness: number; closed: boolean }>;
+type CandidatePositionRecord = Readonly<{ id: string; point: Point; tier: 'standard' | 'priority'; room: CandidateRoom; roomIds: readonly string[] }>;
+type CandidatePositionEvaluation = Readonly<{ position: CandidatePositionRecord; bounded: boolean; collisionFree: boolean; directWalkSupport: boolean; connectorSupported: boolean; nearestWalkNodeId?: string; roomIds: readonly string[] }>;
+type CandidateGraphBuildInstrumentation = { positionCollisionEvaluations: number; positionWalkEvaluations: number };
 
 const MAX_ROUTE_POINTS = 160;
 const MAX_EXPANDED_NODES = 1_024;
@@ -613,6 +617,16 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
     });
 
 
+
+    const positionsByRoomId = new Map<string, CandidatePositionRecord[]>();
+    for (const position of positions) {
+        for (const roomId of position.roomIds) positionsByRoomId.set(roomId, [...(positionsByRoomId.get(roomId) ?? []), position]);
+    }
+    const walkNodesByRoomId = new Map<string, CandidateWalkNode[]>();
+    for (const node of walkNodes) {
+        for (const roomId of node.roomIds) walkNodesByRoomId.set(roomId, [...(walkNodesByRoomId.get(roomId) ?? []), node]);
+    }
+
     const graphForApproach = {
         rooms,
         doors,
@@ -627,21 +641,35 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         navigationAvailable: true,
     } satisfies CandidateNavigationGraph;
 
+    const positionEvaluations = new Map<string, CandidatePositionEvaluation>();
+    for (const position of positions) {
+        if (options.instrumentation) options.instrumentation.positionCollisionEvaluations += 1;
+        const collisionFree = bounded(position.point) && !colliders.some(collider => pointOverlapsColliderFootprint(position.point, collider));
+        if (options.instrumentation) options.instrumentation.positionWalkEvaluations += 1;
+        const directWalkSupport = isWalkSupported(graphForApproach, position.point);
+        const nearestWalk = directWalkSupport ? null : nearestWalkPoint(graphForApproach, position.point, position.roomIds);
+        positionEvaluations.set(position.id, {
+            position,
+            bounded: bounded(position.point),
+            collisionFree,
+            directWalkSupport,
+            connectorSupported: directWalkSupport || nearestWalk !== null,
+            nearestWalkNodeId: nearestWalk ? pointKey(nearestWalk) : undefined,
+            roomIds: position.roomIds,
+        });
+    }
+
     const resolvePositionApproachAnchor = (markerPoint: Point, markerRoomIds: readonly string[], minimumSeparation = AGENT_FOOTPRINT_RADIUS) => {
         const membershipSet = new Set(markerRoomIds);
-        return positions
-            .filter(position => position.roomIds.some(roomId => membershipSet.has(roomId)))
-            .map(position => {
-                const directSupport = isWalkSupported(graphForApproach, position.point);
-                const connectorSupport = directSupport || nearestWalkPoint(graphForApproach, position.point, position.roomIds) !== null;
-                const collisionFree = bounded(position.point)
-                    && !colliders.some(collider => pointOverlapsColliderFootprint(position.point, collider))
-                    && distance(position.point, markerPoint) > minimumSeparation;
-                return { position, directSupport, connectorSupport, collisionFree };
-            })
-            .filter(candidate => candidate.collisionFree && candidate.connectorSupport)
+        const candidatePositions = [...membershipSet]
+            .flatMap(roomId => positionsByRoomId.get(roomId) ?? [])
+            .filter((position, index, all) => all.findIndex(item => item.id === position.id) === index);
+        return candidatePositions
+            .map(position => positionEvaluations.get(position.id))
+            .filter((evaluation): evaluation is CandidatePositionEvaluation => !!evaluation)
+            .filter(evaluation => evaluation.collisionFree && evaluation.connectorSupported && distance(evaluation.position.point, markerPoint) > minimumSeparation)
             .sort((a, b) => (a.position.tier === 'standard' ? 0 : 1) - (b.position.tier === 'standard' ? 0 : 1)
-                || (a.directSupport === b.directSupport ? 0 : a.directSupport ? -1 : 1)
+                || (a.directWalkSupport === b.directWalkSupport ? 0 : a.directWalkSupport ? -1 : 1)
                 || distance(a.position.point, markerPoint) - distance(b.position.point, markerPoint)
                 || a.position.id.localeCompare(b.position.id))[0] ?? null;
     };
@@ -654,8 +682,8 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
             sourceId: position.position.id,
             accessTier: position.position.tier,
         };
-        const walkNode = walkNodes
-            .filter(node => node.roomIds.includes(room.id) && pointInPolygon(node.point, room.polygon) && !colliders.some(collider => pointOverlapsColliderFootprint(node.point, collider)))
+        const walkNode = (walkNodesByRoomId.get(room.id) ?? [])
+            .filter(node => pointInPolygon(node.point, room.polygon) && !colliders.some(collider => pointOverlapsColliderFootprint(node.point, collider)))
             .sort((a, b) => distance(a.point, room.center) - distance(b.point, room.center) || a.id.localeCompare(b.id))[0];
         if (walkNode) return { point: walkNode.point, resolution: 'walk-node' as const, sourceId: walkNode.id, accessTier: undefined };
         return null;
@@ -686,10 +714,9 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         const memberships = roomMembershipsForPoint(rooms, markerPoint);
         const approach = (memberships.length > 0 ? resolvePositionApproachAnchor(markerPoint, memberships.map(room => room.id), 0) : null)
             ?? resolvePositionApproachAnchor(markerPoint, rooms.map(room => room.id), 0)
-            ?? positions
-                .filter(position => bounded(position.point) && !colliders.some(collider => pointOverlapsColliderFootprint(position.point, collider)))
-                .sort((a, b) => (a.tier === 'standard' ? 0 : 1) - (b.tier === 'standard' ? 0 : 1) || distance(a.point, markerPoint) - distance(b.point, markerPoint) || a.id.localeCompare(b.id))
-                .map(position => ({ position, directSupport: isWalkSupported(graphForApproach, position.point), connectorSupport: true, collisionFree: true }))[0]
+            ?? [...positionEvaluations.values()]
+                .filter(evaluation => evaluation.collisionFree)
+                .sort((a, b) => (a.position.tier === 'standard' ? 0 : 1) - (b.position.tier === 'standard' ? 0 : 1) || distance(a.position.point, markerPoint) - distance(b.position.point, markerPoint) || a.position.id.localeCompare(b.position.id))[0]
             ?? null;
         const room = approach?.position.room ?? memberships[0] ?? { id: 'candidate-zone-unresolved', name: 'Unresolved candidate zone', polygon: [], center: markerPoint };
         return {

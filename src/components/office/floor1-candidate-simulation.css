@@ -254,3 +254,6 @@
     font-size: .9rem;
     pointer-events: auto;
 }
+.floor1-candidate-controls {
+    touch-action: pan-y;
+}

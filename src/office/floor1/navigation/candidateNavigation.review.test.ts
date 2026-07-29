@@ -456,3 +456,18 @@ describe('candidate door runtime and destination anchor regressions', () => {
         }
     });
 });
+
+it('precomputes each position collision and walk evaluation once per graph build', () => {
+    const instrumentation = { positionCollisionEvaluations: 0, positionWalkEvaluations: 0 };
+    const indexed = buildCandidateNavigationGraph(
+        { rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths },
+        { registration: TEST_REGISTRATION, instrumentation },
+    );
+    expect(indexed.navigationAvailable).toBe(true);
+    const positionCount = (positions.data.positions as unknown[]).length;
+    expect(instrumentation.positionCollisionEvaluations).toBeLessThanOrEqual(positionCount);
+    expect(instrumentation.positionWalkEvaluations).toBeLessThanOrEqual(positionCount);
+    expect(indexed.destinations.find(item => item.id === 'interactive:INTERACTIVE_MAIN_ROBOT_TUBE')?.approachPositionId).toBe(
+        graph.destinations.find(item => item.id === 'interactive:INTERACTIVE_MAIN_ROBOT_TUBE')?.approachPositionId,
+    );
+});

@@ -99,6 +99,8 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
         stateElapsedMs: 0,
         revision: 0,
     }])));
+    const agentsRef = useRef<readonly AgentRuntime[]>(agents);
+    const doorRuntimesRef = useRef<Readonly<Record<string, CandidateDoorRuntime>>>(doorRuntimes);
     const [selectedAgentId, setSelectedAgentId] = useState(graph.agents[0]?.id ?? null);
     const [destinationFilter, setDestinationFilter] = useState<DestinationFilter>('room');
     const [destinationSearch, setDestinationSearch] = useState('');
@@ -119,6 +121,9 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? agents[0] ?? null;
     const anyWalking = agents.some(agent => agent.status === 'walking' || agent.status === 'waiting_for_door' || agent.status === 'crossing_door');
     const beginEnabled = previewIsStartValid(selectedAgent, preview, destinationId);
+
+    useEffect(() => { agentsRef.current = agents; }, [agents]);
+    useEffect(() => { doorRuntimesRef.current = doorRuntimes; }, [doorRuntimes]);
 
     useEffect(() => {
         setControlPortal(document.querySelector<HTMLElement>('.office-viewport'));
@@ -150,16 +155,23 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
             const delta = last === null ? 0 : timestamp - last;
-            const requestingDoorIds = activeCandidateDoorRequestIds(agents);
-            setDoorRuntimes(previous => advanceCandidateDoorRuntimes(previous, requestingDoorIds, delta));
+            const requestingDoorIds = activeCandidateDoorRequestIds(agentsRef.current);
+            setDoorRuntimes(previous => {
+                const nextDoorRuntimes = advanceCandidateDoorRuntimes(previous, requestingDoorIds, delta);
+                doorRuntimesRef.current = nextDoorRuntimes;
+                return nextDoorRuntimes;
+            });
             setAgents(previous => {
+                const currentDoorRuntimes = doorRuntimesRef.current;
                 const resumed = previous.map(agent => {
                     if (agent.status !== 'waiting_for_door' || !agent.route) return agent;
                     const activeStep = agent.route.doorSteps.find(step => agent.progress + 34 >= step.approachDistance && agent.progress <= step.clearanceReleaseDistance);
-                    const ready = activeStep ? doorRuntimes[activeStep.doorId]?.state === 'open' : false;
+                    const ready = activeStep ? currentDoorRuntimes[activeStep.doorId]?.state === 'open' : false;
                     return ready ? { ...agent, status: 'walking' as const } : agent;
                 });
-                return advanceCandidateAgents(resumed, delta, REVIEW_SPEED_PX_PER_SECOND, doorRuntimes);
+                const nextAgents = advanceCandidateAgents(resumed, delta, REVIEW_SPEED_PX_PER_SECOND, currentDoorRuntimes) as readonly AgentRuntime[];
+                agentsRef.current = nextAgents;
+                return nextAgents;
             });
             frameRef.current = requestAnimationFrame(tick);
         };
@@ -169,7 +181,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             frameRef.current = null;
             lastTimestampRef.current = null;
         };
-    }, [active, anyWalking, agents, doorRuntimes]);
+    }, [active, anyWalking]);
 
     useEffect(() => {
         if (!destinationsForFilter.some(destination => destination.id === destinationId)) {
@@ -249,7 +261,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const route = preview?.result ?? selectedAgent?.route ?? null;
 
     const controls = (
-        <section className="floor1-candidate-controls" aria-label="Candidate navigation review controls">
+        <section className="floor1-candidate-controls" aria-label="Candidate navigation review controls" onWheel={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()} onPointerMove={event => event.stopPropagation()}>
                 <h2>Candidate navigation</h2>
                 <p role="status" aria-live="polite">{selectedRouteLabel(preview)}</p>
                 <label>
