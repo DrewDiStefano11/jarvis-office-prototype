@@ -31,6 +31,11 @@ const forbiddenMarkers = [
   'ROOM_MAIN_CONNECTING_WALKWAY',
   'POSITION_117',
   'width: clamp(320px, 34vw, 480px)',
+  'destination_access_restricted',
+  'approachPositionId',
+  'markerPoint',
+  'requires a priority review agent',
+  'Computer 022',
 ];
 const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
 const matches = [];

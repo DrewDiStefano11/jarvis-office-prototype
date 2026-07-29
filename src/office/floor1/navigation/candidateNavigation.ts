@@ -27,6 +27,19 @@ export type CandidateDestination = Readonly<{
     roomIds: readonly string[];
     roomName: string;
     accessTier?: 'standard' | 'priority';
+    markerPoint?: Point;
+    approachPositionId?: string;
+}>;
+
+export type CandidateRouteAgentContext = Readonly<{
+    id: string;
+    accessTier: 'standard' | 'priority';
+}>;
+
+export type CandidateRouteRequest = Readonly<{
+    start: Point;
+    destinationId: string;
+    agent: CandidateRouteAgentContext;
 }>;
 
 export type CandidateDoorNode = Readonly<{
@@ -287,9 +300,6 @@ function roomMembershipsForPoint(rooms: readonly CandidateRoom[], value: Point):
     return nearest ? [nearest] : [{ id: 'candidate-zone-unresolved', name: 'Unresolved candidate zone', polygon: [], center: value }];
 }
 
-function primaryRoom(rooms: readonly CandidateRoom[], value: Point): CandidateRoom {
-    return roomMembershipsForPoint(rooms, value)[0];
-}
 
 function membershipIds(rooms: readonly CandidateRoom[], value: Point): readonly string[] {
     return roomMembershipsForPoint(rooms, value).map(room => room.id);
@@ -374,13 +384,18 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     }).filter(item => bounded(item.point));
 
     const selectedPositions: typeof positions = [];
-    for (const tier of ['priority', 'standard'] as const) {
-        for (const item of positions.filter(position => position.tier === tier).sort((a, b) => a.id.localeCompare(b.id))) {
-            if (selectedPositions.length >= 40) break;
-            if (selectedPositions.every(existing => distance(existing.point, item.point) >= 38)) selectedPositions.push(item);
-        }
+    for (const item of positions.filter(position => position.tier === 'priority').sort((a, b) => a.id.localeCompare(b.id))) {
+        if (selectedPositions.length >= 4) break;
+        if (selectedPositions.every(existing => distance(existing.point, item.point) >= 38)) selectedPositions.push(item);
     }
-    selectedPositions.sort((a, b) => a.id.localeCompare(b.id));
+    for (const item of positions.filter(position => position.tier === 'standard').sort((a, b) => a.id.localeCompare(b.id))) {
+        if (selectedPositions.length >= 32) break;
+        if (selectedPositions.every(existing => distance(existing.point, item.point) >= 38)) selectedPositions.push(item);
+    }
+    for (const item of positions.filter(position => position.tier === 'priority').sort((a, b) => a.id.localeCompare(b.id))) {
+        if (selectedPositions.length >= 40) break;
+        if (!selectedPositions.includes(item) && selectedPositions.every(existing => distance(existing.point, item.point) >= 38)) selectedPositions.push(item);
+    }
     const agents = selectedPositions.map((item, index): CandidateAgentFixture => ({
         id: `floor1-review-agent-${String(index + 1).padStart(2, '0')}`,
         label: `Review agent ${String(index + 1).padStart(2, '0')}`,
@@ -399,10 +414,25 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
         const item = record(value, `computer[${index}]`);
         const native = nativePathsFromRecord(item, `computer[${index}]`)[0];
         if (!native) return null;
-        const candidatePoint = centroid(native.points);
-        const memberships = roomMembershipsForPoint(rooms, candidatePoint);
-        const room = memberships[0];
-        return { id: `computer:${text(item.id, `COMPUTER_${index + 1}`)}`, label: `Computer ${String(index + 1).padStart(3, '0')}`, kind: 'computer', point: candidatePoint, roomId: room.id, roomIds: memberships.map(itemRoom => itemRoom.id), roomName: room.name };
+        const markerPoint = centroid(native.points);
+        const memberships = roomMembershipsForPoint(rooms, markerPoint);
+        const membershipSet = new Set(memberships.map(itemRoom => itemRoom.id));
+        const approach = positions
+            .filter(position => position.roomIds.some(roomId => membershipSet.has(roomId)))
+            .sort((a, b) => distance(a.point, markerPoint) - distance(b.point, markerPoint) || a.id.localeCompare(b.id))[0];
+        if (!approach) return null;
+        return {
+            id: `computer:${text(item.id, `COMPUTER_${index + 1}`)}`,
+            label: `Computer ${String(index + 1).padStart(3, '0')}`,
+            kind: 'computer',
+            point: approach.point,
+            roomId: approach.room.id,
+            roomIds: approach.roomIds,
+            roomName: approach.room.name,
+            accessTier: approach.tier,
+            markerPoint,
+            approachPositionId: approach.id,
+        };
     }).filter((item): item is CandidateDestination => item !== null && bounded(item.point));
     const roomDestinations = rooms.map((room): CandidateDestination => ({ id: `room:${room.id}`, label: room.name, kind: 'room', point: room.center, roomId: room.id, roomIds: [room.id], roomName: room.name }));
     const interactiveDestinations = array(interactiveData.interactiveObjects, 'interactiveObjects').map((value, index): CandidateDestination => {
@@ -599,78 +629,66 @@ function buildTopology(graph: CandidateNavigationGraph) {
     return { adjacency, denied };
 }
 
-function findDoorPath(graph: CandidateNavigationGraph, startRoomIds: readonly string[], destRoomIds: readonly string[]) {
+function findDoorPaths(graph: CandidateNavigationGraph, startRoomIds: readonly string[], destRoomIds: readonly string[]) {
     const { adjacency, denied } = buildTopology(graph);
     const destSet = new Set(destRoomIds);
-    const queue: Array<{ roomId: string; path: CandidateDoorNode[]; nodes: string[] }> = startRoomIds.map(roomId => ({ roomId, path: [], nodes: [roomId] }));
-    const visited = new Set(startRoomIds);
+    const queue: Array<{ roomId: string; path: CandidateDoorNode[]; nodes: string[] }> = startRoomIds
+        .slice()
+        .sort((a, b) => a.localeCompare(b))
+        .map(roomId => ({ roomId, path: [], nodes: [roomId] }));
+    const paths: Array<{ path: CandidateDoorNode[]; nodes: string[] }> = [];
     let expanded = 0;
-    while (queue.length > 0 && expanded < MAX_EXPANDED_NODES) {
+    while (queue.length > 0 && expanded < MAX_EXPANDED_NODES && paths.length < 32) {
         const current = queue.shift();
         if (!current) break;
         expanded += 1;
-        if (destSet.has(current.roomId)) return { path: current.path, nodes: current.nodes, expanded, denied };
+        if (destSet.has(current.roomId)) {
+            paths.push({ path: current.path, nodes: current.nodes });
+            continue;
+        }
         for (const edge of adjacency.get(current.roomId) ?? []) {
-            if (visited.has(edge.to)) continue;
-            visited.add(edge.to);
+            if (current.nodes.includes(edge.to)) continue;
             queue.push({ roomId: edge.to, path: [...current.path, edge.door], nodes: [...current.nodes, edge.to] });
         }
+        queue.sort((a, b) => a.path.map(door => door.id).join(',').localeCompare(b.path.map(door => door.id).join(',')) || a.roomId.localeCompare(b.roomId));
     }
-    return { path: null, nodes: [] as string[], expanded, denied };
+    return { paths, expanded, denied };
 }
 
 function roomName(graph: CandidateNavigationGraph, roomId: string): string {
     return graph.rooms.find(room => room.id === roomId)?.name ?? roomId.replace(/^zone:/, '');
 }
 
-export function planCandidateRoute(graph: CandidateNavigationGraph, start: Point, destinationId: string): CandidateRouteResult {
-    const startValidation = validatePoint(graph, start, 'Route start');
-    if (startValidation) return startValidation;
-    const destination = destinationById(graph, destinationId);
-    if (!destination) return routeFailure('malformed', 'Destination could not be resolved to a candidate review point.', 'destination');
-    const destinationValidation = validatePoint(graph, destination.point, 'Route destination');
-    if (destinationValidation) return destinationValidation;
-
-    const startRooms = roomMembershipsForPoint(graph.rooms, start);
-    const startRoomIds = startRooms.map(room => room.id);
-    const destRoomIds = destination.roomIds.length > 0 ? destination.roomIds : membershipIds(graph.rooms, destination.point);
-    const destRoom = graph.rooms.find(room => room.id === destination.roomId) ?? graph.rooms.find(room => room.id === destRoomIds[0]) ?? primaryRoom(graph.rooms, destination.point);
+function routeForDoorPath(
+    graph: CandidateNavigationGraph,
+    start: Point,
+    destination: CandidateDestination,
+    startRoomIds: readonly string[],
+    destRoomIds: readonly string[],
+    doorPath: readonly CandidateDoorNode[],
+    expandedNodeCount: number,
+): CandidateRouteResult {
     const crossedDoorIds: string[] = [];
     const pointsOut: Point[] = [start];
     const nodeSequence = [`point:start`, ...startRoomIds];
     const startWalk = nearestWalkPoint(graph, start, startRoomIds);
     if (startWalk && distance(startWalk, start) > 1) pointsOut.push(startWalk);
-
-    const doorSearch = findDoorPath(graph, startRoomIds, destRoomIds);
-    const overlappingMembership = startRoomIds.some(roomId => destRoomIds.includes(roomId));
-    if (!overlappingMembership) {
-        if (!doorSearch.path) {
-            const relevantDenied = doorSearch.denied.find(door => door.zoneIds.some(roomId => startRoomIds.includes(roomId)) || door.zoneIds.some(roomId => destRoomIds.includes(roomId)));
-            if (relevantDenied) {
-                const outcome = accessOutcome(relevantDenied);
-                return routeFailure(outcome === 'restricted' ? 'restricted' : 'blocked', `${relevantDenied.id} is ${outcome}; candidate search continued but no allowed alternate route reached ${roomName(graph, destRoomIds[0] ?? destRoom.id)}.`, outcome, doorSearch.expanded, [relevantDenied.id]);
-            }
-            return routeFailure('unreachable', `No allowed candidate door path connects ${roomName(graph, startRoomIds[0] ?? 'unresolved')} to ${roomName(graph, destRoomIds[0] ?? destRoom.id)}.`, 'disconnected', doorSearch.expanded);
+    for (const door of doorPath) {
+        if (door.apertureRadius <= AGENT_FOOTPRINT_RADIUS) {
+            return routeFailure('blocked', `${door.id} doorway aperture cannot fit the candidate agent footprint.`, 'collision', expandedNodeCount, [door.id]);
         }
-        for (const door of doorSearch.path) {
-            if (door.apertureRadius <= AGENT_FOOTPRINT_RADIUS) {
-                return routeFailure('blocked', `${door.id} doorway aperture cannot fit the candidate agent footprint.`, 'collision', doorSearch.expanded, [door.id]);
-            }
-            pointsOut.push(door.point);
-            crossedDoorIds.push(door.id);
-            nodeSequence.push(`door:${door.id}`);
-            if (pointsOut.length > MAX_ROUTE_POINTS) return routeFailure('malformed', 'Route exceeded the candidate route point limit.', 'limits', doorSearch.expanded, crossedDoorIds);
-        }
+        pointsOut.push(door.point);
+        crossedDoorIds.push(door.id);
+        nodeSequence.push(`door:${door.id}`);
+        if (pointsOut.length > MAX_ROUTE_POINTS) return routeFailure('malformed', 'Route exceeded the candidate route point limit.', 'limits', expandedNodeCount, crossedDoorIds);
     }
-
     const destWalk = nearestWalkPoint(graph, destination.point, destRoomIds);
     if (destWalk && distance(destWalk, destination.point) > 1) pointsOut.push(destWalk);
     pointsOut.push(destination.point);
     nodeSequence.push(...destRoomIds, `destination:${destination.id}`);
-
     const compact = pointsOut.filter((item, index, all) => index === 0 || distance(item, all[index - 1]) > 0.001);
     const segmentFailure = validateCandidateRouteSegments(graph, compact, crossedDoorIds);
-    if (segmentFailure) return { ...segmentFailure, expandedNodeCount: Math.max(segmentFailure.expandedNodeCount, doorSearch.expanded) };
+    if (segmentFailure) return { ...segmentFailure, expandedNodeCount: Math.max(segmentFailure.expandedNodeCount, expandedNodeCount), crossedDoorIds };
     const length = routeLength(compact);
     return {
         status: 'valid',
@@ -680,8 +698,44 @@ export function planCandidateRoute(graph: CandidateNavigationGraph, start: Point
         nodeSequence,
         cost: Math.round(length),
         length: Math.round(length),
-        expandedNodeCount: doorSearch.expanded,
+        expandedNodeCount,
     };
+}
+
+export function planCandidateRoute(graph: CandidateNavigationGraph, request: CandidateRouteRequest): CandidateRouteResult {
+    const { start, destinationId } = request;
+    const agent = request.agent;
+    const startValidation = validatePoint(graph, start, 'Route start');
+    if (startValidation) return startValidation;
+    const destination = destinationById(graph, destinationId);
+    if (!destination) return routeFailure('malformed', 'Destination could not be resolved to a candidate review point.', 'destination');
+    if (destination.accessTier === 'priority' && (!agent || agent.accessTier !== 'priority')) {
+        return routeFailure('restricted', `Destination ${destination.label} requires a priority review agent.`, 'destination_access_restricted');
+    }
+    const destinationValidation = validatePoint(graph, destination.point, 'Route destination');
+    if (destinationValidation) return destinationValidation;
+
+    const startRoomIds = membershipIds(graph.rooms, start);
+    const destRoomIds = destination.roomIds.length > 0 ? destination.roomIds : membershipIds(graph.rooms, destination.point);
+    const overlappingMembership = startRoomIds.some(roomId => destRoomIds.includes(roomId));
+    const doorSearch = overlappingMembership
+        ? { paths: [{ path: [] as CandidateDoorNode[], nodes: startRoomIds.filter(roomId => destRoomIds.includes(roomId)) }], expanded: 1, denied: [] as CandidateDoorNode[] }
+        : findDoorPaths(graph, startRoomIds, destRoomIds);
+    if (doorSearch.paths.length === 0) {
+        const relevantDenied = doorSearch.denied.find(door => door.zoneIds.some(roomId => startRoomIds.includes(roomId)) || door.zoneIds.some(roomId => destRoomIds.includes(roomId)));
+        if (relevantDenied) {
+            const outcome = accessOutcome(relevantDenied);
+            return routeFailure(outcome === 'restricted' ? 'restricted' : 'blocked', `${relevantDenied.id} is ${outcome}; candidate search continued but no allowed alternate route reached ${roomName(graph, destRoomIds[0] ?? 'unresolved')}.`, outcome, doorSearch.expanded, [relevantDenied.id]);
+        }
+        return routeFailure('unreachable', `No allowed candidate door path connects ${roomName(graph, startRoomIds[0] ?? 'unresolved')} to ${roomName(graph, destRoomIds[0] ?? 'unresolved')}.`, 'disconnected', doorSearch.expanded);
+    }
+    let firstFailure: CandidateRouteResult | null = null;
+    for (const candidate of doorSearch.paths) {
+        const result = routeForDoorPath(graph, start, destination, startRoomIds, destRoomIds, candidate.path, doorSearch.expanded);
+        if (result.status === 'valid') return result;
+        if (!firstFailure) firstFailure = result;
+    }
+    return firstFailure ?? routeFailure('unreachable', 'No geometrically valid candidate door path reached the destination.', 'disconnected', doorSearch.expanded);
 }
 
 export function interpolateRoute(pointsIn: readonly Point[], distanceAlongRoute: number): Point {

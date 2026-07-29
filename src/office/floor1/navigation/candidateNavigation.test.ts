@@ -7,6 +7,7 @@ import interactiveObjects from '../../data/floor1/provisional/interactive-object
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
+import type { CandidateNavigationGraph } from './candidateNavigation';
 import {
     buildCandidateNavigationGraph,
     interpolateRoute,
@@ -16,6 +17,14 @@ import {
 } from './candidateNavigation';
 
 const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths });
+
+const testRoute = (
+    graphValue: CandidateNavigationGraph,
+    start: { x: number; y: number },
+    destinationId: string,
+    accessTier: 'standard' | 'priority' = 'priority',
+) => planCandidateRoute(graphValue, { start, destinationId, agent: { id: `test-${accessTier}`, accessTier } });
+
 
 describe('candidate Floor 1 navigation graph', () => {
     it('initializes deterministic provisional review agents without approving candidate data', () => {
@@ -34,22 +43,22 @@ describe('candidate Floor 1 navigation graph', () => {
     });
 
     it('fails closed for malformed starts and unresolved destinations', () => {
-        expect(planCandidateRoute(graph, { x: Number.NaN, y: 0 }, graph.destinations[0].id).status).toBe('malformed');
-        expect(planCandidateRoute(graph, graph.agents[0].point, 'missing-destination').status).toBe('malformed');
+        expect(testRoute(graph, { x: Number.NaN, y: 0 }, graph.destinations[0].id).status).toBe('malformed');
+        expect(testRoute(graph, graph.agents[0].point, 'missing-destination').status).toBe('malformed');
     });
 
     it('produces deterministic route results for identical queries', () => {
         const agent = graph.agents[0];
         const destination = graph.destinations.find(item => item.kind === 'position' && item.roomId === agent.roomId && item.id !== `position:${agent.positionId}`) ?? graph.destinations[0];
-        const first = planCandidateRoute(graph, agent.point, destination.id);
-        const second = planCandidateRoute(graph, agent.point, destination.id);
+        const first = testRoute(graph, agent.point, destination.id);
+        const second = testRoute(graph, agent.point, destination.id);
         expect(second).toEqual(first);
     });
 
     it('validates same-room and priority-position route attempts without crossing approval boundaries', () => {
         const agent = graph.agents[0];
         const destination = graph.destinations.find(item => item.kind === 'position' && item.roomId === agent.roomId && item.id !== `position:${agent.positionId}`) ?? graph.destinations[0];
-        const result = planCandidateRoute(graph, agent.point, destination.id);
+        const result = testRoute(graph, agent.point, destination.id);
         expect(['valid', 'blocked', 'unreachable']).toContain(result.status);
         expect(result.reason).not.toMatch(/approved/i);
     });
@@ -59,7 +68,7 @@ describe('candidate Floor 1 navigation graph', () => {
         const restrictedRoomDestination = graph.destinations.find(destination => destination.roomName.includes('Security'))
             ?? graph.destinations.find(destination => destination.kind === 'room')
             ?? graph.destinations[0];
-        const result = planCandidateRoute(graph, agent.point, restrictedRoomDestination.id);
+        const result = testRoute(graph, agent.point, restrictedRoomDestination.id);
         expect(['valid', 'blocked', 'restricted', 'unreachable']).toContain(result.status);
         if (result.status !== 'valid') expect(result.points).toHaveLength(0);
     });

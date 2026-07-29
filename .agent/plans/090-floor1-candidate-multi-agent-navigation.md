@@ -544,3 +544,28 @@ Browser QA matrix:
 
 Rollback:
 - Revert this plan update plus changes in `candidateNavigation.ts`, candidate navigation tests, `Floor1CandidateSimulation.test.tsx`, `floor1-candidate-simulation.css`, and production-bundle marker updates. No production data or approval artifact is involved.
+
+## Final Review Findings Fix Update — 2026-07-29
+
+Status: final-review-findings-implemented-local-focused-validation
+
+Confirmed latest findings on `cee6563599ae8e9e00e0500a7ec4c58568aaeaef`:
+1. Priority position access was not enforced inside the planner because route calls carried only a point/destination ID.
+2. The planner stopped after the first access-allowed door chain even if geometry validation rejected that chain.
+3. Computer destinations used screen-marker centroids instead of safe approach anchors.
+
+Selected implementation:
+- `planCandidateRoute` now accepts a typed request object with `start`, `destinationId`, and required authoritative `agent` context (`id`, `accessTier`). Priority destinations fail closed with `destination_access_restricted` unless the agent context is priority. Missing runtime agent context for priority destinations also fails closed.
+- The simulation passes selected-agent context during preview and revalidates by calling the planner again immediately before movement begins.
+- Door topology search now deterministically enumerates bounded access-allowed door chains and validates each candidate route until one passes geometry, footprint, connector, walk-support, and aperture checks. It preserves blocked/restricted/manual/malformed door exclusion.
+- Computer destinations preserve ID/label/kind and source marker point, but their navigation `point` is now a deterministic same-zone candidate position approach anchor with `approachPositionId` metadata. The marker centroid remains available as `markerPoint` for debug/review identity but is not used as the movement endpoint.
+- Agent fixture selection now includes both priority and standard agents while preserving the historical `floor1-review-agent-04` / `POSITION_118` regression identity.
+
+Regression tests:
+- Standard agent denied priority destination; priority agent may plan to priority; standard agent may plan to standard; missing context fails closed; deterministic result.
+- Alternate door chain fixture where the lexicographically first allowed chain is collision-blocked and the later chain succeeds; all-alternates-blocked remains deterministic.
+- Real computers 022–025 retain identities, use approach anchors instead of marker centroids, avoid endpoint collision failure, and remain deterministic.
+- Component tests continue to verify stale previews cannot enable movement.
+
+Browser QA:
+- Still unavailable in this sandbox because no browser executable/tooling is installed.

@@ -11,6 +11,14 @@ import { buildCandidateNavigationGraph, CandidateNavigationGraph, planCandidateR
 
 const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths });
 
+const testRoute = (
+    graphValue: CandidateNavigationGraph,
+    start: { x: number; y: number },
+    destinationId: string,
+    accessTier: 'standard' | 'priority' = 'priority',
+) => planCandidateRoute(graphValue, { start, destinationId, agent: { id: `test-${accessTier}`, accessTier } });
+
+
 describe('Codex review collision and access regressions', () => {
     it('rejects the real agent-04 routes to computers 022 through 025 instead of bypassing object collisions', () => {
         const agent = graph.agents.find(item => item.id === 'floor1-review-agent-04');
@@ -18,7 +26,7 @@ describe('Codex review collision and access regressions', () => {
         for (const computerNumber of ['022', '023', '024', '025']) {
             const destination = graph.destinations.find(item => item.label === `Computer ${computerNumber}`);
             expect(destination?.id).toBe(`computer:computers-${computerNumber}`);
-            const route = planCandidateRoute(graph, agent!.point, destination!.id);
+            const route = testRoute(graph, agent!.point, destination!.id);
             expect(route.status).toBe('blocked');
             expect(route.failureCategory).toBe('collision');
             expect(route.reason).toContain('object collision');
@@ -68,7 +76,7 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
 
 describe('door access is applied during search', () => {
     it('finds a longer allowed alternate around a blocked shortest door', () => {
-        const route = planCandidateRoute(alternateGraph('blocked'), { x: 40, y: 40 }, 'target');
+        const route = testRoute(alternateGraph('blocked'), { x: 40, y: 40 }, 'target');
         expect(route.status).toBe('valid');
         expect(route.crossedDoorIds).toEqual(['D02', 'D03']);
         expect(route.nodeSequence).toEqual(['point:start', 'A', 'door:D02', 'door:D03', 'B', 'destination:target']);
@@ -76,17 +84,17 @@ describe('door access is applied during search', () => {
     });
 
     it('finds an alternate around a restricted deterministic first door and is stable', () => {
-        const first = planCandidateRoute(alternateGraph('restricted'), { x: 40, y: 40 }, 'target');
+        const first = testRoute(alternateGraph('restricted'), { x: 40, y: 40 }, 'target');
         expect(first.status).toBe('valid');
         expect(first.crossedDoorIds).toEqual(['D02', 'D03']);
-        expect(planCandidateRoute(alternateGraph('restricted'), { x: 40, y: 40 }, 'target')).toEqual(first);
+        expect(testRoute(alternateGraph('restricted'), { x: 40, y: 40 }, 'target')).toEqual(first);
     });
 
     it('reports blocked when all possible routes are non-traversable', () => {
         const blocked = alternateGraph('blocked') as unknown as { doors: Array<{ accessMode: string }> };
         blocked.doors[1].accessMode = 'blocked';
         blocked.doors[2].accessMode = 'restricted';
-        const route = planCandidateRoute(blocked as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        const route = testRoute(blocked as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
         expect(route.status).toBe('blocked');
         expect(route.failureCategory).toBe('blocked');
     });
@@ -128,7 +136,7 @@ describe('fresh Codex review geometry regressions', () => {
     it('rejects routes that leave positive walk-path geometry', () => {
         const sparse = alternateGraph('blocked') as unknown as { walkSegments: Array<{ id: string; a: { x: number; y: number }; b: { x: number; y: number }; pathId: string }> };
         sparse.walkSegments = [{ id: 'walk:far', a: { x: 0, y: 500 }, b: { x: 100, y: 500 }, pathId: 'far' }];
-        const route = planCandidateRoute(sparse as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        const route = testRoute(sparse as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
         expect(route.status).toBe('blocked');
         expect(route.failureCategory).toBe('route_leaves_walkable_geometry');
     });
@@ -136,7 +144,7 @@ describe('fresh Codex review geometry regressions', () => {
     it('uses actual wall contact points for doorway aperture validation', () => {
         const graphWithWall = alternateGraph('open') as unknown as { colliders: Array<{ id: string; kind: 'wall'; points: Array<{ x: number; y: number }>; closed: boolean; thickness: number }> };
         graphWithWall.colliders = [{ id: 'wall:long-edge', kind: 'wall', points: [{ x: 100, y: 0 }, { x: 100, y: 300 }], closed: false, thickness: 8 }];
-        const valid = planCandidateRoute(graphWithWall as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        const valid = testRoute(graphWithWall as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
         expect(valid.status).toBe('valid');
         const besideDoor = validateCandidateRouteSegments(graphWithWall as unknown as CandidateNavigationGraph, [{ x: 40, y: 220 }, { x: 160, y: 220 }], ['D01']);
         expect(besideDoor?.status).toBe('blocked');
@@ -193,10 +201,10 @@ describe('current merge-blocker regressions', () => {
         const agent = graph.agents.find(item => item.positionId === 'POSITION_117');
         expect(agent?.roomIds).toEqual(['ROOM_CENTRAL_NEXUS', 'ROOM_MAIN_CONNECTING_WALKWAY']);
         const destination = graph.destinations.find(item => item.id === 'position:POSITION_034');
-        const route = planCandidateRoute(graph, agent!.point, destination!.id);
+        const route = testRoute(graph, agent!.point, destination!.id);
         expect(route.status).toBe('valid');
         expect(route.crossedDoorIds).not.toContain('D38');
-        expect(planCandidateRoute(graph, agent!.point, destination!.id)).toEqual(route);
+        expect(testRoute(graph, agent!.point, destination!.id)).toEqual(route);
     });
 
     it('uses overlapping membership to choose an allowed edge instead of a restricted edge', () => {
@@ -219,7 +227,7 @@ describe('current merge-blocker regressions', () => {
             nodeCount: 3,
             edgeCount: 2,
         };
-        const route = planCandidateRoute(overlapGraph, { x: 100, y: 100 }, 'target');
+        const route = testRoute(overlapGraph, { x: 100, y: 100 }, 'target');
         expect(route.status).toBe('valid');
         expect(route.crossedDoorIds).toEqual(['D10']);
         expect(route.crossedDoorIds).not.toContain('D38');
@@ -242,17 +250,79 @@ describe('current merge-blocker regressions', () => {
     it('rejects start and destination points whose footprint overlaps a collider', () => {
         const base = walkSupportGraph() as unknown as { colliders: CandidateNavigationGraph['colliders'] };
         base.colliders = [{ id: 'object:start-footprint', kind: 'object', points: [{ x: 30, y: 128 }, { x: 70, y: 128 }], closed: false, thickness: 8 }];
-        expect(planCandidateRoute(base as unknown as CandidateNavigationGraph, { x: 50, y: 100 }, 'target').reason).toContain('footprint overlaps');
+        expect(testRoute(base as unknown as CandidateNavigationGraph, { x: 50, y: 100 }, 'target').reason).toContain('footprint overlaps');
         const destinationGraph = walkSupportGraph() as unknown as { colliders: CandidateNavigationGraph['colliders'] };
         destinationGraph.colliders = [{ id: 'object:destination-footprint', kind: 'object', points: [{ x: 260, y: 128 }, { x: 300, y: 128 }], closed: false, thickness: 8 }];
-        expect(planCandidateRoute(destinationGraph as unknown as CandidateNavigationGraph, { x: 80, y: 100 }, 'target').reason).toContain('footprint overlaps');
+        expect(testRoute(destinationGraph as unknown as CandidateNavigationGraph, { x: 80, y: 100 }, 'target').reason).toContain('footprint overlaps');
     });
 
     it('requires doorway usable aperture after subtracting footprint clearance', () => {
         const narrow = alternateGraph('open') as unknown as { doors: Array<{ apertureRadius: number }> };
         narrow.doors.forEach(door => { door.apertureRadius = 30; });
-        const route = planCandidateRoute(narrow as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        const route = testRoute(narrow as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
         expect(route.status).toBe('blocked');
         expect(route.failureCategory).toBe('collision');
+    });
+});
+
+describe('final review access, alternate geometry, and computer approach regressions', () => {
+    it('enforces destination access tier in the planner for standard and priority agents', () => {
+        const standardAgent = graph.agents.find(agent => agent.accessTier === 'standard');
+        const priorityAgent = graph.agents.find(agent => agent.accessTier === 'priority');
+        const priorityDestination = graph.destinations.find(destination => destination.kind === 'position' && destination.accessTier === 'priority');
+        const standardDestination = graph.destinations.find(destination => destination.kind === 'position' && destination.accessTier === 'standard' && destination.roomIds.some(roomId => standardAgent?.roomIds.includes(roomId)));
+        expect(standardAgent).toBeTruthy();
+        expect(priorityAgent).toBeTruthy();
+        expect(priorityDestination).toBeTruthy();
+        expect(standardDestination).toBeTruthy();
+
+        const denied = testRoute(graph, standardAgent!.point, priorityDestination!.id, 'standard');
+        expect(denied.status).toBe('restricted');
+        expect(denied.failureCategory).toBe('destination_access_restricted');
+        expect(denied.points).toHaveLength(0);
+        expect(testRoute(graph, priorityAgent!.point, priorityDestination!.id, 'priority').failureCategory).not.toBe('destination_access_restricted');
+        expect(testRoute(graph, standardAgent!.point, standardDestination!.id, 'standard').status).toBe('valid');
+        expect(planCandidateRoute(graph, { start: standardAgent!.point, destinationId: priorityDestination!.id, agent: undefined as never }).failureCategory).toBe('destination_access_restricted');
+        expect(testRoute(graph, standardAgent!.point, priorityDestination!.id, 'standard')).toEqual(denied);
+    });
+
+    it('searches a later geometrically valid allowed door chain after the first chain fails collision validation', () => {
+        const graphWithBlockedDirect = alternateGraph('open') as unknown as { colliders: CandidateNavigationGraph['colliders'] };
+        graphWithBlockedDirect.colliders = [{ id: 'object:first-chain-blocker', kind: 'object', points: [{ x: 86, y: 22 }, { x: 108, y: 22 }, { x: 108, y: 40 }, { x: 86, y: 40 }], closed: true, thickness: 8 }];
+        const route = testRoute(graphWithBlockedDirect as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('valid');
+        expect(route.crossedDoorIds).toEqual(['D02', 'D03']);
+        expect(route.nodeSequence).toEqual(['point:start', 'A', 'door:D02', 'door:D03', 'B', 'destination:target']);
+        expect(testRoute(graphWithBlockedDirect as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target')).toEqual(route);
+    });
+
+    it('returns deterministic geometry failure when all allowed alternate door chains fail', () => {
+        const blocked = alternateGraph('open') as unknown as { colliders: CandidateNavigationGraph['colliders'] };
+        blocked.colliders = [
+            { id: 'object:first-chain-blocker', kind: 'object', points: [{ x: 86, y: 22 }, { x: 108, y: 22 }, { x: 108, y: 40 }, { x: 86, y: 40 }], closed: true, thickness: 8 },
+            { id: 'object:second-chain-blocker', kind: 'object', points: [{ x: 42, y: 70 }, { x: 62, y: 70 }, { x: 62, y: 90 }, { x: 42, y: 90 }], closed: true, thickness: 8 },
+        ];
+        const route = testRoute(blocked as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('blocked');
+        expect(route.failureCategory).toBe('collision');
+        expect(route.reason).toContain('second-chain-blocker');
+    });
+
+    it('routes real computer destinations to deterministic approach anchors instead of marker centroids', () => {
+        for (const computerNumber of ['022', '023', '024', '025']) {
+            const destination = graph.destinations.find(item => item.id === `computer:computers-${computerNumber}`);
+            expect(destination?.label).toBe(`Computer ${computerNumber}`);
+            expect(destination?.markerPoint).toBeTruthy();
+            expect(destination?.approachPositionId).toMatch(/^POSITION_/);
+            expect(destination?.point).not.toEqual(destination?.markerPoint);
+            const route = testRoute(graph, graph.agents.find(agent => agent.accessTier === 'priority')!.point, destination!.id, 'priority');
+            expect(route.failureCategory).not.toBe('collision');
+            expect(testRoute(graph, graph.agents.find(agent => agent.accessTier === 'priority')!.point, destination!.id, 'priority')).toEqual(route);
+        }
+    });
+
+    it('uses deterministic ID tie-breaking for equal-distance computer approach anchors', () => {
+        const destination = graph.destinations.find(item => item.id === 'computer:computers-022');
+        expect(destination?.approachPositionId).toBe('POSITION_112');
     });
 });

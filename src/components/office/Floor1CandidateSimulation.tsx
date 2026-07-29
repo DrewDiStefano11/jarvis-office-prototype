@@ -169,7 +169,11 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
 
     const previewRoute = () => {
         if (!selectedAgent || !destinationId) return;
-        const result = planCandidateRoute(graph, selectedAgent.point, destinationId);
+        const result = planCandidateRoute(graph, {
+            start: selectedAgent.point,
+            destinationId,
+            agent: { id: selectedAgent.fixture.id, accessTier: selectedAgent.fixture.accessTier },
+        });
         setPreview({
             agentId: selectedAgent.fixture.id,
             destinationId,
@@ -186,7 +190,15 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
 
     const startMovement = () => {
         if (!selectedAgent || !beginEnabled || !preview) return;
-        const route = preview.result;
+        const route = planCandidateRoute(graph, {
+            start: selectedAgent.point,
+            destinationId,
+            agent: { id: selectedAgent.fixture.id, accessTier: selectedAgent.fixture.accessTier },
+        });
+        if (route.status !== 'valid') {
+            setPreview({ ...preview, result: route });
+            return;
+        }
         setAgents(previous => previous.map(agent => {
             if (agent.fixture.id !== selectedAgent.fixture.id) return agent;
             if (agent.revision !== preview.agentRevision || distance(agent.point, preview.startPoint) > PREVIEW_START_TOLERANCE) return agent;
