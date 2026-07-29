@@ -1,0 +1,21 @@
+.sprite-player {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.sprite-player__frame {
+    position: absolute;
+    inset: 0;
+    background-repeat: no-repeat;
+}
+
+.sprite-player__loading,
+.sprite-player--missing {
+    display: grid;
+    place-items: center;
+    color: #5bd3ff;
+    font-size: 64px;
+}

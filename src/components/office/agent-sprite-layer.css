@@ -1,0 +1,59 @@
+.agent-sprite-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 12;
+}
+
+.demo-agent {
+    position: absolute;
+    width: 380px;
+    height: 410px;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    pointer-events: auto;
+    transform: translate(-50%, -94%);
+}
+
+.demo-agent:hover {
+    background: transparent;
+}
+
+.demo-agent::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 7px;
+    width: 116px;
+    height: 38px;
+    transform: translateX(-50%);
+    border: 7px solid rgba(101, 199, 255, .35);
+    border-radius: 50%;
+}
+
+.demo-agent--selected::after {
+    border-color: #65c7ff;
+    box-shadow: 0 0 24px #65c7ff;
+}
+
+.demo-agent .sprite-player {
+    left: 50%;
+    top: 94%;
+}
+
+.demo-agent__label {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    min-width: max-content;
+    padding: 8px 12px;
+    color: #f5fbff;
+    background: rgba(5, 11, 16, .9);
+    border: 2px solid #537389;
+    border-radius: 8px;
+    font-size: 54px;
+    font-weight: 700;
+}

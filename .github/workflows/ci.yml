@@ -37,5 +37,11 @@ jobs:
     - name: Verify Floor 1 generated artifacts
       run: npm run check:floor1-generated
 
+    - name: Verify generated sprite artifacts
+      run: npm run check:sprites-generated
+
     - name: Build
       run: npm run build
+
+    - name: Verify development surfaces are excluded
+      run: npm run check:production-bundle

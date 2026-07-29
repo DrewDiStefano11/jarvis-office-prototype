@@ -1,7 +1,30 @@
 import { OFFICE_SCHEMA_VERSION, OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../office/constants';
+import { SpriteState } from '../office/sprites/types';
 import { OfficeOverlayDocument } from '../office/types';
 import { assertValidOverlayDocument } from '../office/validation';
 export { INITIAL_AGENTS, OFFICE_LOCATIONS, WAYPOINTS } from './legacySimulationSeed';
+
+export type SpriteDemoAgent = Readonly<{
+    id: string;
+    stableAgentId: 'jarvis' | 'atlas' | 'scout' | 'archive' | 'sentinel';
+    displayName: string;
+    assetId: string;
+    state: SpriteState;
+    position: Readonly<{ x: number; y: number }>;
+    scale: number;
+}>;
+
+/**
+ * Development-only sprite review positions. These are not workstation
+ * assignments and are intentionally independent from candidate Floor 1 data.
+ */
+export const SPRITE_DEMO_AGENTS: readonly SpriteDemoAgent[] = [
+    { id: 'sprite-demo.jarvis', stableAgentId: 'jarvis', displayName: 'Jarvis', assetId: 'agent-sheet-01', state: 'idle', position: { x: 3400, y: 2550 }, scale: 2 },
+    { id: 'sprite-demo.atlas', stableAgentId: 'atlas', displayName: 'Atlas', assetId: 'agent-sheet-02', state: 'walking', position: { x: 3850, y: 2900 }, scale: 2 },
+    { id: 'sprite-demo.scout', stableAgentId: 'scout', displayName: 'Scout', assetId: 'agent-sheet-03', state: 'thinking', position: { x: 4300, y: 2550 }, scale: 2 },
+    { id: 'sprite-demo.archive', stableAgentId: 'archive', displayName: 'Archive', assetId: 'agent-sheet-04', state: 'working', position: { x: 4750, y: 2900 }, scale: 2 },
+    { id: 'sprite-demo.sentinel', stableAgentId: 'sentinel', displayName: 'Sentinel', assetId: 'agent-sheet-05', state: 'reviewing', position: { x: 5200, y: 2550 }, scale: 2 },
+];
 
 /**
  * Development-only interaction fixture. Coordinates are illustrative and are

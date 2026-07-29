@@ -39,11 +39,21 @@ This repository is the visual office prototype for the standalone Jarvis Agent E
 - `npm run lint` - Runs ESLint over `src`.
 - `npm run typecheck` - Runs the strict TypeScript compiler check.
 - `npm test` - Runs all Vitest suites once.
+- `npm run inventory:sprites` - Writes the canonical sprite source inventory.
+- `npm run generate:sprites` - Atomically generates validated runtime sprite assets and the typed manifest input.
+- `npm run check:sprites-generated` - Regenerates sprite outputs in a temporary directory and fails on drift.
 
 ## Interacting with the prototype
 1. Use the mouse wheel or trackpad to zoom around the pointer; drag to pan.
 2. Select an interaction region in the office or with the keyboard to inspect it.
 3. Enable Debug overlays to inspect layers, IDs, source coordinates, hover, and selection.
 4. Use Fit or Reset to return to the centered full-office view.
+
+Development-only sprite review:
+
+- `?visualLab=agent-sprites` opens the sprite inventory and animation laboratory.
+- `?spriteDemo=agents` overlays deterministic agent demonstrations without creating Floor 1 assignments.
+
+See [the agent sprite pipeline](docs/AGENT_SPRITE_PIPELINE.md) for source classifications, fallbacks, validation, and limitations.
 
 Use the application view switch to open the earlier Phaser agent simulation. Its React/domain state and movement controls remain available while the interactive office engine is developed.
