@@ -12,6 +12,8 @@ import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import {
     activeCandidateDoorRequestIds,
+    activeCandidateDoorStep,
+    isCandidatePausableStatus,
     advanceCandidateAgents,
     advanceCandidateDoorRuntimes,
     buildCandidateNavigationGraph,
@@ -39,6 +41,7 @@ type AgentRuntime = Readonly<{
     route: CandidateRouteResult | null;
     progress: number;
     revision: number;
+    pausedFromStatus?: 'walking' | 'waiting_for_door' | 'crossing_door' | 'canceling_clearance';
 }>;
 
 type RoutePreview = Readonly<{
@@ -155,7 +158,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
             const delta = last === null ? 0 : timestamp - last;
-            const requestingDoorIds = activeCandidateDoorRequestIds(agentsRef.current);
+            const requestingDoorIds = activeCandidateDoorRequestIds(agentsRef.current, graph.doors);
             setDoorRuntimes(previous => {
                 const nextDoorRuntimes = advanceCandidateDoorRuntimes(previous, requestingDoorIds, delta);
                 doorRuntimesRef.current = nextDoorRuntimes;
@@ -165,7 +168,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                 const currentDoorRuntimes = doorRuntimesRef.current;
                 const resumed = previous.map(agent => {
                     if (agent.status !== 'waiting_for_door' || !agent.route) return agent;
-                    const activeStep = agent.route.doorSteps.find(step => agent.progress + 34 >= step.approachDistance && agent.progress <= step.clearanceReleaseDistance);
+                    const activeStep = activeCandidateDoorStep(agent)?.step;
                     const ready = activeStep ? currentDoorRuntimes[activeStep.doorId]?.state === 'open' : false;
                     return ready ? { ...agent, status: 'walking' as const } : agent;
                 });
@@ -239,16 +242,20 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     };
 
     const pauseSelected = () => {
-        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId && agent.status === 'walking'
-            ? { ...agent, status: 'paused', revision: agent.revision + 1 }
+        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId && isCandidatePausableStatus(agent.status)
+            ? { ...agent, pausedFromStatus: agent.status as 'walking' | 'waiting_for_door' | 'crossing_door' | 'canceling_clearance', status: 'paused', revision: agent.revision + 1 }
             : agent));
         setPreview(null);
     };
 
     const resumeSelected = () => {
-        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId && agent.status === 'paused'
-            ? { ...agent, status: 'walking', revision: agent.revision + 1 }
-            : agent));
+        setAgents(previous => previous.map(agent => {
+            if (agent.fixture.id !== selectedAgentId || agent.status !== 'paused') return agent;
+            const restored = agent.pausedFromStatus === 'waiting_for_door'
+                ? (activeCandidateDoorStep(agent)?.step && doorRuntimes[activeCandidateDoorStep(agent)!.step.doorId]?.state === 'open' ? 'walking' : 'waiting_for_door')
+                : agent.pausedFromStatus === 'crossing_door' ? 'crossing_door' : 'walking';
+            return { ...agent, status: restored, pausedFromStatus: undefined, revision: agent.revision + 1 };
+        }));
     };
 
     const cancelSelected = () => {

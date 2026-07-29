@@ -20,7 +20,7 @@ const TEST_REGISTRATION = {
     offsetY: 0,
     rotationDegrees: 0,
     status: 'unverified',
-    approvalStatus: 'candidate_unverified',
+    approvalStatus: 'candidate_reviewed',
     storedCoordinateSpace: 'registered_candidate_source',
     productionApproved: false,
     provenance: { generator: 'test', generatedArtifact: 'test', sourceEvidence: ['test'] },

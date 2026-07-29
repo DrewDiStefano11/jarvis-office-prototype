@@ -63,7 +63,7 @@ export type MarkupRegistration = Readonly<{
     offsetY: number;
     rotationDegrees: 0;
     status: 'unverified' | 'review_required' | 'approved';
-    approvalStatus?: 'candidate_unverified' | 'candidate_review_required' | 'approved';
+    approvalStatus?: 'candidate_unverified' | 'candidate_review_required' | 'candidate_reviewed' | 'approved';
     storedCoordinateSpace?: 'raw_markup' | 'registered_candidate_source';
     productionApproved?: false;
     registrationLandmarks: readonly RegistrationLandmark[];
@@ -223,8 +223,10 @@ export function validateCandidateReviewRegistration(registration: MarkupRegistra
     if (shapeFailure) return shapeFailure;
     if (!registration) return 'Candidate navigation unavailable: Floor 1 markup registration is missing.';
     if (registration.productionApproved !== false) return 'Candidate navigation unavailable: Floor 1 candidate registration crossed the production boundary.';
-    if (registration.approvalStatus !== 'candidate_unverified' && registration.approvalStatus !== 'candidate_review_required') return 'Candidate navigation unavailable: Floor 1 candidate registration status is invalid.';
     if (!registration.provenance?.generator || !registration.provenance.generatedArtifact || registration.provenance.sourceEvidence.length === 0) return 'Candidate navigation unavailable: Floor 1 candidate registration provenance is missing.';
+    if (registration.approvalStatus !== 'candidate_reviewed') return 'Candidate navigation unavailable: registration review required.';
+    if (!Array.isArray(registration.registrationLandmarks) || registration.registrationLandmarks.length === 0) return 'Candidate navigation unavailable: Floor 1 candidate registration landmark evidence is missing.';
+    if (!Number.isFinite(registration.maximumResidualErrorPixels) || registration.maximumResidualErrorPixels > 8) return 'Candidate navigation unavailable: Floor 1 candidate registration residual exceeds review tolerance.';
     return null;
 }
 
@@ -1120,16 +1122,29 @@ export function interpolateRoute(pointsIn: readonly Point[], distanceAlongRoute:
     return pointsIn[pointsIn.length - 1];
 }
 
-export function activeCandidateDoorRequestIds<T extends { id?: string; status: string; route: CandidateRouteResult | null; progress: number }>(agents: readonly T[]): string[] {
+export function candidateAgentOccupiesDoor(agentPoint: Point, door: CandidateDoorNode): boolean {
+    return door.permission !== 'elevator' && distance(agentPoint, door.point) <= door.apertureRadius + AGENT_FOOTPRINT_RADIUS;
+}
+
+export function isCandidateAdvancingStatus(status: string): boolean { return status === 'walking' || status === 'crossing_door'; }
+export function isCandidatePausableStatus(status: string): boolean { return status === 'walking' || status === 'waiting_for_door' || status === 'crossing_door' || status === 'canceling_clearance'; }
+
+export function activeCandidateDoorStep<T extends { status: string; route: CandidateRouteResult | null; progress: number }>(agent: T): Readonly<{ index: number; step: CandidateDoorStep; phase: 'before_trigger' | 'approaching' | 'waiting' | 'crossing' | 'cleared' }> | null {
+    if (!agent.route) return null;
+    const index = agent.route.doorSteps.findIndex(step => agent.progress <= step.clearanceReleaseDistance);
+    if (index < 0) return null;
+    const step = agent.route.doorSteps[index]!;
+    const phase = agent.progress < step.approachDistance ? 'before_trigger' : agent.status === 'waiting_for_door' ? 'waiting' : agent.progress < step.thresholdDistance ? 'approaching' : agent.progress <= step.clearanceReleaseDistance ? 'crossing' : 'cleared';
+    return { index, step, phase };
+}
+
+export function activeCandidateDoorRequestIds<T extends { id?: string; status: string; route: CandidateRouteResult | null; progress: number; point: Point }>(agents: readonly T[], doors: readonly CandidateDoorNode[] = []): string[] {
     const ids = new Set<string>();
     for (const agent of agents) {
-        if (!agent.route || !['walking', 'waiting_for_door', 'crossing_door', 'paused'].includes(agent.status)) continue;
-        for (const step of agent.route.doorSteps) {
-            if (agent.progress + AGENT_FOOTPRINT_RADIUS >= step.approachDistance && agent.progress <= step.clearanceReleaseDistance) {
-                ids.add(step.doorId);
-                break;
-            }
-        }
+        for (const door of doors) if (candidateAgentOccupiesDoor(agent.point, door)) ids.add(door.id);
+        if (!agent.route || !['walking', 'waiting_for_door', 'crossing_door', 'paused', 'arrived', 'idle'].includes(agent.status)) continue;
+        const active = activeCandidateDoorStep(agent);
+        if (active && agent.progress + AGENT_FOOTPRINT_RADIUS >= active.step.approachDistance && agent.progress <= active.step.clearanceReleaseDistance) ids.add(active.step.doorId);
     }
     return [...ids].sort((a, b) => a.localeCompare(b));
 }
