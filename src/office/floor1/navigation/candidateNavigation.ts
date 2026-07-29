@@ -426,10 +426,7 @@ function nativePathsFromRecord(source: UnknownRecord, context: string, registrat
 }
 
 function roomMembershipsForPoint(rooms: readonly CandidateRoom[], value: Point): readonly CandidateRoom[] {
-    const containing = rooms.filter(room => pointInPolygon(value, room.polygon)).sort((a, b) => a.id.localeCompare(b.id));
-    if (containing.length > 0) return containing;
-    const nearest = [...rooms].sort((a, b) => distance(a.center, value) - distance(b.center, value) || a.id.localeCompare(b.id))[0];
-    return nearest ? [nearest] : [{ id: 'candidate-zone-unresolved', name: 'Unresolved candidate zone', polygon: [], center: value }];
+    return rooms.filter(room => pointInPolygon(value, room.polygon)).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 
@@ -517,8 +514,9 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         const candidatePoint = transformMarkupPoint(point(item.pdfAnchor, `position[${index}].pdfAnchor`), registration);
         const memberships = roomMembershipsForPoint(rooms, candidatePoint);
         const room = memberships[0];
+        if (!room) return null;
         return { id: text(item.id, `POSITION_${String(index + 1).padStart(3, '0')}`), point: candidatePoint, tier: item.accessTier === 'priority' ? 'priority' as const : 'standard' as const, room, roomIds: memberships.map(itemRoom => itemRoom.id) };
-    }).filter(item => bounded(item.point));
+    }).filter((item): item is NonNullable<typeof item> => item !== null && bounded(item.point));
 
     const selectedPositions: typeof positions = [];
     for (const item of positions.filter(position => position.tier === 'priority').sort((a, b) => a.id.localeCompare(b.id))) {
@@ -608,7 +606,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
                 if ((pointIndex === 0 || pointIndex === path.points.length - 1 || pointIndex % step === 0) && walkNodes.length < MAX_WALK_NODES) {
                     const memberships = roomMembershipsForPoint(rooms, pathPoint);
                     const room = memberships[0];
-                    walkNodes.push({ id: `walk:${path.id}:${String(pointIndex).padStart(3, '0')}`, point: pathPoint, roomId: room.id, roomIds: memberships.map(itemRoom => itemRoom.id), pathId: path.id });
+                    if (room) walkNodes.push({ id: `walk:${path.id}:${String(pointIndex).padStart(3, '0')}`, point: pathPoint, roomId: room.id, roomIds: memberships.map(itemRoom => itemRoom.id), pathId: path.id });
                 }
             });
         });
@@ -686,8 +684,14 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         const polygon = transformMarkupPoints(points(item.pdfPolygon, `interactive[${index}].pdfPolygon`), registration);
         const markerPoint = centroid(polygon);
         const memberships = roomMembershipsForPoint(rooms, markerPoint);
-        const approach = resolvePositionApproachAnchor(markerPoint, memberships.map(room => room.id));
-        const room = approach?.position.room ?? memberships[0];
+        const approach = (memberships.length > 0 ? resolvePositionApproachAnchor(markerPoint, memberships.map(room => room.id), 0) : null)
+            ?? resolvePositionApproachAnchor(markerPoint, rooms.map(room => room.id), 0)
+            ?? positions
+                .filter(position => bounded(position.point) && !colliders.some(collider => pointOverlapsColliderFootprint(position.point, collider)))
+                .sort((a, b) => (a.tier === 'standard' ? 0 : 1) - (b.tier === 'standard' ? 0 : 1) || distance(a.point, markerPoint) - distance(b.point, markerPoint) || a.id.localeCompare(b.id))
+                .map(position => ({ position, directSupport: isWalkSupported(graphForApproach, position.point), connectorSupport: true, collisionFree: true }))[0]
+            ?? null;
+        const room = approach?.position.room ?? memberships[0] ?? { id: 'candidate-zone-unresolved', name: 'Unresolved candidate zone', polygon: [], center: markerPoint };
         return {
             id: `interactive:${text(item.id, `INTERACTIVE_${index + 1}`)}`,
             label: text(item.name, `Interactive object ${index + 1}`),
@@ -980,7 +984,8 @@ function routeForDoorPath(
         if (door.apertureRadius <= AGENT_FOOTPRINT_RADIUS) {
             return routeFailure('blocked', `${door.id} doorway aperture cannot fit the candidate agent footprint.`, 'collision', expandedNodeCount, [door.id]);
         }
-        const pathToDoor = connectedWalkPath(graph, currentPoint, door.point, currentRooms) ?? [currentPoint, door.point];
+        const pathToDoor = connectedWalkPath(graph, currentPoint, door.point, currentRooms);
+        if (!pathToDoor) return routeFailure('blocked', 'Walk network is disconnected before a doorway transition.', 'walk_network_disconnected', expandedNodeCount, crossedDoorIds);
         appendPath(pointsOut, pathToDoor);
         const thresholdDistance = routeLength(pointsOut);
         const approachPoint = pointsOut.length > 1 ? pointsOut[pointsOut.length - 2] : currentPoint;
@@ -1006,7 +1011,8 @@ function routeForDoorPath(
         currentRooms = nextRoom ? [nextRoom] : currentRooms;
         if (pointsOut.length > MAX_ROUTE_POINTS) return routeFailure('malformed', 'Route exceeded the candidate route point limit.', 'limits', expandedNodeCount, crossedDoorIds);
     }
-    const pathToDestination = connectedWalkPath(graph, currentPoint, destination.point, destRoomIds) ?? [currentPoint, destination.point];
+    const pathToDestination = connectedWalkPath(graph, currentPoint, destination.point, destRoomIds);
+    if (!pathToDestination) return routeFailure('blocked', 'Walk network is disconnected before the destination.', 'walk_network_disconnected', expandedNodeCount, crossedDoorIds);
     appendPath(pointsOut, pathToDestination);
     for (const roomId of destRoomIds) { if (nodeSequence[nodeSequence.length - 1] !== roomId) nodeSequence.push(roomId); }
     nodeSequence.push(`destination:${destination.id}`);
@@ -1046,7 +1052,10 @@ export function planCandidateRoute(graph: CandidateNavigationGraph, request: Can
     if (destinationValidation) return destinationValidation;
 
     const startRoomIds = membershipIds(graph.rooms, start);
-    const destRoomIds = destination.roomIds.length > 0 ? destination.roomIds : membershipIds(graph.rooms, destination.point);
+    if (startRoomIds.length === 0) return routeFailure('malformed', 'Route start has no candidate room polygon membership.', 'start_room_membership_unresolved');
+    const actualDestinationRoomIds = membershipIds(graph.rooms, destination.point);
+    const destRoomIds = destination.roomIds.filter(roomId => actualDestinationRoomIds.includes(roomId));
+    if (destRoomIds.length === 0) return routeFailure('malformed', 'Route destination has no candidate room polygon membership.', 'destination_room_membership_unresolved');
     const overlappingMembership = startRoomIds.some(roomId => destRoomIds.includes(roomId));
     const doorSearch = overlappingMembership
         ? { paths: [{ path: [] as CandidateDoorNode[], nodes: startRoomIds.filter(roomId => destRoomIds.includes(roomId)) }], expanded: 1, denied: [] as CandidateDoorNode[] }
@@ -1131,16 +1140,16 @@ export function advanceCandidateAgents<T extends { id?: string; status: string; 
     doorRuntimes: Readonly<Record<string, CandidateDoorRuntime>> = {},
 ): readonly T[] {
     const clampedDelta = Math.min(MAX_FRAME_DELTA_MS, Math.max(0, deltaMs));
-    if (clampedDelta === 0 || agents.every(agent => agent.status !== 'walking')) return agents;
+    if (clampedDelta === 0 || agents.every(agent => !['walking', 'crossing_door'].includes(agent.status))) return agents;
     let changed = false;
     const next = agents.map(agent => {
-        if (agent.status !== 'walking' || !agent.route || agent.route.status !== 'valid') return agent;
+        if (!['walking', 'crossing_door'].includes(agent.status) || !agent.route || agent.route.status !== 'valid') return agent;
         const length = routeLength(agent.route.points);
         let nextProgress = Math.min(length, agent.progress + (speedPxPerSecond * clampedDelta) / 1000);
         for (const step of agent.route.doorSteps) {
             if (agent.progress > step.clearanceReleaseDistance) continue;
             const runtime = doorRuntimes[step.doorId];
-            const open = runtime?.state === 'open' || step.requiredAction === 'none';
+            const open = runtime?.state === 'open';
             if (!open && nextProgress >= step.approachDistance) {
                 nextProgress = step.approachDistance;
                 const waitingAgent = { ...agent, point: interpolateRoute(agent.route.points, nextProgress), progress: nextProgress, status: 'waiting_for_door' };

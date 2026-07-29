@@ -155,7 +155,8 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             setAgents(previous => {
                 const resumed = previous.map(agent => {
                     if (agent.status !== 'waiting_for_door' || !agent.route) return agent;
-                    const ready = agent.route.doorSteps.every(step => doorRuntimes[step.doorId]?.state === 'open');
+                    const activeStep = agent.route.doorSteps.find(step => agent.progress + 34 >= step.approachDistance && agent.progress <= step.clearanceReleaseDistance);
+                    const ready = activeStep ? doorRuntimes[activeStep.doorId]?.state === 'open' : false;
                     return ready ? { ...agent, status: 'walking' as const } : agent;
                 });
                 return advanceCandidateAgents(resumed, delta, REVIEW_SPEED_PX_PER_SECOND, doorRuntimes);
