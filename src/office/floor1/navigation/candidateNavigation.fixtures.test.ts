@@ -15,11 +15,11 @@ function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {
         ],
         agents: [],
         destinations: [
-            { id: 'same-room', label: 'same room', kind: 'waypoint', point: { x: 220, y: 80 }, roomId: 'ROOM_A', roomName: 'Room A' },
-            { id: 'adjacent-room', label: 'adjacent room', kind: 'waypoint', point: { x: 450, y: 130 }, roomId: 'ROOM_B', roomName: 'Room B' },
-            { id: 'multi-room', label: 'multi room', kind: 'computer', point: { x: 750, y: 130 }, roomId: 'ROOM_C', roomName: 'Room C' },
-            { id: 'inside-collision', label: 'inside collision', kind: 'waypoint', point: { x: 120, y: 220 }, roomId: 'ROOM_A', roomName: 'Room A' },
-            { id: 'priority-position', label: 'priority position', kind: 'position', point: { x: 230, y: 80 }, roomId: 'ROOM_A', roomName: 'Room A' },
+            { id: 'same-room', label: 'same room', kind: 'waypoint', point: { x: 220, y: 80 }, roomId: 'ROOM_A', roomIds: ['ROOM_A'], roomName: 'Room A' },
+            { id: 'adjacent-room', label: 'adjacent room', kind: 'waypoint', point: { x: 450, y: 130 }, roomId: 'ROOM_B', roomIds: ['ROOM_B'], roomName: 'Room B' },
+            { id: 'multi-room', label: 'multi room', kind: 'computer', point: { x: 750, y: 130 }, roomId: 'ROOM_C', roomIds: ['ROOM_C'], roomName: 'Room C' },
+            { id: 'inside-collision', label: 'inside collision', kind: 'waypoint', point: { x: 120, y: 220 }, roomId: 'ROOM_A', roomIds: ['ROOM_A'], roomName: 'Room A' },
+            { id: 'priority-position', label: 'priority position', kind: 'position', point: { x: 230, y: 80 }, roomId: 'ROOM_A', roomIds: ['ROOM_A'], roomName: 'Room A' },
         ],
         colliders: [
             { id: 'object:desk', kind: 'object', points: [{ x: 100, y: 200 }, { x: 140, y: 200 }, { x: 140, y: 240 }, { x: 100, y: 240 }], closed: true, thickness: 8 },

@@ -51,12 +51,12 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
             { id: 'C', name: 'C', polygon: [{ x: 0, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 0, y: 200 }], center: { x: 100, y: 150 } },
         ],
         doors: [
-            { id: 'D01', point: { x: 100, y: 50 }, zones: ['A', 'B'], zoneIds: ['A', 'B'], accessMode: firstDoorMode, manualReviewRequired: false, apertureRadius: 30 },
-            { id: 'D02', point: { x: 50, y: 100 }, zones: ['A', 'C'], zoneIds: ['A', 'C'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 30 },
-            { id: 'D03', point: { x: 150, y: 100 }, zones: ['C', 'B'], zoneIds: ['C', 'B'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 30 },
+            { id: 'D01', point: { x: 100, y: 50 }, zones: ['A', 'B'], zoneIds: ['A', 'B'], accessMode: firstDoorMode, manualReviewRequired: false, apertureRadius: 80 },
+            { id: 'D02', point: { x: 50, y: 100 }, zones: ['A', 'C'], zoneIds: ['A', 'C'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
+            { id: 'D03', point: { x: 150, y: 100 }, zones: ['C', 'B'], zoneIds: ['C', 'B'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
         ],
         agents: [],
-        destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 160, y: 40 }, roomId: 'B', roomName: 'B' }],
+        destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 160, y: 40 }, roomId: 'B', roomIds: ['B'], roomName: 'B' }],
         colliders: [],
         walkNodes: [],
         walkSegments: [],
@@ -130,7 +130,7 @@ describe('fresh Codex review geometry regressions', () => {
         sparse.walkSegments = [{ id: 'walk:far', a: { x: 0, y: 500 }, b: { x: 100, y: 500 }, pathId: 'far' }];
         const route = planCandidateRoute(sparse as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
         expect(route.status).toBe('blocked');
-        expect(route.failureCategory).toBe('walkable');
+        expect(route.failureCategory).toBe('route_leaves_walkable_geometry');
     });
 
     it('uses actual wall contact points for doorway aperture validation', () => {
@@ -141,5 +141,118 @@ describe('fresh Codex review geometry regressions', () => {
         const besideDoor = validateCandidateRouteSegments(graphWithWall as unknown as CandidateNavigationGraph, [{ x: 40, y: 220 }, { x: 160, y: 220 }], ['D01']);
         expect(besideDoor?.status).toBe('blocked');
         expect(besideDoor?.failureCategory).toBe('collision');
+    });
+});
+
+describe('current merge-blocker regressions', () => {
+    function walkSupportGraph(): CandidateNavigationGraph {
+        return {
+            rooms: [{ id: 'ROOM', name: 'Room', polygon: [{ x: 0, y: 0 }, { x: 500, y: 0 }, { x: 500, y: 500 }, { x: 0, y: 500 }], center: { x: 250, y: 250 } }],
+            doors: [],
+            agents: [],
+            destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 260, y: 100 }, roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room' }],
+            colliders: [],
+            walkNodes: [],
+            walkSegments: [{ id: 'walk-main', a: { x: 80, y: 100 }, b: { x: 320, y: 100 }, pathId: 'walk-main' }],
+            roomDiagnostics: [],
+            nodeCount: 1,
+            edgeCount: 1,
+        };
+    }
+
+    it('rejects unsupported two-point same-room routes instead of treating them as connector-only', () => {
+        const unsupported = validateCandidateRouteSegments(walkSupportGraph(), [{ x: 20, y: 400 }, { x: 300, y: 400 }], []);
+        expect(unsupported?.status).toBe('blocked');
+        expect(unsupported?.failureCategory).toBe('start_connector_unsupported');
+    });
+
+    it('rejects unsupported start and destination connectors with exact categories', () => {
+        const graph = walkSupportGraph();
+        const startFailure = validateCandidateRouteSegments(graph, [{ x: 800, y: 400 }, { x: 220, y: 100 }, { x: 260, y: 100 }], []);
+        expect(startFailure?.failureCategory).toBe('start_connector_unsupported');
+        const destinationFailure = validateCandidateRouteSegments(graph, [{ x: 90, y: 100 }, { x: 220, y: 100 }, { x: 800, y: 400 }], []);
+        expect(destinationFailure?.failureCategory).toBe('destination_connector_unsupported');
+    });
+
+    it('allows a bounded endpoint ingress into positive walk support and is deterministic', () => {
+        const graph = walkSupportGraph();
+        const first = validateCandidateRouteSegments(graph, [{ x: 20, y: 100 }, { x: 220, y: 100 }, { x: 260, y: 100 }], []);
+        expect(first).toBeNull();
+        expect(validateCandidateRouteSegments(graph, [{ x: 20, y: 100 }, { x: 220, y: 100 }, { x: 260, y: 100 }], [])).toEqual(first);
+    });
+
+    it('blocks connector collider conflicts before positive-walk support decisions', () => {
+        const graph = walkSupportGraph() as unknown as { colliders: CandidateNavigationGraph['colliders'] };
+        graph.colliders = [{ id: 'object:connector-blocker', kind: 'object', points: [{ x: 40, y: 80 }, { x: 60, y: 80 }, { x: 60, y: 120 }, { x: 40, y: 120 }], closed: true, thickness: 8 }];
+        const route = validateCandidateRouteSegments(graph as unknown as CandidateNavigationGraph, [{ x: 20, y: 100 }, { x: 220, y: 100 }], []);
+        expect(route?.failureCategory).toBe('collision');
+        expect(route?.reason).toContain('object:connector-blocker');
+    });
+
+    it('preserves POSITION_117 overlapping Central Nexus and Main Connecting Walkway membership', () => {
+        const agent = graph.agents.find(item => item.positionId === 'POSITION_117');
+        expect(agent?.roomIds).toEqual(['ROOM_CENTRAL_NEXUS', 'ROOM_MAIN_CONNECTING_WALKWAY']);
+        const destination = graph.destinations.find(item => item.id === 'position:POSITION_034');
+        const route = planCandidateRoute(graph, agent!.point, destination!.id);
+        expect(route.status).toBe('valid');
+        expect(route.crossedDoorIds).not.toContain('D38');
+        expect(planCandidateRoute(graph, agent!.point, destination!.id)).toEqual(route);
+    });
+
+    it('uses overlapping membership to choose an allowed edge instead of a restricted edge', () => {
+        const overlapGraph: CandidateNavigationGraph = {
+            rooms: [
+                { id: 'RESTRICTED', name: 'Restricted', polygon: [{ x: 0, y: 0 }, { x: 220, y: 0 }, { x: 220, y: 220 }, { x: 0, y: 220 }], center: { x: 110, y: 110 } },
+                { id: 'WALKWAY', name: 'Walkway', polygon: [{ x: 0, y: 0 }, { x: 220, y: 0 }, { x: 220, y: 220 }, { x: 0, y: 220 }], center: { x: 110, y: 110 } },
+                { id: 'TARGET', name: 'Target', polygon: [{ x: 220, y: 0 }, { x: 420, y: 0 }, { x: 420, y: 220 }, { x: 220, y: 220 }], center: { x: 320, y: 110 } },
+            ],
+            doors: [
+                { id: 'D38', point: { x: 220, y: 60 }, zones: ['Restricted', 'Target'], zoneIds: ['RESTRICTED', 'TARGET'], accessMode: 'restricted', manualReviewRequired: false, apertureRadius: 80 },
+                { id: 'D10', point: { x: 220, y: 160 }, zones: ['Walkway', 'Target'], zoneIds: ['WALKWAY', 'TARGET'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
+            ],
+            agents: [],
+            destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 320, y: 160 }, roomId: 'TARGET', roomIds: ['TARGET'], roomName: 'Target' }],
+            colliders: [],
+            walkNodes: [],
+            walkSegments: [],
+            roomDiagnostics: [],
+            nodeCount: 3,
+            edgeCount: 2,
+        };
+        const route = planCandidateRoute(overlapGraph, { x: 100, y: 100 }, 'target');
+        expect(route.status).toBe('valid');
+        expect(route.crossedDoorIds).toEqual(['D10']);
+        expect(route.crossedDoorIds).not.toContain('D38');
+    });
+
+    it('inflates object and wall collisions by the candidate agent footprint', () => {
+        const objectGraph = walkSupportGraph() as unknown as { colliders: CandidateNavigationGraph['colliders'] };
+        objectGraph.colliders = [{ id: 'object:near-miss', kind: 'object', points: [{ x: 150, y: 138 }, { x: 170, y: 138 }], closed: false, thickness: 8 }];
+        const objectRoute = validateCandidateRouteSegments(objectGraph as unknown as CandidateNavigationGraph, [{ x: 80, y: 100 }, { x: 260, y: 100 }], []);
+        expect(objectRoute?.status).toBe('blocked');
+        expect(objectRoute?.reason).toContain('object:near-miss');
+
+        const wallGraph = walkSupportGraph() as unknown as { colliders: CandidateNavigationGraph['colliders'] };
+        wallGraph.colliders = [{ id: 'wall:near-miss', kind: 'wall', points: [{ x: 150, y: 138 }, { x: 170, y: 138 }], closed: false, thickness: 8 }];
+        const wallRoute = validateCandidateRouteSegments(wallGraph as unknown as CandidateNavigationGraph, [{ x: 80, y: 100 }, { x: 260, y: 100 }], []);
+        expect(wallRoute?.status).toBe('blocked');
+        expect(wallRoute?.reason).toContain('wall:near-miss');
+    });
+
+    it('rejects start and destination points whose footprint overlaps a collider', () => {
+        const base = walkSupportGraph() as unknown as { colliders: CandidateNavigationGraph['colliders'] };
+        base.colliders = [{ id: 'object:start-footprint', kind: 'object', points: [{ x: 30, y: 128 }, { x: 70, y: 128 }], closed: false, thickness: 8 }];
+        expect(planCandidateRoute(base as unknown as CandidateNavigationGraph, { x: 50, y: 100 }, 'target').reason).toContain('footprint overlaps');
+        const destinationGraph = walkSupportGraph() as unknown as { colliders: CandidateNavigationGraph['colliders'] };
+        destinationGraph.colliders = [{ id: 'object:destination-footprint', kind: 'object', points: [{ x: 260, y: 128 }, { x: 300, y: 128 }], closed: false, thickness: 8 }];
+        expect(planCandidateRoute(destinationGraph as unknown as CandidateNavigationGraph, { x: 80, y: 100 }, 'target').reason).toContain('footprint overlaps');
+    });
+
+    it('requires doorway usable aperture after subtracting footprint clearance', () => {
+        const narrow = alternateGraph('open') as unknown as { doors: Array<{ apertureRadius: number }> };
+        narrow.doors.forEach(door => { door.apertureRadius = 30; });
+        const route = planCandidateRoute(narrow as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('blocked');
+        expect(route.failureCategory).toBe('collision');
     });
 });

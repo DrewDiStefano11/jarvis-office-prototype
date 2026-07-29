@@ -2,6 +2,7 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { Floor1CandidateSimulation } from './Floor1CandidateSimulation';
 
 afterEach(() => {
@@ -10,6 +11,18 @@ afterEach(() => {
 });
 
 describe('Floor1CandidateSimulation preview identity and destination controls', () => {
+    it('uses viewport-responsive control panel CSS rather than world-scale dimensions', () => {
+        const css = readFileSync('src/components/office/floor1-candidate-simulation.css', 'utf8');
+        expect(css).toContain('width: clamp(320px, 34vw, 480px)');
+        expect(css).toContain('max-width: calc(100vw - 24px)');
+        expect(css).toContain('max-height: calc(100vh - 24px)');
+        expect(css).toContain('overflow-y: auto');
+        expect(css).toContain('@media (max-width: 900px)');
+        expect(css).not.toContain('width: 1500px');
+        expect(css).not.toContain('font-size: 74px');
+        expect(css).not.toContain('font-size: 46px');
+    });
+
     it('portals navigation controls to the viewport outside the transformed world surface', async () => {
         const { container } = render(<div className="office-viewport"><div className="office-surface"><Floor1CandidateSimulation active reducedMotion={false} /></div></div>);
         const controls = await screen.findByLabelText('Candidate navigation review controls');

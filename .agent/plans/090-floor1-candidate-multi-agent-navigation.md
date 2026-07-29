@@ -512,3 +512,35 @@ Confirmed:
 Evidence:
 - Added regressions for open ink preservation, walkable-geometry rejection, actual doorway contact points, and viewport-level controls portal.
 - `npm run typecheck`, `npm run lint`, and full `npm test -- --run` passed locally after these changes: 38 files / 364 tests.
+
+## Current Merge Blocker Fix Plan Update — 2026-07-29
+
+Status: current-codex-findings-implemented-local-focused-validation
+
+Confirmed defects from latest Codex review on `a899a40e158aa8df72e8644bea04ce034e579573`:
+1. Connector segments could bypass positive walk support through the first/last connector exemption.
+2. Overlapping zone membership was collapsed to one room ID, including real `POSITION_117` (`ROOM_CENTRAL_NEXUS` plus `ROOM_MAIN_CONNECTING_WALKWAY`).
+3. Route collision checks used centerlines only and did not account for an agent floor footprint.
+4. Portaled controls retained world-scale dimensions and typography.
+
+Selected implementation:
+- Segment validation now distinguishes `start_connector`, `walk_network`, `doorway_transition`, and `destination_connector`.
+- Connector maximum distance is `420` world pixels; endpoint ingress/egress tolerance is `180` world pixels; walk support sampling interval is `96` world pixels; walk support tolerance remains `260` world pixels against candidate walk segments/nodes.
+- Collisions take precedence over positive-walk support.
+- Graph topology now stores deterministic multi-membership `roomIds` for agents, destinations, and walk nodes; overlap transitions are local to points/nodes carrying multiple memberships and do not create broad room merges.
+- Candidate agent footprint is a conservative floor-plane circle with radius `34` world pixels around the base point. Collision checks expand wall/object strokes by this radius and reject start/destination footprint overlap.
+- Door usable aperture requires `door.apertureRadius > AGENT_FOOTPRINT_RADIUS`, and aperture checks use the actual wall contact point after subtracting footprint clearance.
+- Portaled controls now use screen-space responsive CSS: `width: clamp(320px, 34vw, 480px)`, `max-width: calc(100vw - 24px)`, `max-height: calc(100vh - 24px)`, internal scrolling, compact breakpoints at 900px and 520px, and normal 1rem-scale typography.
+
+Test matrix added/updated:
+- Unsupported two-point route, unsupported start connector, unsupported destination connector, valid bounded connector, connector collider conflict.
+- Real `POSITION_117` membership includes both Central Nexus and Main Connecting Walkway; route to walkway-associated position avoids `D38`.
+- Fixture overlap chooses allowed `D10` instead of restricted `D38`.
+- Agent footprint blocks near-object and near-wall centerline misses, start/destination footprint overlaps, and too-narrow doorway apertures.
+- Responsive CSS test verifies viewport-scale controls and rejects old world-scale dimensions.
+
+Browser QA matrix:
+- Real-browser checks remain required for desktop/laptop/compact panel visibility, pan/zoom independence, internal scrolling, `POSITION_117` routing, connector rejection, footprint rejection, movement controls, and normal-mode absence. No browser executable is available in this sandbox, so these are not marked passed.
+
+Rollback:
+- Revert this plan update plus changes in `candidateNavigation.ts`, candidate navigation tests, `Floor1CandidateSimulation.test.tsx`, `floor1-candidate-simulation.css`, and production-bundle marker updates. No production data or approval artifact is involved.

@@ -23,6 +23,14 @@ const forbiddenMarkers = [
   'object:objects-053:path:01',
   'floor1-candidate-agent',
   'Search destinations',
+  'start_connector_unsupported',
+  'destination_connector_unsupported',
+  'route_leaves_walkable_geometry',
+  'footprint overlaps',
+  'candidate agent footprint',
+  'ROOM_MAIN_CONNECTING_WALKWAY',
+  'POSITION_117',
+  'width: clamp(320px, 34vw, 480px)',
 ];
 const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
 const matches = [];
