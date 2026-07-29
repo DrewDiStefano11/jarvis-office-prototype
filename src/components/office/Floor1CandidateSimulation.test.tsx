@@ -20,7 +20,12 @@ const TEST_REGISTRATION = {
     storedCoordinateSpace: 'registered_candidate_source',
     productionApproved: false,
     provenance: { generator: 'test', generatedArtifact: 'test', sourceEvidence: ['test'] },
-    registrationLandmarks: [{ id: 'synthetic', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 }],
+    registrationLandmarks: [
+        { id: 'nw', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 },
+        { id: 'ne', markup: { x: 6144, y: 0 }, source: { x: 8192, y: 0 }, residualErrorPixels: 0 },
+        { id: 'sw', markup: { x: 0, y: 4096 }, source: { x: 0, y: 5460 }, residualErrorPixels: 0 },
+        { id: 'se', markup: { x: 6144, y: 4096 }, source: { x: 8192, y: 5460 }, residualErrorPixels: 0 },
+    ],
     maximumResidualErrorPixels: 0,
 } as const;
 

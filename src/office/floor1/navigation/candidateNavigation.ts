@@ -178,7 +178,7 @@ type CandidateGraphBuildInstrumentation = { positionCollisionEvaluations: number
 
 const MAX_ROUTE_POINTS = 160;
 const MAX_EXPANDED_NODES = 1_024;
-const MAX_WALK_NODES = 1_600;
+const MAX_SAMPLED_WALK_NODES = 1_600;
 const SAFE_REASON_LIMIT = 180;
 const SPRITE_SHEET_COUNT = 16;
 const DOOR_APERTURE_RADIUS = 96;
@@ -218,6 +218,23 @@ function validateRegistrationShape(registration: MarkupRegistration | null | und
     return null;
 }
 
+function validateDistributedLandmarks(registration: MarkupRegistration): string | null {
+    const landmarks = registration.registrationLandmarks;
+    if (!Array.isArray(landmarks) || landmarks.length < 4) return 'Candidate navigation unavailable: registration_landmarks_insufficient.';
+    const ids = new Set<string>();
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const landmark of landmarks) {
+        if (!landmark.id || ids.has(landmark.id)) return 'Candidate navigation unavailable: registration_landmark_invalid.';
+        ids.add(landmark.id);
+        if (!bounded(landmark.source) || !Number.isFinite(landmark.markup.x) || !Number.isFinite(landmark.markup.y)) return 'Candidate navigation unavailable: registration_landmark_invalid.';
+        if (!Number.isFinite(landmark.residualErrorPixels) || landmark.residualErrorPixels < 0) return 'Candidate navigation unavailable: registration_residual_invalid.';
+        minX = Math.min(minX, landmark.source.x); maxX = Math.max(maxX, landmark.source.x);
+        minY = Math.min(minY, landmark.source.y); maxY = Math.max(maxY, landmark.source.y);
+    }
+    if (maxX - minX < registration.sourceWidth * 0.35 || maxY - minY < registration.sourceHeight * 0.35) return 'Candidate navigation unavailable: registration_landmarks_not_distributed.';
+    return null;
+}
+
 export function validateCandidateReviewRegistration(registration: MarkupRegistration | null | undefined): string | null {
     const shapeFailure = validateRegistrationShape(registration);
     if (shapeFailure) return shapeFailure;
@@ -225,8 +242,10 @@ export function validateCandidateReviewRegistration(registration: MarkupRegistra
     if (registration.productionApproved !== false) return 'Candidate navigation unavailable: Floor 1 candidate registration crossed the production boundary.';
     if (!registration.provenance?.generator || !registration.provenance.generatedArtifact || registration.provenance.sourceEvidence.length === 0) return 'Candidate navigation unavailable: Floor 1 candidate registration provenance is missing.';
     if (registration.approvalStatus !== 'candidate_reviewed') return 'Candidate navigation unavailable: registration review required.';
-    if (!Array.isArray(registration.registrationLandmarks) || registration.registrationLandmarks.length === 0) return 'Candidate navigation unavailable: Floor 1 candidate registration landmark evidence is missing.';
-    if (!Number.isFinite(registration.maximumResidualErrorPixels) || registration.maximumResidualErrorPixels > 8) return 'Candidate navigation unavailable: Floor 1 candidate registration residual exceeds review tolerance.';
+    const landmarkFailure = validateDistributedLandmarks(registration);
+    if (landmarkFailure) return landmarkFailure;
+    if (!Number.isFinite(registration.maximumResidualErrorPixels) || registration.maximumResidualErrorPixels < 0) return 'Candidate navigation unavailable: registration_residual_invalid.';
+    if (registration.maximumResidualErrorPixels > 8) return 'Candidate navigation unavailable: registration_residual_exceeds_tolerance.';
     return null;
 }
 
@@ -604,12 +623,12 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
     array(walkPathData.records, 'walk-paths.records').forEach((value, index) => {
         const item = record(value, `walk-path[${index}]`);
         nativePathsFromRecord(item, `walk-path[${index}]`, registration).forEach(path => {
-            for (let segmentIndex = 1; segmentIndex < path.points.length && walkSegments.length < MAX_WALK_NODES * 4; segmentIndex += 1) {
+            for (let segmentIndex = 1; segmentIndex < path.points.length; segmentIndex += 1) {
                 walkSegments.push({ id: `walk-segment:${path.id}:${String(segmentIndex).padStart(3, '0')}`, a: path.points[segmentIndex - 1], b: path.points[segmentIndex], pathId: path.id });
             }
             const step = Math.max(1, Math.ceil(path.points.length / 10));
             path.points.forEach((pathPoint, pointIndex) => {
-                if ((pointIndex === 0 || pointIndex === path.points.length - 1 || pointIndex % step === 0) && walkNodes.length < MAX_WALK_NODES) {
+                if ((pointIndex === 0 || pointIndex === path.points.length - 1 || pointIndex % step === 0) && walkNodes.length < MAX_SAMPLED_WALK_NODES) {
                     const memberships = roomMembershipsForPoint(rooms, pathPoint);
                     const room = memberships[0];
                     if (room) walkNodes.push({ id: `walk:${path.id}:${String(pointIndex).padStart(3, '0')}`, point: pathPoint, roomId: room.id, roomIds: memberships.map(itemRoom => itemRoom.id), pathId: path.id });
@@ -1149,6 +1168,10 @@ export function activeCandidateDoorRequestIds<T extends { id?: string; status: s
     return [...ids].sort((a, b) => a.localeCompare(b));
 }
 
+export function candidateDoorRuntimeNeedsTick(runtime: CandidateDoorRuntime, retained: boolean): boolean {
+    return runtime.state === 'opening' || runtime.state === 'closing' || (runtime.state === 'open' && !retained);
+}
+
 export function advanceCandidateDoorRuntimes(
     runtimes: Readonly<Record<string, CandidateDoorRuntime>>,
     requestingDoorIds: readonly string[],
@@ -1161,7 +1184,7 @@ export function advanceCandidateDoorRuntimes(
         const runtime = next[doorId];
         const requested = requests.has(doorId);
         let state = runtime.state;
-        let elapsed = runtime.stateElapsedMs + Math.max(0, deltaMs);
+        let elapsed = requested && state === 'open' ? 0 : runtime.stateElapsedMs + Math.max(0, deltaMs);
         if (requested && state === 'closed') { state = 'opening'; elapsed = 0; }
         if (state === 'opening' && elapsed >= CANDIDATE_DOOR_OPEN_MS) { state = 'open'; elapsed = 0; }
         if (!requested && state === 'open' && elapsed >= CANDIDATE_DOOR_HOLD_MS) { state = 'closing'; elapsed = 0; }

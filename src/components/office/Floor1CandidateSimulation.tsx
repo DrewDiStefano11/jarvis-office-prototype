@@ -267,6 +267,12 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
 
     const route = preview?.result ?? selectedAgent?.route ?? null;
 
+    const unavailableNotice = !graph.navigationAvailable ? (
+        <div className="floor1-candidate-unavailable" role="status">
+            {graph.unavailableReason ?? 'Candidate navigation unavailable.'}
+        </div>
+    ) : null;
+
     const controls = (
         <section
             className="floor1-candidate-controls"
@@ -336,9 +342,12 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
         <div className="floor1-candidate-simulation" aria-label="Floor 1 candidate navigation simulation">
             {showColliders && (
                 <svg className="floor1-candidate-debug floor1-candidate-debug--colliders" aria-hidden="true">
-                    {graph.colliders.slice(0, 260).map(collider => (
-                        <polyline key={collider.id} points={collider.points.map(point => `${point.x},${point.y}`).join(' ')} />
-                    ))}
+                    {graph.colliders.slice(0, 260).map(collider => {
+                        const points = collider.points.map(point => `${point.x},${point.y}`).join(' ');
+                        return collider.closed
+                            ? <polygon key={collider.id} points={points} />
+                            : <polyline key={collider.id} points={points} />;
+                    })}
                 </svg>
             )}
             {showGraph && (
@@ -358,11 +367,6 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                         return door ? <text key={doorId} x={door.point.x + 34} y={door.point.y - 20}>{doorId}</text> : null;
                     })}
                 </svg>
-            )}
-            {!graph.navigationAvailable && (
-                <div className="floor1-candidate-unavailable" role="status">
-                    {graph.unavailableReason ?? 'Candidate navigation unavailable.'}
-                </div>
             )}
             <div className="floor1-candidate-agent-layer">
                 {agents.map(agent => (
@@ -390,7 +394,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                     </button>
                 ))}
             </div>
-            {controlPortal ? createPortal(controls, controlPortal) : controls}
+            {controlPortal ? createPortal(<>{unavailableNotice}{controls}</>, controlPortal) : <>{unavailableNotice}{controls}</>}
 
         </div>
     );
