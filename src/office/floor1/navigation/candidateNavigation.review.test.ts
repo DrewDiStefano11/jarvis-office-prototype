@@ -7,9 +7,24 @@ import interactiveObjects from '../../data/floor1/provisional/interactive-object
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
-import { buildCandidateNavigationGraph, CandidateNavigationGraph, planCandidateRoute, validateCandidateRouteSegments } from './candidateNavigation';
+import { buildCandidateNavigationGraph, CandidateNavigationGraph, planCandidateRoute, transformMarkupPoint, validateMarkupRegistration, validateCandidateRouteSegments } from './candidateNavigation';
 
-const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths });
+
+const TEST_REGISTRATION = {
+    sourceWidth: 8192,
+    sourceHeight: 5460,
+    markupWidth: 6144,
+    markupHeight: 4096,
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    rotationDegrees: 0,
+    status: 'approved',
+    registrationLandmarks: [{ id: 'synthetic', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 }],
+    maximumResidualErrorPixels: 0,
+} as const;
+
+const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
 
 const testRoute = (
     graphValue: CandidateNavigationGraph,
@@ -71,6 +86,7 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
         roomDiagnostics: [],
         nodeCount: 6,
         edgeCount: 3,
+        navigationAvailable: true,
     };
 }
 
@@ -165,6 +181,7 @@ describe('current merge-blocker regressions', () => {
             roomDiagnostics: [],
             nodeCount: 1,
             edgeCount: 1,
+            navigationAvailable: true,
         };
     }
 
@@ -226,6 +243,7 @@ describe('current merge-blocker regressions', () => {
             roomDiagnostics: [],
             nodeCount: 3,
             edgeCount: 2,
+        navigationAvailable: true,
         };
         const route = testRoute(overlapGraph, { x: 100, y: 100 }, 'target');
         expect(route.status).toBe('valid');
@@ -324,5 +342,49 @@ describe('final review access, alternate geometry, and computer approach regress
     it('uses deterministic ID tie-breaking for equal-distance computer approach anchors', () => {
         const destination = graph.destinations.find(item => item.id === 'computer:computers-022');
         expect(destination?.approachPositionId).toBe('POSITION_112');
+    });
+});
+
+describe('markup registration boundary', () => {
+    it('disables real candidate navigation without an approved registration', () => {
+        const disabled = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths });
+        expect(disabled.navigationAvailable).toBe(false);
+        expect(disabled.agents).toHaveLength(0);
+        expect(disabled.destinations).toHaveLength(0);
+        expect(disabled.colliders).toHaveLength(0);
+        expect(disabled.unavailableReason).toContain('registration is not approved');
+        expect(planCandidateRoute(disabled, { start: { x: 1, y: 1 }, destinationId: 'anything', agentId: 'anything' }).failureCategory).toBe('registration_unavailable');
+    });
+
+    it('transforms markup points with one uniform approved registration', () => {
+        const registration = { ...TEST_REGISTRATION, scale: 2, offsetX: 10, offsetY: -5 } as const;
+        expect(transformMarkupPoint({ x: 3, y: 4 }, registration)).toEqual({ x: 16, y: 3 });
+    });
+
+    it('rejects missing, unverified, review-required, and invalid registrations', () => {
+        expect(validateMarkupRegistration(null)).toContain('missing');
+        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, status: 'unverified' })).toContain('not approved');
+        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, status: 'review_required' })).toContain('not approved');
+        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, scale: 0 })).toContain('scale');
+        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, rotationDegrees: 1 as 0 })).toContain('rotation');
+        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, registrationLandmarks: [] })).toContain('landmark');
+    });
+
+    it('transforms rooms, agents, doors, walk nodes, colliders, computers, and interactive destinations consistently', () => {
+        const registration = { ...TEST_REGISTRATION, scale: 2, offsetX: 10, offsetY: -5 } as const;
+        const transformed = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration });
+        const baseline = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
+        expect(transformed.navigationAvailable).toBe(true);
+        expect(transformed.rooms[0].center.x).toBeCloseTo(baseline.rooms[0].center.x * 2 + 10);
+        expect(transformed.agents[0].point.x).toBeCloseTo(baseline.agents[0].point.x * 2 + 10);
+        expect(transformed.doors[0].point.y).toBeCloseTo(baseline.doors[0].point.y * 2 - 5);
+        expect(transformed.walkNodes[0].point.x).toBeCloseTo(baseline.walkNodes[0].point.x * 2 + 10);
+        expect(transformed.colliders[0].points[0].y).toBeCloseTo(baseline.colliders[0].points[0].y * 2 - 5);
+        const transformedComputer = transformed.destinations.find(item => item.kind === 'computer');
+        const baselineComputer = baseline.destinations.find(item => item.id === transformedComputer?.id);
+        expect(transformedComputer?.markerPoint?.x).toBeCloseTo((baselineComputer?.markerPoint?.x ?? 0) * 2 + 10);
+        const transformedInteractive = transformed.destinations.find(item => item.kind === 'interactive-object');
+        const baselineInteractive = baseline.destinations.find(item => item.id === transformedInteractive?.id);
+        expect(transformedInteractive?.point.y).toBeCloseTo((baselineInteractive?.point.y ?? 0) * 2 - 5);
     });
 });

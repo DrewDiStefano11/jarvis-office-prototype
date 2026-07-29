@@ -18,8 +18,8 @@ describe('shared animation clock', () => {
         const unsubscribeSecond = clock.subscribe(second);
         expect(request).toHaveBeenCalledTimes(1);
         callbacks[0](100);
-        expect(first).toHaveBeenCalledWith(0);
-        expect(second).toHaveBeenCalledWith(0);
+        expect(first).toHaveBeenCalledWith({ elapsedMs: 0, restartGeneration: 0 });
+        expect(second).toHaveBeenCalledWith({ elapsedMs: 0, restartGeneration: 0 });
         expect(request).toHaveBeenCalledTimes(2);
         unsubscribeFirst();
         unsubscribeSecond();
@@ -50,13 +50,26 @@ describe('shared animation clock', () => {
         clock.subscribe(subscriber);
         callbacks[0](100);
         callbacks[1](180);
-        expect(subscriber).toHaveBeenLastCalledWith(80);
+        expect(subscriber).toHaveBeenLastCalledWith({ elapsedMs: 80, restartGeneration: 0 });
         clock.setActive(false);
         clock.setActive(true);
         callbacks[2](2_000);
-        expect(subscriber).toHaveBeenLastCalledWith(80);
+        expect(subscriber).toHaveBeenLastCalledWith({ elapsedMs: 80, restartGeneration: 0 });
         callbacks[3](2_050);
-        expect(subscriber).toHaveBeenLastCalledWith(130);
+        expect(subscriber).toHaveBeenLastCalledWith({ elapsedMs: 130, restartGeneration: 0 });
+    });
+
+    it('notifies subscribers with one incremented restart generation', () => {
+        const request = vi.fn(() => 1);
+        const cancel = vi.fn();
+        const clock = new AnimationClock(request, cancel);
+        const subscriber = vi.fn();
+        clock.subscribe(subscriber);
+        clock.restart();
+        expect(subscriber).toHaveBeenLastCalledWith({ elapsedMs: 0, restartGeneration: 1 });
+        clock.restart();
+        expect(subscriber).toHaveBeenLastCalledWith({ elapsedMs: 0, restartGeneration: 2 });
+        expect(request).toHaveBeenCalledTimes(1);
     });
 
     it('calls browser frame methods with their required window receiver', () => {

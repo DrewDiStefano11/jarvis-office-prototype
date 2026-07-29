@@ -16,7 +16,22 @@ import {
     segmentsIntersect,
 } from './candidateNavigation';
 
-const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths });
+
+const TEST_REGISTRATION = {
+    sourceWidth: 8192,
+    sourceHeight: 5460,
+    markupWidth: 6144,
+    markupHeight: 4096,
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    rotationDegrees: 0,
+    status: 'approved',
+    registrationLandmarks: [{ id: 'synthetic', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 }],
+    maximumResidualErrorPixels: 0,
+} as const;
+
+const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
 
 const testRoute = (
     graphValue: CandidateNavigationGraph,

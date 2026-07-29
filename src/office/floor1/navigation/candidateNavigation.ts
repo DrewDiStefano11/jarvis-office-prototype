@@ -41,6 +41,31 @@ export type CandidateRouteRequest = Readonly<{
     agentId: string;
 }>;
 
+export type RegistrationLandmark = Readonly<{
+    id: string;
+    markup: Point;
+    source: Point;
+    residualErrorPixels: number;
+}>;
+
+export type MarkupRegistration = Readonly<{
+    sourceWidth: 8192;
+    sourceHeight: 5460;
+    markupWidth: number;
+    markupHeight: number;
+    scale: number;
+    offsetX: number;
+    offsetY: number;
+    rotationDegrees: 0;
+    status: 'unverified' | 'review_required' | 'approved';
+    registrationLandmarks: readonly RegistrationLandmark[];
+    maximumResidualErrorPixels: number;
+}>;
+
+export type CandidateNavigationBuildOptions = Readonly<{
+    registration?: MarkupRegistration | null;
+}>;
+
 export type CandidateDoorNode = Readonly<{
     id: string;
     point: Point;
@@ -86,6 +111,8 @@ export type CandidateNavigationGraph = Readonly<{
     roomDiagnostics: readonly string[];
     nodeCount: number;
     edgeCount: number;
+    navigationAvailable: boolean;
+    unavailableReason?: string;
 }>;
 
 export type CandidateRouteResult = Readonly<{
@@ -129,6 +156,52 @@ const CONNECTOR_INGRESS_DISTANCE = 180;
 const WALK_SUPPORT_RADIUS = 260;
 const WALK_SAMPLE_INTERVAL = 96;
 const MAX_FRAME_DELTA_MS = 100;
+
+const DEFAULT_CANDIDATE_REGISTRATION: MarkupRegistration = {
+    sourceWidth: 8192,
+    sourceHeight: 5460,
+    markupWidth: 6144,
+    markupHeight: 4096,
+    scale: 1.3333333333333333,
+    offsetX: 0,
+    offsetY: -0.6666666666665151,
+    rotationDegrees: 0,
+    status: 'unverified',
+    registrationLandmarks: [],
+    maximumResidualErrorPixels: Number.POSITIVE_INFINITY,
+};
+
+export function validateMarkupRegistration(registration: MarkupRegistration | null | undefined): string | null {
+    if (!registration) return 'Candidate navigation unavailable: Floor 1 markup registration is missing.';
+    if (registration.status !== 'approved') return 'Candidate navigation unavailable: Floor 1 markup registration is not approved.';
+    if (registration.sourceWidth !== 8192 || registration.sourceHeight !== 5460) return 'Candidate navigation unavailable: Floor 1 registration source dimensions are invalid.';
+    if (!Number.isFinite(registration.markupWidth) || !Number.isFinite(registration.markupHeight) || registration.markupWidth <= 0 || registration.markupHeight <= 0) return 'Candidate navigation unavailable: Floor 1 registration markup dimensions are invalid.';
+    if (!Number.isFinite(registration.scale) || registration.scale <= 0) return 'Candidate navigation unavailable: Floor 1 registration scale is invalid.';
+    if (!Number.isFinite(registration.offsetX) || !Number.isFinite(registration.offsetY)) return 'Candidate navigation unavailable: Floor 1 registration offsets are invalid.';
+    if (registration.rotationDegrees !== 0) return 'Candidate navigation unavailable: Floor 1 registration rotation is unsupported.';
+    if (!Array.isArray(registration.registrationLandmarks) || registration.registrationLandmarks.length === 0) return 'Candidate navigation unavailable: Floor 1 registration landmark evidence is missing.';
+    if (!Number.isFinite(registration.maximumResidualErrorPixels) || registration.maximumResidualErrorPixels < 0) return 'Candidate navigation unavailable: Floor 1 registration residual is invalid.';
+    return null;
+}
+
+export function transformMarkupPoint(pointValue: Point, registration: MarkupRegistration): Point {
+    return {
+        x: pointValue.x * registration.scale + registration.offsetX,
+        y: pointValue.y * registration.scale + registration.offsetY,
+    };
+}
+
+function transformMarkupPoints(pointValues: readonly Point[], registration: MarkupRegistration): Point[] {
+    return pointValues.map(pointValue => transformMarkupPoint(pointValue, registration));
+}
+
+function transformMarkupWidth(width: number, registration: MarkupRegistration): number {
+    return width * registration.scale;
+}
+
+function unavailableGraph(reason: string): CandidateNavigationGraph {
+    return { rooms: [], doors: [], agents: [], destinations: [], colliders: [], walkNodes: [], walkSegments: [], roomDiagnostics: [reason], nodeCount: 0, edgeCount: 0, navigationAvailable: false, unavailableReason: reason };
+}
 
 function record(value: unknown, context: string): UnknownRecord {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${context} is malformed.`);
@@ -257,33 +330,42 @@ function colliderIntersections(a: Point, b: Point, collider: CandidateCollider):
     for (let i = 0; i < segmentCount; i += 1) {
         const c = collider.points[i];
         const d = collider.points[(i + 1) % collider.points.length];
-        if (segmentDistance(a, b, c, d) <= collider.thickness / 2 + AGENT_FOOTPRINT_RADIUS) {
-            hits.push(lineIntersectionPoint(a, b, c, d) ?? closestPointOnSegment(c, a, b));
+        const threshold = collider.thickness / 2 + AGENT_FOOTPRINT_RADIUS;
+        if (segmentDistance(a, b, c, d) <= threshold) {
+            const intersection = lineIntersectionPoint(a, b, c, d);
+            if (intersection) {
+                hits.push(intersection);
+            } else {
+                if (pointSegmentDistance(a, c, d) <= threshold) hits.push(a);
+                if (pointSegmentDistance(b, c, d) <= threshold) hits.push(b);
+                if (pointSegmentDistance(c, a, b) <= threshold) hits.push(closestPointOnSegment(c, a, b));
+                if (pointSegmentDistance(d, a, b) <= threshold) hits.push(closestPointOnSegment(d, a, b));
+            }
         }
     }
     return hits;
 }
 
-function nativePathsFromRecord(source: UnknownRecord, context: string): NativePath[] {
+function nativePathsFromRecord(source: UnknownRecord, context: string, registration: MarkupRegistration): NativePath[] {
     const native = record(source.nativeGeometry, `${context}.nativeGeometry`);
     const sourceId = text(source.id, context);
     const style = source.style && typeof source.style === 'object' ? record(source.style, `${context}.style`) : {};
     const rawWidth = typeof style.width === 'number' && Number.isFinite(style.width) ? style.width * 16 / 9 : 10;
-    const thickness = Math.max(8, Math.min(96, rawWidth));
-    if (native.kind === 'polygon') return [{ id: sourceId, points: points(native.points, `${context}.points`), thickness, closed: true }];
+    const thickness = Math.max(8, Math.min(96, transformMarkupWidth(rawWidth, registration)));
+    if (native.kind === 'polygon') return [{ id: sourceId, points: transformMarkupPoints(points(native.points, `${context}.points`), registration), thickness, closed: true }];
     if (native.kind === 'rectangle') {
         const rect = record(native.rect, `${context}.rect`);
         const x1 = finite(rect.x1, `${context}.rect.x1`);
         const x2 = finite(rect.x2, `${context}.rect.x2`);
         const y1 = finite(rect.y1, `${context}.rect.y1`);
         const y2 = finite(rect.y2, `${context}.rect.y2`);
-        const rectPoints = [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+        const rectPoints = transformMarkupPoints([{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }], registration);
         rectPoints.forEach((item, index) => { if (!bounded(item)) throw new Error(`${context}.rect[${index}] is out of bounds.`); });
         return [{ id: sourceId, points: rectPoints, thickness, closed: true }];
     }
     if (native.kind === 'ink') {
         return array(native.paths, `${context}.paths`).map((pathValue, index) => {
-            const pathPoints = points(pathValue, `${context}.paths[${index}]`).filter((item, pointIndex, all) => pointIndex === 0 || distance(item, all[pointIndex - 1]) > 0.001);
+            const pathPoints = transformMarkupPoints(points(pathValue, `${context}.paths[${index}]`), registration).filter((item, pointIndex, all) => pointIndex === 0 || distance(item, all[pointIndex - 1]) > 0.001);
             if (pathPoints.length < 2) throw new Error(`${context}.paths[${index}] must contain at least two bounded points.`);
             const closed = pathPoints.length >= 3 && distance(pathPoints[0], pathPoints[pathPoints.length - 1]) <= Math.max(4, thickness);
             return { id: `${sourceId}:path:${String(index + 1).padStart(2, '0')}`, points: pathPoints, thickness, closed };
@@ -357,7 +439,10 @@ function destinationSort(a: CandidateDestination, b: CandidateDestination): numb
         || a.id.localeCompare(b.id);
 }
 
-export function buildCandidateNavigationGraph(documents: CandidateDocuments): CandidateNavigationGraph {
+export function buildCandidateNavigationGraph(documents: CandidateDocuments, options: CandidateNavigationBuildOptions = {}): CandidateNavigationGraph {
+    const registration = options.registration ?? DEFAULT_CANDIDATE_REGISTRATION;
+    const registrationFailure = validateMarkupRegistration(registration);
+    if (registrationFailure) return unavailableGraph(registrationFailure);
     const roomData = wrapperData(documents.rooms, 'rooms');
     const positionData = wrapperData(documents.positions, 'positions');
     const doorData = wrapperData(documents.doors, 'doors');
@@ -369,14 +454,14 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
 
     const rooms: CandidateRoom[] = array(roomData.rooms, 'rooms').map((value, index) => {
         const item = record(value, `room[${index}]`);
-        const polygon = points(item.pdfPolygon, `room[${index}].pdfPolygon`);
+        const polygon = transformMarkupPoints(points(item.pdfPolygon, `room[${index}].pdfPolygon`), registration);
         return { id: text(item.id, `ROOM_${index + 1}`), name: text(item.canonicalName, `Room ${index + 1}`), polygon, center: centroid(polygon) };
     }).sort((a, b) => a.id.localeCompare(b.id));
     const zoneResolver = makeZoneResolver(rooms);
 
     const positions = array(positionData.positions, 'positions').map((value, index) => {
         const item = record(value, `position[${index}]`);
-        const candidatePoint = point(item.pdfAnchor, `position[${index}].pdfAnchor`);
+        const candidatePoint = transformMarkupPoint(point(item.pdfAnchor, `position[${index}].pdfAnchor`), registration);
         const memberships = roomMembershipsForPoint(rooms, candidatePoint);
         const room = memberships[0];
         return { id: text(item.id, `POSITION_${String(index + 1).padStart(3, '0')}`), point: candidatePoint, tier: item.accessTier === 'priority' ? 'priority' as const : 'standard' as const, room, roomIds: memberships.map(itemRoom => itemRoom.id) };
@@ -413,7 +498,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     const roomDestinations = rooms.map((room): CandidateDestination => ({ id: `room:${room.id}`, label: room.name, kind: 'room', point: room.center, roomId: room.id, roomIds: [room.id], roomName: room.name }));
     const interactiveDestinations = array(interactiveData.interactiveObjects, 'interactiveObjects').map((value, index): CandidateDestination => {
         const item = record(value, `interactive[${index}]`);
-        const polygon = points(item.pdfPolygon, `interactive[${index}].pdfPolygon`);
+        const polygon = transformMarkupPoints(points(item.pdfPolygon, `interactive[${index}].pdfPolygon`), registration);
         const candidatePoint = centroid(polygon);
         const memberships = roomMembershipsForPoint(rooms, candidatePoint);
         const room = memberships[0];
@@ -423,7 +508,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     const doors = array(doorData.doors, 'doors').map((value, index): CandidateDoorNode => {
         const item = record(value, `door[${index}]`);
         const facts = record(item.authoredFacts, `door[${index}].authoredFacts`);
-        const polygon = points(item.pdfPolygon, `door[${index}].pdfPolygon`);
+        const polygon = transformMarkupPoints(points(item.pdfPolygon, `door[${index}].pdfPolygon`), registration);
         const zones = [text(facts.zone_a, ''), text(facts.zone_b, '')].filter(Boolean);
         const zoneIds = zones.map(zoneResolver.resolve);
         return {
@@ -442,7 +527,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     for (const [kind, data] of [['wall', wallData], ['object', objectData]] as const) {
         array(data.records, `${kind}.records`).forEach((value, index) => {
             const item = record(value, `${kind}[${index}]`);
-            nativePathsFromRecord(item, `${kind}[${index}]`).forEach(path => {
+            nativePathsFromRecord(item, `${kind}[${index}]`, registration).forEach(path => {
                 if (path.points.length >= 2) colliders.push({ id: `${kind}:${path.id}`, kind, points: path.points, closed: path.closed, thickness: path.thickness });
             });
         });
@@ -452,7 +537,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     const walkSegments: CandidateWalkSegment[] = [];
     array(walkPathData.records, 'walk-paths.records').forEach((value, index) => {
         const item = record(value, `walk-path[${index}]`);
-        nativePathsFromRecord(item, `walk-path[${index}]`).forEach(path => {
+        nativePathsFromRecord(item, `walk-path[${index}]`, registration).forEach(path => {
             for (let segmentIndex = 1; segmentIndex < path.points.length && walkSegments.length < MAX_WALK_NODES * 4; segmentIndex += 1) {
                 walkSegments.push({ id: `walk-segment:${path.id}:${String(segmentIndex).padStart(3, '0')}`, a: path.points[segmentIndex - 1], b: path.points[segmentIndex], pathId: path.id });
             }
@@ -479,10 +564,11 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
         roomDiagnostics: zoneResolver.diagnostics,
         nodeCount: 0,
         edgeCount: 0,
+        navigationAvailable: true,
     } satisfies CandidateNavigationGraph;
     const computerDestinations = computerRecords.map((value, index): CandidateDestination | null => {
         const item = record(value, `computer[${index}]`);
-        const native = nativePathsFromRecord(item, `computer[${index}]`)[0];
+        const native = nativePathsFromRecord(item, `computer[${index}]`, registration)[0];
         if (!native) return null;
         const markerPoint = centroid(native.points);
         const memberships = roomMembershipsForPoint(rooms, markerPoint);
@@ -532,6 +618,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
         roomDiagnostics: zoneResolver.diagnostics,
         nodeCount: rooms.length + doors.length + positionDestinations.length + computerDestinations.length + interactiveDestinations.length + walkNodes.length,
         edgeCount: doors.length + walkSegments.length,
+        navigationAvailable: true,
     };
 }
 
@@ -735,6 +822,7 @@ function routeForDoorPath(
 }
 
 export function planCandidateRoute(graph: CandidateNavigationGraph, request: CandidateRouteRequest): CandidateRouteResult {
+    if (!graph.navigationAvailable) return routeFailure('malformed', graph.unavailableReason ?? 'Candidate navigation unavailable.', 'registration_unavailable');
     const { start, destinationId } = request;
     if (!request.agentId) return routeFailure('malformed', 'Route planning requires a candidate agent identity.', 'agent_context_missing');
     const agent = graph.agents.find(item => item.id === request.agentId);

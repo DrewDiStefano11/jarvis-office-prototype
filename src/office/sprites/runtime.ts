@@ -1,7 +1,8 @@
 type FrameRequest = (callback: FrameRequestCallback) => number;
 type FrameCancel = (handle: number) => void;
 
-export type AnimationSubscriber = (elapsedMs: number) => void;
+export type AnimationClockSnapshot = Readonly<{ elapsedMs: number; restartGeneration: number }>;
+export type AnimationSubscriber = (snapshot: AnimationClockSnapshot) => void;
 
 export class AnimationClock {
     private subscribers = new Set<AnimationSubscriber>();
@@ -9,6 +10,7 @@ export class AnimationClock {
     private lastTimestamp: number | null = null;
     private elapsedMs = 0;
     private active = true;
+    private restartGeneration = 0;
 
     constructor(
         private readonly requestFrame: FrameRequest = callback => window.requestAnimationFrame(callback),
@@ -35,6 +37,10 @@ export class AnimationClock {
     restart() {
         this.elapsedMs = 0;
         this.lastTimestamp = null;
+        this.restartGeneration += 1;
+        const snapshot = this.snapshot;
+        this.subscribers.forEach(subscriber => subscriber(snapshot));
+        this.ensureRunning();
     }
 
     dispose() {
@@ -42,6 +48,11 @@ export class AnimationClock {
         this.subscribers.clear();
         this.elapsedMs = 0;
         this.lastTimestamp = null;
+        this.restartGeneration = 0;
+    }
+
+    get snapshot() {
+        return { elapsedMs: this.elapsedMs, restartGeneration: this.restartGeneration };
     }
 
     get subscriberCount() {
@@ -62,7 +73,7 @@ export class AnimationClock {
                 this.elapsedMs += Math.max(0, timestamp - this.lastTimestamp);
                 this.lastTimestamp = timestamp;
             }
-            this.subscribers.forEach(subscriber => subscriber(this.elapsedMs));
+            this.subscribers.forEach(subscriber => subscriber(this.snapshot));
             this.ensureRunning();
         });
     }

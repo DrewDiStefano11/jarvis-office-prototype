@@ -36,6 +36,10 @@ const forbiddenMarkers = [
   'markerPoint',
   'requires a priority review agent',
   'Computer 022',
+  'registration_unavailable',
+  'Candidate navigation unavailable',
+  'Floor 1 markup registration is not approved',
+  'approachResolution',
 ];
 const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
 const matches = [];

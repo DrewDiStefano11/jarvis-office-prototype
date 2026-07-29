@@ -16,6 +16,7 @@ import {
     CandidateAgentFixture,
     CandidateDestinationKind,
     CandidateRouteResult,
+    MarkupRegistration,
     planCandidateRoute,
 } from '../../office/floor1/navigation/candidateNavigation';
 import type { Point } from '../../office/types';
@@ -25,6 +26,7 @@ import './floor1-candidate-simulation.css';
 type Props = Readonly<{
     active: boolean;
     reducedMotion: boolean;
+    registration?: MarkupRegistration;
 }>;
 
 type AgentRuntime = Readonly<{
@@ -77,8 +79,8 @@ function previewIsStartValid(agent: AgentRuntime | null, preview: RoutePreview |
         && distance(preview.startPoint, agent.point) <= PREVIEW_START_TOLERANCE;
 }
 
-export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
-    const graph = useMemo(() => buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }), []);
+export function Floor1CandidateSimulation({ active, reducedMotion, registration }: Props) {
+    const graph = useMemo(() => buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration }), [registration]);
     const [runtime] = useState(() => new SpriteSurfaceRuntime());
     const [agents, setAgents] = useState<readonly AgentRuntime[]>(() => graph.agents.map(fixture => ({
         fixture,
@@ -310,6 +312,11 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
                         return door ? <text key={doorId} x={door.point.x + 34} y={door.point.y - 20}>{doorId}</text> : null;
                     })}
                 </svg>
+            )}
+            {!graph.navigationAvailable && (
+                <div className="floor1-candidate-unavailable" role="status">
+                    {graph.unavailableReason ?? 'Candidate navigation unavailable.'}
+                </div>
             )}
             <div className="floor1-candidate-agent-layer">
                 {agents.map(agent => (

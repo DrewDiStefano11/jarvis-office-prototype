@@ -238,3 +238,19 @@
     fill: rgba(255, 212, 77, .28);
     stroke: #ffd44d;
 }
+
+.floor1-candidate-unavailable {
+    position: absolute;
+    z-index: 22;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(520px, calc(100vw - 32px));
+    padding: 10px 14px;
+    color: #ffd6dc;
+    background: rgba(42, 13, 20, .94);
+    border: 1px solid #8c4050;
+    border-radius: 10px;
+    font-size: .9rem;
+    pointer-events: auto;
+}

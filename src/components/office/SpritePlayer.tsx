@@ -43,6 +43,7 @@ export function SpritePlayer({
     const accumulatedClipElapsedRef = useRef(0);
     const playbackOriginRef = useRef<number | null>(null);
     const previousManualModeRef = useRef(false);
+    const playbackGenerationRef = useRef<number | null>(null);
     const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
     const [loadFailure, setLoadFailure] = useState<string | null>(null);
     const resolved = useMemo(
@@ -94,6 +95,7 @@ export function SpritePlayer({
             lastRenderKeyRef.current = null;
             accumulatedClipElapsedRef.current = 0;
             playbackOriginRef.current = null;
+            playbackGenerationRef.current = null;
         }
         previousManualModeRef.current = manualFrame !== null;
         const update = (frame: number) => {
@@ -127,7 +129,14 @@ export function SpritePlayer({
         const playbackDuration = spriteFrameSequence(resolved.clip.frames, resolved.clip.yoyo, resolved.clip.loop).length * 1000
             / (resolved.clip.framesPerSecond * Math.max(0.1, speed));
         let unsubscribe: () => void = () => undefined;
-        unsubscribe = runtime.clock.subscribe(clockElapsed => {
+        unsubscribe = runtime.clock.subscribe(snapshot => {
+            const { elapsedMs: clockElapsed, restartGeneration } = snapshot;
+            if (playbackGenerationRef.current !== restartGeneration) {
+                playbackGenerationRef.current = restartGeneration;
+                playbackOriginRef.current = null;
+                accumulatedClipElapsedRef.current = 0;
+                lastRenderKeyRef.current = null;
+            }
             if (playbackOriginRef.current === null) {
                 playbackOriginRef.current = clockElapsed - accumulatedClipElapsedRef.current;
             }

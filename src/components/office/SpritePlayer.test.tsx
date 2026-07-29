@@ -11,6 +11,8 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
+const clockSnapshot = (elapsedMs: number, restartGeneration = 0) => ({ elapsedMs, restartGeneration });
+
 describe('SpritePlayer texture failure', () => {
     it('reports explicit unavailability and logs the development-only diagnostic', async () => {
         const failure = new Error('generated texture unavailable');
@@ -69,12 +71,12 @@ describe('SpritePlayer texture failure', () => {
 
     it('keeps the displayed animation frame when playback is paused', async () => {
         const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
-        let tick: ((elapsed: number) => void) | undefined;
+        let tick: ((snapshot: { elapsedMs: number; restartGeneration: number }) => void) | undefined;
         const unsubscribe = vi.fn();
         const runtime = {
             textures: { load: vi.fn().mockResolvedValue(image) },
             clock: {
-                subscribe: vi.fn((subscriber: (elapsed: number) => void) => {
+                subscribe: vi.fn((subscriber: (snapshot: { elapsedMs: number; restartGeneration: number }) => void) => {
                     tick = subscriber;
                     return unsubscribe;
                 }),
@@ -91,9 +93,9 @@ describe('SpritePlayer texture failure', () => {
 
         const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
         await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
-        act(() => tick?.(10_000));
+        act(() => tick?.(clockSnapshot(10_000)));
         expect(frame()?.style.backgroundPosition).toBe('0px 0px');
-        act(() => tick?.(10_250));
+        act(() => tick?.(clockSnapshot(10_250)));
         expect(frame()?.style.backgroundPosition).toBe('-362px 0px');
 
         rerender(
@@ -134,11 +136,11 @@ describe('SpritePlayer texture failure', () => {
 
     it('starts a newly activated clip from its own first frame instead of shared clock lifetime', async () => {
         const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
-        let tick: ((elapsed: number) => void) | undefined;
+        let tick: ((snapshot: { elapsedMs: number; restartGeneration: number }) => void) | undefined;
         const runtime = {
             textures: { load: vi.fn().mockResolvedValue(image) },
             clock: {
-                subscribe: vi.fn((subscriber: (elapsed: number) => void) => {
+                subscribe: vi.fn((subscriber: (snapshot: { elapsedMs: number; restartGeneration: number }) => void) => {
                     tick = subscriber;
                     return vi.fn();
                 }),
@@ -149,9 +151,9 @@ describe('SpritePlayer texture failure', () => {
         );
         const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
         await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
-        act(() => tick?.(250_000));
+        act(() => tick?.(clockSnapshot(250_000)));
         expect(frame()?.style.backgroundPosition).toBe('0px 0px');
-        act(() => tick?.(250_250));
+        act(() => tick?.(clockSnapshot(250_250)));
         expect(frame()?.style.backgroundPosition).toBe('-362px 0px');
         rerender(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="offline" />);
         await waitFor(() => expect(frame()?.style.backgroundPosition).toBe('0px 0px'));
@@ -159,11 +161,11 @@ describe('SpritePlayer texture failure', () => {
 
     it('excludes an individual paused player from shared clock elapsed while other sprites can continue', async () => {
         const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
-        let tick: ((elapsed: number) => void) | undefined;
+        let tick: ((snapshot: { elapsedMs: number; restartGeneration: number }) => void) | undefined;
         const runtime = {
             textures: { load: vi.fn().mockResolvedValue(image) },
             clock: {
-                subscribe: vi.fn((subscriber: (elapsed: number) => void) => {
+                subscribe: vi.fn((subscriber: (snapshot: { elapsedMs: number; restartGeneration: number }) => void) => {
                     tick = subscriber;
                     return vi.fn();
                 }),
@@ -174,20 +176,45 @@ describe('SpritePlayer texture failure', () => {
         );
         const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
         await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
-        act(() => tick?.(1_000));
-        act(() => tick?.(1_250));
+        act(() => tick?.(clockSnapshot(1_000)));
+        act(() => tick?.(clockSnapshot(1_250)));
         const pausedFrame = frame()?.style.backgroundPosition;
         expect(pausedFrame).toBe('-362px 0px');
 
         rerender(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" paused />);
-        act(() => tick?.(20_000));
+        act(() => tick?.(clockSnapshot(20_000)));
         expect(frame()?.style.backgroundPosition).toBe(pausedFrame);
 
         rerender(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" />);
-        act(() => tick?.(20_000));
+        act(() => tick?.(clockSnapshot(20_000)));
         expect(frame()?.style.backgroundPosition).toBe(pausedFrame);
-        act(() => tick?.(20_125));
+        act(() => tick?.(clockSnapshot(20_125)));
         expect(frame()?.style.backgroundPosition).not.toBe(pausedFrame);
+    });
+
+
+    it('resets per-player playback origin when the shared clock restarts', async () => {
+        const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
+        let tick: ((snapshot: { elapsedMs: number; restartGeneration: number }) => void) | undefined;
+        const runtime = {
+            textures: { load: vi.fn().mockResolvedValue(image) },
+            clock: {
+                subscribe: vi.fn((subscriber: (snapshot: { elapsedMs: number; restartGeneration: number }) => void) => {
+                    tick = subscriber;
+                    return vi.fn();
+                }),
+            },
+        } as unknown as SpriteSurfaceRuntime;
+        const { container } = render(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" />);
+        const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
+        await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
+        act(() => tick?.(clockSnapshot(5_000, 0)));
+        act(() => tick?.(clockSnapshot(5_250, 0)));
+        expect(frame()?.style.backgroundPosition).toBe('-362px 0px');
+        act(() => tick?.(clockSnapshot(0, 1)));
+        expect(frame()?.style.backgroundPosition).toBe('0px 0px');
+        act(() => tick?.(clockSnapshot(250, 1)));
+        expect(frame()?.style.backgroundPosition).toBe('-362px 0px');
     });
 
     it('unsubscribes when a one-shot clip reaches its final frame', async () => {
@@ -196,12 +223,12 @@ describe('SpritePlayer texture failure', () => {
         if (!walking) throw new Error('Expected the generated walking clip.');
         (walking as { loop: boolean }).loop = false;
         const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
-        let tick: ((elapsed: number) => void) | undefined;
+        let tick: ((snapshot: { elapsedMs: number; restartGeneration: number }) => void) | undefined;
         const unsubscribe = vi.fn();
         const runtime = {
             textures: { load: vi.fn().mockResolvedValue(image) },
             clock: {
-                subscribe: vi.fn((subscriber: (elapsed: number) => void) => {
+                subscribe: vi.fn((subscriber: (snapshot: { elapsedMs: number; restartGeneration: number }) => void) => {
                     tick = subscriber;
                     return unsubscribe;
                 }),
@@ -218,8 +245,8 @@ describe('SpritePlayer texture failure', () => {
         );
 
         await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
-        act(() => tick?.(10_000));
-        act(() => tick?.(10_750));
+        act(() => tick?.(clockSnapshot(10_000)));
+        act(() => tick?.(clockSnapshot(10_750)));
         expect(unsubscribe).toHaveBeenCalledOnce();
     });
 });

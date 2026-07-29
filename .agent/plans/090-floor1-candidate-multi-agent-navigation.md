@@ -569,3 +569,27 @@ Regression tests:
 
 Browser QA:
 - Still unavailable in this sandbox because no browser executable/tooling is installed.
+
+## Registration and Clock Restart Fix Update — 2026-07-29
+
+Status: latest-codex-findings-implemented-local-focused-validation
+
+Confirmed latest findings on `530f93db0aa6ac39f0bacf69178b2cf7a437cedd`:
+1. PDF/markup geometry was treated as world geometry by candidate navigation.
+2. Parallel wall contact fallback used an arbitrary endpoint projection rather than the full finite-segment contact.
+3. Shared animation clock restart did not reset per-player sprite playback origins.
+
+Selected implementation:
+- Added a typed `MarkupRegistration` boundary, registration validation, uniform `source = markup * scale + offset` point transforms, and markup width transforms. The default repository registration is explicitly unapproved/candidate-unverified; without an approved registration, candidate navigation returns an unavailable graph and the simulation renders only a bounded diagnostic, no agents/routes/colliders/destinations.
+- Unit tests use synthetic approved registrations only inside tests to verify transform behavior and preserve navigation regression coverage. No approved production registration was invented.
+- Wall contact detection now returns all relevant finite route contact samples for inflated segment/stroke contacts (intersections plus both endpoint projection directions), so parallel/extended contacts must be fully contained in the crossed doorway aperture and cannot be cleared by one arbitrary nearby point.
+- `AnimationClock` subscribers now receive `{ elapsedMs, restartGeneration }`; `restart()` increments generation, resets elapsed/timestamp state, notifies subscribers, and avoids duplicate RAF loops. `SpritePlayer` tracks generation and resets playback origin/accumulated clip elapsed on generation changes.
+
+Tests:
+- Registration disabled/missing/unverified/review-required/invalid behavior, synthetic approved point and full graph coordinate transforms.
+- Candidate simulation no-agent fail-closed rendering without approved registration.
+- Existing wall contact, footprint, object, aperture, and door-adjacent collision regressions continue to pass.
+- Runtime restart generation and SpritePlayer restart-origin behavior.
+
+Browser QA:
+- Still unavailable in this sandbox because no browser executable/tooling is installed.
