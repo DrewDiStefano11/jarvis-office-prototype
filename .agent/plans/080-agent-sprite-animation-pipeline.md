@@ -282,6 +282,7 @@ Affected Files: manifest/resolver/demo.
 - Completed clean dependency installation, full 316-test suite, production build, drift check, and real-browser desktop/laptop/reduced-motion/keyboard QA.
 - Verified production builds ignore both development-only sprite query flags.
 - Preserved Floor 1 data exactly; its existing Windows regeneration path records a one-byte newline difference in the generated manifest, while Linux CI remains authoritative.
+- Opened draft PR #21; CI exposed and the branch fixed a Node 18 incompatibility in module-directory resolution, then verified the sprite drift checker directly on Node 18.20.8.
 
 ## Unexpected Discoveries
 
