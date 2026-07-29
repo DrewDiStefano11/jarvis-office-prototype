@@ -261,7 +261,16 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const route = preview?.result ?? selectedAgent?.route ?? null;
 
     const controls = (
-        <section className="floor1-candidate-controls" aria-label="Candidate navigation review controls" onWheel={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()} onPointerMove={event => event.stopPropagation()}>
+        <section
+            className="floor1-candidate-controls"
+            aria-label="Candidate navigation review controls"
+            onWheelCapture={event => event.stopPropagation()}
+            onPointerDownCapture={event => event.stopPropagation()}
+            onPointerMoveCapture={event => event.stopPropagation()}
+            onPointerUpCapture={event => event.stopPropagation()}
+            onTouchStartCapture={event => event.stopPropagation()}
+            onTouchMoveCapture={event => event.stopPropagation()}
+        >
                 <h2>Candidate navigation</h2>
                 <p role="status" aria-live="polite">{selectedRouteLabel(preview)}</p>
                 <label>

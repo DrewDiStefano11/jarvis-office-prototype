@@ -54,6 +54,18 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         expect(controls.parentElement).toBe(container.querySelector('.office-viewport'));
     });
 
+
+    it('stops scroll and pointer gestures on the portaled panel before they reach the viewport', async () => {
+        const wheel = vi.fn();
+        const pointer = vi.fn();
+        render(<div className="office-viewport" onWheel={wheel} onPointerDown={pointer}><div className="office-surface"><Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} /></div></div>);
+        const controls = await screen.findByLabelText('Candidate navigation review controls');
+        fireEvent.wheel(controls);
+        fireEvent.pointerDown(controls);
+        expect(wheel).not.toHaveBeenCalled();
+        expect(pointer).not.toHaveBeenCalled();
+    });
+
     it('does not schedule movement frames while every candidate agent is idle', async () => {
         const request = vi.spyOn(window, 'requestAnimationFrame');
         render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
