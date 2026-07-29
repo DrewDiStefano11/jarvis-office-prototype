@@ -497,3 +497,18 @@ Evidence:
 
 Browser QA:
 - Real-browser QA could not be captured in this sandbox because no Chromium/Chrome/Playwright/Puppeteer browser executable is installed. This remains a manual PR review item and is not reported as passed.
+
+## Fresh Codex Review Fix Update — 2026-07-29
+
+Status: fresh-codex-findings-fixed-local-tests
+
+Confirmed:
+- Fresh Codex review on `25e525bd9d576b1f111c938323d58b3f7cd2b866` produced four additional valid findings.
+- Fixed open ink path handling so sampled ink strokes are not artificially filled unless endpoints close within tolerance.
+- Added positive walk-path support validation so route segments must remain supported by candidate walk-path geometry except bounded start/destination connectors and doorway apertures.
+- Replaced wall-edge midpoint aperture checks with actual route/wall contact points.
+- Portaled candidate navigation controls to the viewport-level `.office-viewport` so pan/zoom transforms affect only world agents/debug geometry, not the review controls.
+
+Evidence:
+- Added regressions for open ink preservation, walkable-geometry rejection, actual doorway contact points, and viewport-level controls portal.
+- `npm run typecheck`, `npm run lint`, and full `npm test -- --run` passed locally after these changes: 38 files / 364 tests.

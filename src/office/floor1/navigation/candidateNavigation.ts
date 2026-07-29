@@ -53,6 +53,13 @@ export type CandidateWalkNode = Readonly<{
     pathId: string;
 }>;
 
+export type CandidateWalkSegment = Readonly<{
+    id: string;
+    a: Point;
+    b: Point;
+    pathId: string;
+}>;
+
 export type CandidateNavigationGraph = Readonly<{
     rooms: readonly CandidateRoom[];
     doors: readonly CandidateDoorNode[];
@@ -60,6 +67,7 @@ export type CandidateNavigationGraph = Readonly<{
     destinations: readonly CandidateDestination[];
     colliders: readonly CandidateCollider[];
     walkNodes: readonly CandidateWalkNode[];
+    walkSegments: readonly CandidateWalkSegment[];
     roomDiagnostics: readonly string[];
     nodeCount: number;
     edgeCount: number;
@@ -101,6 +109,7 @@ const SPRITE_SHEET_COUNT = 16;
 const DOOR_APERTURE_RADIUS = 96;
 const CONNECTOR_SEARCH_LIMIT = 18;
 const CONNECTOR_MAX_DISTANCE = 1_900;
+const WALK_SUPPORT_RADIUS = 260;
 const MAX_FRAME_DELTA_MS = 100;
 
 function record(value: unknown, context: string): UnknownRecord {
@@ -202,9 +211,25 @@ function pointSegmentDistance(pointValue: Point, a: Point, b: Point): number {
     return distance(pointValue, { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
 }
 
+function closestPointOnSegment(pointValue: Point, a: Point, b: Point): Point {
+    const lengthSquared = ((b.x - a.x) ** 2) + ((b.y - a.y) ** 2);
+    if (lengthSquared === 0) return a;
+    const t = Math.max(0, Math.min(1, ((pointValue.x - a.x) * (b.x - a.x) + (pointValue.y - a.y) * (b.y - a.y)) / lengthSquared));
+    return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+}
+
 function segmentDistance(a: Point, b: Point, c: Point, d: Point): number {
     if (segmentsIntersect(a, b, c, d)) return 0;
     return Math.min(pointSegmentDistance(a, c, d), pointSegmentDistance(b, c, d), pointSegmentDistance(c, a, b), pointSegmentDistance(d, a, b));
+}
+
+function lineIntersectionPoint(a: Point, b: Point, c: Point, d: Point): Point | null {
+    const denominator = (a.x - b.x) * (c.y - d.y) - (a.y - b.y) * (c.x - d.x);
+    if (Math.abs(denominator) < 1e-7) return null;
+    const x = ((a.x * b.y - a.y * b.x) * (c.x - d.x) - (a.x - b.x) * (c.x * d.y - c.y * d.x)) / denominator;
+    const y = ((a.x * b.y - a.y * b.x) * (c.y - d.y) - (a.y - b.y) * (c.x * d.y - c.y * d.x)) / denominator;
+    const pointValue = { x, y };
+    return onSegment(a, pointValue, b) && onSegment(c, pointValue, d) ? pointValue : null;
 }
 
 function colliderIntersections(a: Point, b: Point, collider: CandidateCollider): Point[] {
@@ -215,7 +240,7 @@ function colliderIntersections(a: Point, b: Point, collider: CandidateCollider):
         const c = collider.points[i];
         const d = collider.points[(i + 1) % collider.points.length];
         if (segmentDistance(a, b, c, d) <= collider.thickness / 2) {
-            hits.push({ x: (c.x + d.x) / 2, y: (c.y + d.y) / 2 });
+            hits.push(lineIntersectionPoint(a, b, c, d) ?? closestPointOnSegment(c, a, b));
         }
     }
     return hits;
@@ -243,7 +268,7 @@ function nativePathsFromRecord(source: UnknownRecord, context: string): NativePa
             const pathPoints = points(pathValue, `${context}.paths[${index}]`).filter((item, pointIndex, all) => pointIndex === 0 || distance(item, all[pointIndex - 1]) > 0.001);
             if (pathPoints.length < 2) throw new Error(`${context}.paths[${index}] must contain at least two bounded points.`);
             const closed = pathPoints.length >= 3 && distance(pathPoints[0], pathPoints[pathPoints.length - 1]) <= Math.max(4, thickness);
-            return { id: `${sourceId}:path:${String(index + 1).padStart(2, '0')}`, points: pathPoints, thickness, closed: closed || pathPoints.length >= 3 };
+            return { id: `${sourceId}:path:${String(index + 1).padStart(2, '0')}`, points: pathPoints, thickness, closed };
         });
     }
     return [];
@@ -399,9 +424,13 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     }
 
     const walkNodes: CandidateWalkNode[] = [];
+    const walkSegments: CandidateWalkSegment[] = [];
     array(walkPathData.records, 'walk-paths.records').forEach((value, index) => {
         const item = record(value, `walk-path[${index}]`);
         nativePathsFromRecord(item, `walk-path[${index}]`).forEach(path => {
+            for (let segmentIndex = 1; segmentIndex < path.points.length && walkSegments.length < MAX_WALK_NODES * 4; segmentIndex += 1) {
+                walkSegments.push({ id: `walk-segment:${path.id}:${String(segmentIndex).padStart(3, '0')}`, a: path.points[segmentIndex - 1], b: path.points[segmentIndex], pathId: path.id });
+            }
             const step = Math.max(1, Math.ceil(path.points.length / 10));
             path.points.forEach((pathPoint, pointIndex) => {
                 if ((pointIndex === 0 || pointIndex === path.points.length - 1 || pointIndex % step === 0) && walkNodes.length < MAX_WALK_NODES) {
@@ -419,9 +448,10 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
         destinations: [...positionDestinations, ...computerDestinations, ...roomDestinations, ...interactiveDestinations].sort(destinationSort),
         colliders: colliders.sort((a, b) => a.id.localeCompare(b.id)),
         walkNodes: walkNodes.sort((a, b) => a.id.localeCompare(b.id)),
+        walkSegments: walkSegments.sort((a, b) => a.id.localeCompare(b.id)),
         roomDiagnostics: zoneResolver.diagnostics,
         nodeCount: rooms.length + doors.length + positionDestinations.length + computerDestinations.length + interactiveDestinations.length + walkNodes.length,
-        edgeCount: doors.length + walkNodes.length,
+        edgeCount: doors.length + walkSegments.length,
     };
 }
 
@@ -445,11 +475,36 @@ function doorForHit(graph: CandidateNavigationGraph, pointValue: Point, crossedD
         .find((door): door is CandidateDoorNode => door !== null && distance(pointValue, door.point) <= door.apertureRadius) ?? null;
 }
 
+function isDoorAperturePoint(graph: CandidateNavigationGraph, pointValue: Point, crossedDoorIds: readonly string[]): boolean {
+    return !!doorForHit(graph, pointValue, crossedDoorIds);
+}
+
+function isWalkSupported(graph: CandidateNavigationGraph, pointValue: Point): boolean {
+    if (graph.walkSegments.length === 0) return true;
+    return graph.walkSegments.some(segment => pointSegmentDistance(pointValue, segment.a, segment.b) <= WALK_SUPPORT_RADIUS);
+}
+
+function segmentHasWalkSupport(graph: CandidateNavigationGraph, a: Point, b: Point, crossedDoorIds: readonly string[], allowConnector: boolean): boolean {
+    if (graph.walkSegments.length === 0) return true;
+    if (allowConnector && distance(a, b) <= CONNECTOR_MAX_DISTANCE) return true;
+    const sampleCount = Math.max(2, Math.ceil(distance(a, b) / 160));
+    for (let index = 0; index <= sampleCount; index += 1) {
+        const ratio = index / sampleCount;
+        const sample = { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio };
+        if (!isDoorAperturePoint(graph, sample, crossedDoorIds) && !isWalkSupported(graph, sample)) return false;
+    }
+    return true;
+}
+
 export function validateCandidateRouteSegments(graph: CandidateNavigationGraph, routePoints: readonly Point[], crossedDoorIds: readonly string[]): CandidateRouteResult | null {
     for (let index = 1; index < routePoints.length; index += 1) {
         const a = routePoints[index - 1];
         const b = routePoints[index];
         if (!bounded(a) || !bounded(b)) return routeFailure('malformed', 'Route includes out-of-bounds coordinates.', 'bounds', index, crossedDoorIds);
+        const allowConnector = index === 1 || index === routePoints.length - 1;
+        if (!segmentHasWalkSupport(graph, a, b, crossedDoorIds, allowConnector)) {
+            return routeFailure('blocked', 'Route segment leaves candidate walk-path geometry.', 'walkable', index, crossedDoorIds);
+        }
         for (const collider of graph.colliders) {
             const hits = colliderIntersections(a, b, collider);
             if (hits.length === 0) continue;

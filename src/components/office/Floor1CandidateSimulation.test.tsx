@@ -10,6 +10,12 @@ afterEach(() => {
 });
 
 describe('Floor1CandidateSimulation preview identity and destination controls', () => {
+    it('portals navigation controls to the viewport outside the transformed world surface', async () => {
+        const { container } = render(<div className="office-viewport"><div className="office-surface"><Floor1CandidateSimulation active reducedMotion={false} /></div></div>);
+        const controls = await screen.findByLabelText('Candidate navigation review controls');
+        expect(controls.parentElement).toBe(container.querySelector('.office-viewport'));
+    });
+
     it('does not schedule movement frames while every candidate agent is idle', async () => {
         const request = vi.spyOn(window, 'requestAnimationFrame');
         render(<Floor1CandidateSimulation active reducedMotion={false} />);

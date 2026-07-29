@@ -25,6 +25,7 @@ function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {
             { id: 'object:desk', kind: 'object', points: [{ x: 100, y: 200 }, { x: 140, y: 200 }, { x: 140, y: 240 }, { x: 100, y: 240 }], closed: true, thickness: 8 },
         ],
         walkNodes: [],
+        walkSegments: [],
         roomDiagnostics: [],
         nodeCount: 8,
         edgeCount: 2,

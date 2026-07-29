@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import rooms from '../../office/data/floor1/provisional/rooms.json';
 import positions from '../../office/data/floor1/provisional/positions.json';
 import doors from '../../office/data/floor1/provisional/doors.json';
@@ -100,12 +101,17 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
     const [showGraph, setShowGraph] = useState(false);
     const [showColliders, setShowColliders] = useState(false);
     const [showRoute, setShowRoute] = useState(true);
+    const [controlPortal, setControlPortal] = useState<HTMLElement | null>(null);
     const frameRef = useRef<number | null>(null);
     const lastTimestampRef = useRef<number | null>(null);
 
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? agents[0] ?? null;
     const anyWalking = agents.some(agent => agent.status === 'walking');
     const beginEnabled = previewIsStartValid(selectedAgent, preview, destinationId);
+
+    useEffect(() => {
+        setControlPortal(document.querySelector<HTMLElement>('.office-viewport'));
+    }, []);
 
     useEffect(() => {
         runtime.setActive(active && !document.hidden);
@@ -211,6 +217,61 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
 
     const route = preview?.result ?? selectedAgent?.route ?? null;
 
+    const controls = (
+        <section className="floor1-candidate-controls" aria-label="Candidate navigation review controls">
+                <h2>Candidate navigation</h2>
+                <p role="status" aria-live="polite">{selectedRouteLabel(preview)}</p>
+                <label>
+                    Agent
+                    <select value={selectedAgentId ?? ''} onChange={event => updateSelectedAgent(event.target.value)}>
+                        {agents.map(agent => <option key={agent.fixture.id} value={agent.fixture.id}>{agent.fixture.label} — {agent.fixture.roomName}</option>)}
+                    </select>
+                </label>
+                <label>
+                    Destination category
+                    <select value={destinationFilter} onChange={event => {
+                        setDestinationFilter(event.target.value as DestinationFilter);
+                        setPreview(null);
+                    }}>
+                        {Object.entries(DESTINATION_KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                </label>
+                <label>
+                    Search destinations
+                    <input value={destinationSearch} onChange={event => { setDestinationSearch(event.target.value); setPreview(null); }} placeholder="Filter by ID, label, or room" />
+                </label>
+                <label>
+                    Destination
+                    <select value={destinationId} onChange={event => updateDestination(event.target.value)}>
+                        {destinationsForFilter.map(destination => <option key={destination.id} value={destination.id}>{destination.kind}: {destination.label} — {destination.roomName}</option>)}
+                    </select>
+                </label>
+                <div className="floor1-candidate-actions">
+                    <button type="button" onClick={previewRoute}>Preview route</button>
+                    <button type="button" onClick={startMovement} disabled={!beginEnabled}>Begin movement</button>
+                    <button type="button" onClick={pauseSelected}>Pause</button>
+                    <button type="button" onClick={resumeSelected}>Resume</button>
+                    <button type="button" onClick={cancelSelected}>Cancel</button>
+                </div>
+                <fieldset>
+                    <legend>Debug overlays</legend>
+                    <label><input type="checkbox" checked={showRoute} onChange={event => setShowRoute(event.target.checked)} /> Route segments</label>
+                    <label><input type="checkbox" checked={showGraph} onChange={event => setShowGraph(event.target.checked)} /> Walk-path and door graph nodes</label>
+                    <label><input type="checkbox" checked={showColliders} onChange={event => setShowColliders(event.target.checked)} /> Wall/object colliders</label>
+                </fieldset>
+                {selectedAgent && (
+                    <dl>
+                        <dt>Current agent state</dt><dd>{selectedAgent.status}</dd>
+                        <dt>Current sprite clip</dt><dd>{selectedAgent.status === 'walking' ? 'walking' : 'idle/offline fallback'}</dd>
+                        <dt>Current world coordinate</dt><dd>{Math.round(selectedAgent.point.x)}, {Math.round(selectedAgent.point.y)}</dd>
+                        <dt>Route cost</dt><dd>{route?.cost ?? 0}px · {route?.nodeSequence.join(' → ') ?? 'none'}</dd>
+                        <dt>Performance bounds</dt><dd>{graph.nodeCount} nodes · {graph.edgeCount} edges · {runtime.clock.subscriberCount} sprite subscribers · {runtime.textures.size} cached textures</dd>
+                        <dt>Limitations</dt><dd>Candidate routes validate static world collisions only; dynamic agent-to-agent avoidance is not implemented.</dd>
+                    </dl>
+                )}
+        </section>
+    );
+
     return (
         <div className="floor1-candidate-simulation" aria-label="Floor 1 candidate navigation simulation">
             {showColliders && (
@@ -264,58 +325,8 @@ export function Floor1CandidateSimulation({ active, reducedMotion }: Props) {
                     </button>
                 ))}
             </div>
-            <section className="floor1-candidate-controls" aria-label="Candidate navigation review controls">
-                <h2>Candidate navigation</h2>
-                <p role="status" aria-live="polite">{selectedRouteLabel(preview)}</p>
-                <label>
-                    Agent
-                    <select value={selectedAgentId ?? ''} onChange={event => updateSelectedAgent(event.target.value)}>
-                        {agents.map(agent => <option key={agent.fixture.id} value={agent.fixture.id}>{agent.fixture.label} — {agent.fixture.roomName}</option>)}
-                    </select>
-                </label>
-                <label>
-                    Destination category
-                    <select value={destinationFilter} onChange={event => {
-                        setDestinationFilter(event.target.value as DestinationFilter);
-                        setPreview(null);
-                    }}>
-                        {Object.entries(DESTINATION_KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                </label>
-                <label>
-                    Search destinations
-                    <input value={destinationSearch} onChange={event => { setDestinationSearch(event.target.value); setPreview(null); }} placeholder="Filter by ID, label, or room" />
-                </label>
-                <label>
-                    Destination
-                    <select value={destinationId} onChange={event => updateDestination(event.target.value)}>
-                        {destinationsForFilter.map(destination => <option key={destination.id} value={destination.id}>{destination.kind}: {destination.label} — {destination.roomName}</option>)}
-                    </select>
-                </label>
-                <div className="floor1-candidate-actions">
-                    <button type="button" onClick={previewRoute}>Preview route</button>
-                    <button type="button" onClick={startMovement} disabled={!beginEnabled}>Begin movement</button>
-                    <button type="button" onClick={pauseSelected}>Pause</button>
-                    <button type="button" onClick={resumeSelected}>Resume</button>
-                    <button type="button" onClick={cancelSelected}>Cancel</button>
-                </div>
-                <fieldset>
-                    <legend>Debug overlays</legend>
-                    <label><input type="checkbox" checked={showRoute} onChange={event => setShowRoute(event.target.checked)} /> Route segments</label>
-                    <label><input type="checkbox" checked={showGraph} onChange={event => setShowGraph(event.target.checked)} /> Walk-path and door graph nodes</label>
-                    <label><input type="checkbox" checked={showColliders} onChange={event => setShowColliders(event.target.checked)} /> Wall/object colliders</label>
-                </fieldset>
-                {selectedAgent && (
-                    <dl>
-                        <dt>Current agent state</dt><dd>{selectedAgent.status}</dd>
-                        <dt>Current sprite clip</dt><dd>{selectedAgent.status === 'walking' ? 'walking' : 'idle/offline fallback'}</dd>
-                        <dt>Current world coordinate</dt><dd>{Math.round(selectedAgent.point.x)}, {Math.round(selectedAgent.point.y)}</dd>
-                        <dt>Route cost</dt><dd>{route?.cost ?? 0}px · {route?.nodeSequence.join(' → ') ?? 'none'}</dd>
-                        <dt>Performance bounds</dt><dd>{graph.nodeCount} nodes · {graph.edgeCount} edges · {runtime.clock.subscriberCount} sprite subscribers · {runtime.textures.size} cached textures</dd>
-                        <dt>Limitations</dt><dd>Candidate routes validate static world collisions only; dynamic agent-to-agent avoidance is not implemented.</dd>
-                    </dl>
-                )}
-            </section>
+            {controlPortal ? createPortal(controls, controlPortal) : controls}
+
         </div>
     );
 }

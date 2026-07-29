@@ -59,6 +59,7 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
         destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 160, y: 40 }, roomId: 'B', roomName: 'B' }],
         colliders: [],
         walkNodes: [],
+        walkSegments: [],
         roomDiagnostics: [],
         nodeCount: 6,
         edgeCount: 3,
@@ -114,5 +115,31 @@ describe('movement timing and frame lifecycle helpers', () => {
         const next = advanceCandidateAgents([paused, agent], 10_000, 420);
         expect(next[0]).toBe(paused);
         expect(next[1].progress).toBeCloseTo(42);
+    });
+});
+
+describe('fresh Codex review geometry regressions', () => {
+    it('preserves real open ink paths as strokes instead of artificial filled polygons', () => {
+        const object = graph.colliders.find(item => item.id === 'object:objects-053:path:01');
+        expect(object).toBeTruthy();
+        expect(object?.closed).toBe(false);
+    });
+
+    it('rejects routes that leave positive walk-path geometry', () => {
+        const sparse = alternateGraph('blocked') as unknown as { walkSegments: Array<{ id: string; a: { x: number; y: number }; b: { x: number; y: number }; pathId: string }> };
+        sparse.walkSegments = [{ id: 'walk:far', a: { x: 0, y: 500 }, b: { x: 100, y: 500 }, pathId: 'far' }];
+        const route = planCandidateRoute(sparse as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('blocked');
+        expect(route.failureCategory).toBe('walkable');
+    });
+
+    it('uses actual wall contact points for doorway aperture validation', () => {
+        const graphWithWall = alternateGraph('open') as unknown as { colliders: Array<{ id: string; kind: 'wall'; points: Array<{ x: number; y: number }>; closed: boolean; thickness: number }> };
+        graphWithWall.colliders = [{ id: 'wall:long-edge', kind: 'wall', points: [{ x: 100, y: 0 }, { x: 100, y: 300 }], closed: false, thickness: 8 }];
+        const valid = planCandidateRoute(graphWithWall as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        expect(valid.status).toBe('valid');
+        const besideDoor = validateCandidateRouteSegments(graphWithWall as unknown as CandidateNavigationGraph, [{ x: 40, y: 220 }, { x: 160, y: 220 }], ['D01']);
+        expect(besideDoor?.status).toBe('blocked');
+        expect(besideDoor?.failureCategory).toBe('collision');
     });
 });
