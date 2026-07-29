@@ -430,6 +430,7 @@ describe('candidate door runtime and destination anchor regressions', () => {
     });
 
     it('interactive objects use safe approach anchors instead of visual centroids', () => {
+        const rebuilt = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
         for (const id of ['interactive:INTERACTIVE_MAIN_ROBOT_TUBE', 'interactive:INTERACTIVE_SMALL_ROBOT_TUBE', 'interactive:INTERACTIVE_MAP']) {
             const destination = graph.destinations.find(item => item.id === id);
             expect(destination?.markerPoint).toBeTruthy();
@@ -437,7 +438,7 @@ describe('candidate door runtime and destination anchor regressions', () => {
             expect(destination?.point).not.toEqual(destination?.markerPoint);
             expect(destination?.availability).toBe('available');
             expect(validateCandidateRouteSegments(graph, [destination!.point, destination!.point], [])).toBeNull();
-            expect(buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION }).destinations.find(item => item.id === id)).toEqual(destination);
+            expect(rebuilt.destinations.find(item => item.id === id)).toEqual(destination);
         }
     });
 
