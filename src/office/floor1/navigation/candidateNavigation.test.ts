@@ -6,6 +6,7 @@ import computers from '../../data/floor1/provisional/computers.json';
 import interactiveObjects from '../../data/floor1/provisional/interactive-objects.json';
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
+import walkPaths from '../../data/floor1/provisional/walk-paths.json';
 import {
     buildCandidateNavigationGraph,
     interpolateRoute,
@@ -14,7 +15,7 @@ import {
     segmentsIntersect,
 } from './candidateNavigation';
 
-const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects });
+const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths });
 
 describe('candidate Floor 1 navigation graph', () => {
     it('initializes deterministic provisional review agents without approving candidate data', () => {

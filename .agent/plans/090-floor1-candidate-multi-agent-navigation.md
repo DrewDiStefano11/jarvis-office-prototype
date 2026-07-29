@@ -471,3 +471,29 @@ Limitations:
 - Browser QA evidence has not been captured in this environment yet.
 - The candidate route graph is review evidence only and is not approval-grade navigation.
 - React state is used for bounded movement snapshots; future performance work can move interpolation fully to refs/CSS transforms if review finds render frequency too high.
+
+## Codex Review Fix Update — 2026-07-29
+
+Status: codex-findings-fixed-local-validation
+
+Confirmed:
+- Fetched remote state first and continued on PR #22 branch at reviewed head `292734e585176b0a7e206a2a523e89df8346b3c4`.
+- Fixed all five Codex findings from reviewed head:
+  1. Door-adjacent collision bypass removed; object collisions are never exempted and wall intersections are allowed only inside bounded crossed-door apertures.
+  2. Route previews now bind `agentId`, `destinationId`, start point, and agent revision; stale previews cannot start movement.
+  3. Movement RAF loop only runs while at least one agent is walking.
+  4. Movement progress uses actual RAF timestamp deltas in normal and reduced-motion modes.
+  5. Multi-path ink collision records preserve every path with stable `kind:record:path:index` IDs.
+- Added walk-path-derived nodes from provisional `walk-paths.json` to the candidate graph and route connectors.
+- Door access is applied during graph traversal so blocked/restricted/reserved/manual-review doors are skipped while alternate allowed routes remain searchable.
+- Destination controls now expose rooms, computers, interactive objects, all positions, standard positions, and priority positions through category and search controls.
+- Individual sprite pause/resume now resets per-player playback origin while retaining accumulated clip elapsed.
+
+Evidence:
+- Focused navigation review tests cover agent-04 to computers 022–025 collision rejection, objects-053/054 collision detection, multi-path preservation, alternate allowed door routes, and movement timing.
+- Component tests cover idle RAF suppression, destination category accessibility, and preview invalidation on agent/destination/cancel changes.
+- Sprite tests cover individual paused-player timing while a shared clock may continue advancing.
+- Full local validation before commit passed: generation/drift, typecheck, strict tsc, lint, strict eslint, 38-file/360-test suite, production build, production-bundle exclusion, and diff check.
+
+Browser QA:
+- Real-browser QA could not be captured in this sandbox because no Chromium/Chrome/Playwright/Puppeteer browser executable is installed. This remains a manual PR review item and is not reported as passed.

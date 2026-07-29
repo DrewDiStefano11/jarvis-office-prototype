@@ -3,6 +3,7 @@ import type { Point } from '../../types';
 
 export type CandidateAccessOutcome = 'allowed' | 'blocked' | 'restricted' | 'reserved' | 'manual-review-required' | 'malformed-door';
 export type CandidateRouteStatus = 'valid' | 'blocked' | 'restricted' | 'unreachable' | 'malformed';
+export type CandidateDestinationKind = 'position' | 'room' | 'computer' | 'interactive-object' | 'waypoint';
 
 export type CandidateAgentFixture = Readonly<{
     id: string;
@@ -19,18 +20,37 @@ export type CandidateAgentFixture = Readonly<{
 export type CandidateDestination = Readonly<{
     id: string;
     label: string;
-    kind: 'position' | 'room' | 'computer' | 'interactive-object' | 'waypoint';
+    kind: CandidateDestinationKind;
     point: Point;
     roomId: string;
     roomName: string;
+    accessTier?: 'standard' | 'priority';
 }>;
 
 export type CandidateDoorNode = Readonly<{
     id: string;
     point: Point;
     zones: readonly string[];
+    zoneIds: readonly string[];
     accessMode: string;
     manualReviewRequired: boolean;
+    apertureRadius: number;
+    malformedReason?: string;
+}>;
+
+export type CandidateCollider = Readonly<{
+    id: string;
+    kind: 'wall' | 'object';
+    points: readonly Point[];
+    closed: boolean;
+    thickness: number;
+}>;
+
+export type CandidateWalkNode = Readonly<{
+    id: string;
+    point: Point;
+    roomId: string;
+    pathId: string;
 }>;
 
 export type CandidateNavigationGraph = Readonly<{
@@ -39,7 +59,10 @@ export type CandidateNavigationGraph = Readonly<{
     agents: readonly CandidateAgentFixture[];
     destinations: readonly CandidateDestination[];
     colliders: readonly CandidateCollider[];
+    walkNodes: readonly CandidateWalkNode[];
+    roomDiagnostics: readonly string[];
     nodeCount: number;
+    edgeCount: number;
 }>;
 
 export type CandidateRouteResult = Readonly<{
@@ -47,6 +70,7 @@ export type CandidateRouteResult = Readonly<{
     reason: string;
     points: readonly Point[];
     crossedDoorIds: readonly string[];
+    nodeSequence: readonly string[];
     cost: number;
     length: number;
     expandedNodeCount: number;
@@ -55,7 +79,6 @@ export type CandidateRouteResult = Readonly<{
 
 type UnknownRecord = Record<string, unknown>;
 type CandidateRoom = Readonly<{ id: string; name: string; polygon: readonly Point[]; center: Point }>;
-type CandidateCollider = Readonly<{ id: string; kind: 'wall' | 'object'; points: readonly Point[] }>;
 
 type CandidateDocuments = Readonly<{
     rooms: unknown;
@@ -65,12 +88,20 @@ type CandidateDocuments = Readonly<{
     interactiveObjects: unknown;
     walls: unknown;
     objects: unknown;
+    walkPaths?: unknown;
 }>;
 
-const MAX_ROUTE_POINTS = 96;
-const MAX_EXPANDED_NODES = 512;
+type NativePath = Readonly<{ id: string; points: readonly Point[]; thickness: number; closed: boolean }>;
+
+const MAX_ROUTE_POINTS = 160;
+const MAX_EXPANDED_NODES = 1_024;
+const MAX_WALK_NODES = 1_600;
 const SAFE_REASON_LIMIT = 180;
 const SPRITE_SHEET_COUNT = 16;
+const DOOR_APERTURE_RADIUS = 96;
+const CONNECTOR_SEARCH_LIMIT = 18;
+const CONNECTOR_MAX_DISTANCE = 1_900;
+const MAX_FRAME_DELTA_MS = 100;
 
 function record(value: unknown, context: string): UnknownRecord {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${context} is malformed.`);
@@ -121,6 +152,7 @@ function centroid(polygon: readonly Point[]): Point {
 }
 
 export function pointInPolygon(target: Point, polygon: readonly Point[]): boolean {
+    if (polygon.length < 3) return false;
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
         const a = polygon[i];
@@ -136,13 +168,19 @@ function distance(a: Point, b: Point): number {
     return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+function routeLength(pointsIn: readonly Point[]): number {
+    return pointsIn.slice(1).reduce((acc, item, index) => acc + distance(pointsIn[index], item), 0);
+}
+
 function orientation(a: Point, b: Point, c: Point): number {
-    return Math.sign((b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y));
+    const value = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
+    if (Math.abs(value) < 1e-7) return 0;
+    return Math.sign(value);
 }
 
 function onSegment(a: Point, b: Point, c: Point): boolean {
-    return Math.min(a.x, c.x) <= b.x && b.x <= Math.max(a.x, c.x)
-        && Math.min(a.y, c.y) <= b.y && b.y <= Math.max(a.y, c.y);
+    return Math.min(a.x, c.x) - 1e-7 <= b.x && b.x <= Math.max(a.x, c.x) + 1e-7
+        && Math.min(a.y, c.y) - 1e-7 <= b.y && b.y <= Math.max(a.y, c.y) + 1e-7;
 }
 
 export function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
@@ -157,32 +195,58 @@ export function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boole
         || (o4 === 0 && onSegment(c, b, d));
 }
 
-function segmentIntersectsPolygon(a: Point, b: Point, polygon: readonly Point[]): boolean {
-    if (pointInPolygon(a, polygon) || pointInPolygon(b, polygon)) return true;
-    for (let i = 0; i < polygon.length; i += 1) {
-        if (segmentsIntersect(a, b, polygon[i], polygon[(i + 1) % polygon.length])) return true;
-    }
-    return false;
+function pointSegmentDistance(pointValue: Point, a: Point, b: Point): number {
+    const lengthSquared = ((b.x - a.x) ** 2) + ((b.y - a.y) ** 2);
+    if (lengthSquared === 0) return distance(pointValue, a);
+    const t = Math.max(0, Math.min(1, ((pointValue.x - a.x) * (b.x - a.x) + (pointValue.y - a.y) * (b.y - a.y)) / lengthSquared));
+    return distance(pointValue, { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
 }
 
-function candidatePolygonFromNative(source: UnknownRecord, context: string): readonly Point[] | null {
+function segmentDistance(a: Point, b: Point, c: Point, d: Point): number {
+    if (segmentsIntersect(a, b, c, d)) return 0;
+    return Math.min(pointSegmentDistance(a, c, d), pointSegmentDistance(b, c, d), pointSegmentDistance(c, a, b), pointSegmentDistance(d, a, b));
+}
+
+function colliderIntersections(a: Point, b: Point, collider: CandidateCollider): Point[] {
+    const hits: Point[] = [];
+    if (collider.closed && (pointInPolygon(a, collider.points) || pointInPolygon(b, collider.points))) hits.push(a);
+    const segmentCount = collider.closed ? collider.points.length : collider.points.length - 1;
+    for (let i = 0; i < segmentCount; i += 1) {
+        const c = collider.points[i];
+        const d = collider.points[(i + 1) % collider.points.length];
+        if (segmentDistance(a, b, c, d) <= collider.thickness / 2) {
+            hits.push({ x: (c.x + d.x) / 2, y: (c.y + d.y) / 2 });
+        }
+    }
+    return hits;
+}
+
+function nativePathsFromRecord(source: UnknownRecord, context: string): NativePath[] {
     const native = record(source.nativeGeometry, `${context}.nativeGeometry`);
-    if (native.kind === 'polygon') return points(native.points, `${context}.points`);
+    const sourceId = text(source.id, context);
+    const style = source.style && typeof source.style === 'object' ? record(source.style, `${context}.style`) : {};
+    const rawWidth = typeof style.width === 'number' && Number.isFinite(style.width) ? style.width * 16 / 9 : 10;
+    const thickness = Math.max(8, Math.min(96, rawWidth));
+    if (native.kind === 'polygon') return [{ id: sourceId, points: points(native.points, `${context}.points`), thickness, closed: true }];
     if (native.kind === 'rectangle') {
         const rect = record(native.rect, `${context}.rect`);
         const x1 = finite(rect.x1, `${context}.rect.x1`);
         const x2 = finite(rect.x2, `${context}.rect.x2`);
         const y1 = finite(rect.y1, `${context}.rect.y1`);
         const y2 = finite(rect.y2, `${context}.rect.y2`);
-        return [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+        const rectPoints = [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+        rectPoints.forEach((item, index) => { if (!bounded(item)) throw new Error(`${context}.rect[${index}] is out of bounds.`); });
+        return [{ id: sourceId, points: rectPoints, thickness, closed: true }];
     }
     if (native.kind === 'ink') {
-        const paths = array(native.paths, `${context}.paths`);
-        const first = paths[0];
-        if (!first) return null;
-        return points(first, `${context}.paths[0]`);
+        return array(native.paths, `${context}.paths`).map((pathValue, index) => {
+            const pathPoints = points(pathValue, `${context}.paths[${index}]`).filter((item, pointIndex, all) => pointIndex === 0 || distance(item, all[pointIndex - 1]) > 0.001);
+            if (pathPoints.length < 2) throw new Error(`${context}.paths[${index}] must contain at least two bounded points.`);
+            const closed = pathPoints.length >= 3 && distance(pathPoints[0], pathPoints[pathPoints.length - 1]) <= Math.max(4, thickness);
+            return { id: `${sourceId}:path:${String(index + 1).padStart(2, '0')}`, points: pathPoints, thickness, closed: closed || pathPoints.length >= 3 };
+        });
     }
-    return null;
+    return [];
 }
 
 function roomForPoint(rooms: readonly CandidateRoom[], value: Point): CandidateRoom {
@@ -191,8 +255,39 @@ function roomForPoint(rooms: readonly CandidateRoom[], value: Point): CandidateR
         ?? { id: 'candidate-zone-unresolved', name: 'Unresolved candidate zone', polygon: [], center: value };
 }
 
-function accessOutcome(door: CandidateDoorNode): CandidateAccessOutcome {
-    if (!door.id || door.zones.length < 2 || !door.accessMode) return 'malformed-door';
+function normalizeZone(value: string): string {
+    return value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+}
+
+function makeZoneResolver(rooms: readonly CandidateRoom[]) {
+    const byName = new Map<string, CandidateRoom[]>();
+    rooms.forEach(room => {
+        const key = normalizeZone(room.name);
+        byName.set(key, [...(byName.get(key) ?? []), room]);
+    });
+    const diagnostics: string[] = [];
+    const resolve = (zoneName: string): string => {
+        const key = normalizeZone(zoneName);
+        const exact = byName.get(key) ?? [];
+        if (exact.length === 1) return exact[0].id;
+        if (exact.length > 1) {
+            diagnostics.push(`Ambiguous room name "${zoneName}" maps to ${exact.map(room => room.id).join(', ')}.`);
+            return `ambiguous:${key}`;
+        }
+        const partial = rooms.filter(room => key.includes(normalizeZone(room.name)) || normalizeZone(room.name).includes(key));
+        if (partial.length === 1) return partial[0].id;
+        if (partial.length > 1) {
+            diagnostics.push(`Ambiguous door zone "${zoneName}" maps to ${partial.map(room => room.id).join(', ')}.`);
+            return `ambiguous:${key}`;
+        }
+        diagnostics.push(`Door zone "${zoneName}" has no stable room ID mapping; retaining provisional zone ID.`);
+        return `zone:${key || 'unresolved'}`;
+    };
+    return { resolve, diagnostics };
+}
+
+export function accessOutcome(door: CandidateDoorNode): CandidateAccessOutcome {
+    if (door.malformedReason || !door.id || door.zoneIds.length < 2 || !door.accessMode || door.zoneIds.some(zone => zone.startsWith('ambiguous:'))) return 'malformed-door';
     if (door.manualReviewRequired) return 'manual-review-required';
     if (door.accessMode === 'open' || door.accessMode === 'elevator') return 'allowed';
     if (door.accessMode === 'blocked') return 'blocked';
@@ -205,6 +300,14 @@ function safeReason(reason: string): string {
     return reason.length <= SAFE_REASON_LIMIT ? reason : `${reason.slice(0, SAFE_REASON_LIMIT - 1)}…`;
 }
 
+function destinationSort(a: CandidateDestination, b: CandidateDestination): number {
+    const kindOrder: Record<CandidateDestinationKind, number> = { room: 0, computer: 1, 'interactive-object': 2, position: 3, waypoint: 4 };
+    return kindOrder[a.kind] - kindOrder[b.kind]
+        || (a.accessTier ?? '').localeCompare(b.accessTier ?? '')
+        || a.label.localeCompare(b.label)
+        || a.id.localeCompare(b.id);
+}
+
 export function buildCandidateNavigationGraph(documents: CandidateDocuments): CandidateNavigationGraph {
     const roomData = wrapperData(documents.rooms, 'rooms');
     const positionData = wrapperData(documents.positions, 'positions');
@@ -213,28 +316,20 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     const interactiveData = wrapperData(documents.interactiveObjects, 'interactive-objects');
     const wallData = wrapperData(documents.walls, 'walls');
     const objectData = wrapperData(documents.objects, 'objects');
+    const walkPathData = documents.walkPaths ? wrapperData(documents.walkPaths, 'walk-paths') : { records: [] };
 
     const rooms: CandidateRoom[] = array(roomData.rooms, 'rooms').map((value, index) => {
         const item = record(value, `room[${index}]`);
         const polygon = points(item.pdfPolygon, `room[${index}].pdfPolygon`);
-        return {
-            id: text(item.id, `ROOM_${index + 1}`),
-            name: text(item.canonicalName, `Room ${index + 1}`),
-            polygon,
-            center: centroid(polygon),
-        };
+        return { id: text(item.id, `ROOM_${index + 1}`), name: text(item.canonicalName, `Room ${index + 1}`), polygon, center: centroid(polygon) };
     }).sort((a, b) => a.id.localeCompare(b.id));
+    const zoneResolver = makeZoneResolver(rooms);
 
     const positions = array(positionData.positions, 'positions').map((value, index) => {
         const item = record(value, `position[${index}]`);
         const candidatePoint = point(item.pdfAnchor, `position[${index}].pdfAnchor`);
         const room = roomForPoint(rooms, candidatePoint);
-        return {
-            id: text(item.id, `POSITION_${String(index + 1).padStart(3, '0')}`),
-            point: candidatePoint,
-            tier: item.accessTier === 'priority' ? 'priority' as const : 'standard' as const,
-            room,
-        };
+        return { id: text(item.id, `POSITION_${String(index + 1).padStart(3, '0')}`), point: candidatePoint, tier: item.accessTier === 'priority' ? 'priority' as const : 'standard' as const, room };
     }).filter(item => bounded(item.point));
 
     const selectedPositions: typeof positions = [];
@@ -245,7 +340,6 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
         }
     }
     selectedPositions.sort((a, b) => a.id.localeCompare(b.id));
-
     const agents = selectedPositions.map((item, index): CandidateAgentFixture => ({
         id: `floor1-review-agent-${String(index + 1).padStart(2, '0')}`,
         label: `Review agent ${String(index + 1).padStart(2, '0')}`,
@@ -258,21 +352,14 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
         provisionalSpriteAssignment: true,
     }));
 
-    const positionDestinations = positions.map((item): CandidateDestination => ({
-        id: `position:${item.id}`,
-        label: `${item.id} (${item.tier})`,
-        kind: 'position',
-        point: item.point,
-        roomId: item.room.id,
-        roomName: item.room.name,
-    }));
+    const positionDestinations = positions.map((item): CandidateDestination => ({ id: `position:${item.id}`, label: `${item.id} (${item.tier})`, kind: 'position', point: item.point, roomId: item.room.id, roomName: item.room.name, accessTier: item.tier }));
     const computerDestinations = array(computerData.records, 'computers.records').map((value, index): CandidateDestination | null => {
         const item = record(value, `computer[${index}]`);
-        const polygon = candidatePolygonFromNative(item, `computer[${index}]`);
-        if (!polygon) return null;
-        const candidatePoint = centroid(polygon);
+        const native = nativePathsFromRecord(item, `computer[${index}]`)[0];
+        if (!native) return null;
+        const candidatePoint = centroid(native.points);
         const room = roomForPoint(rooms, candidatePoint);
-        return { id: `computer:${text(item.id, `COMPUTER_${index + 1}`)}`, label: `Computer ${index + 1}`, kind: 'computer', point: candidatePoint, roomId: room.id, roomName: room.name };
+        return { id: `computer:${text(item.id, `COMPUTER_${index + 1}`)}`, label: `Computer ${String(index + 1).padStart(3, '0')}`, kind: 'computer', point: candidatePoint, roomId: room.id, roomName: room.name };
     }).filter((item): item is CandidateDestination => item !== null && bounded(item.point));
     const roomDestinations = rooms.map((room): CandidateDestination => ({ id: `room:${room.id}`, label: room.name, kind: 'room', point: room.center, roomId: room.id, roomName: room.name }));
     const interactiveDestinations = array(interactiveData.interactiveObjects, 'interactiveObjects').map((value, index): CandidateDestination => {
@@ -287,12 +374,17 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
         const item = record(value, `door[${index}]`);
         const facts = record(item.authoredFacts, `door[${index}].authoredFacts`);
         const polygon = points(item.pdfPolygon, `door[${index}].pdfPolygon`);
+        const zones = [text(facts.zone_a, ''), text(facts.zone_b, '')].filter(Boolean);
+        const zoneIds = zones.map(zoneResolver.resolve);
         return {
             id: text(item.id, `D${String(index + 1).padStart(2, '0')}`),
             point: centroid(polygon),
-            zones: [text(facts.zone_a, ''), text(facts.zone_b, '')].filter(Boolean),
+            zones,
+            zoneIds,
             accessMode: text(item.csvAccessMode, text(facts.access_mode, '')),
             manualReviewRequired: item.manualReviewRequired === true || text(facts.manual_review_required, 'no') === 'yes',
+            apertureRadius: DOOR_APERTURE_RADIUS,
+            malformedReason: polygon.length < 3 || zoneIds.length < 2 ? 'Malformed doorway geometry or zone association.' : undefined,
         };
     }).sort((a, b) => a.id.localeCompare(b.id));
 
@@ -300,19 +392,36 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments): Ca
     for (const [kind, data] of [['wall', wallData], ['object', objectData]] as const) {
         array(data.records, `${kind}.records`).forEach((value, index) => {
             const item = record(value, `${kind}[${index}]`);
-            const polygon = candidatePolygonFromNative(item, `${kind}[${index}]`);
-            if (polygon && polygon.length >= 3) colliders.push({ id: `${kind}:${text(item.id, `${kind}-${index + 1}`)}`, kind, points: polygon });
+            nativePathsFromRecord(item, `${kind}[${index}]`).forEach(path => {
+                if (path.points.length >= 2) colliders.push({ id: `${kind}:${path.id}`, kind, points: path.points, closed: path.closed, thickness: path.thickness });
+            });
         });
     }
+
+    const walkNodes: CandidateWalkNode[] = [];
+    array(walkPathData.records, 'walk-paths.records').forEach((value, index) => {
+        const item = record(value, `walk-path[${index}]`);
+        nativePathsFromRecord(item, `walk-path[${index}]`).forEach(path => {
+            const step = Math.max(1, Math.ceil(path.points.length / 10));
+            path.points.forEach((pathPoint, pointIndex) => {
+                if ((pointIndex === 0 || pointIndex === path.points.length - 1 || pointIndex % step === 0) && walkNodes.length < MAX_WALK_NODES) {
+                    const room = roomForPoint(rooms, pathPoint);
+                    walkNodes.push({ id: `walk:${path.id}:${String(pointIndex).padStart(3, '0')}`, point: pathPoint, roomId: room.id, pathId: path.id });
+                }
+            });
+        });
+    });
 
     return {
         rooms,
         doors,
         agents,
-        destinations: [...positionDestinations, ...computerDestinations, ...roomDestinations, ...interactiveDestinations]
-            .sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id)),
-        colliders,
-        nodeCount: rooms.length + doors.length + positionDestinations.length + computerDestinations.length + interactiveDestinations.length,
+        destinations: [...positionDestinations, ...computerDestinations, ...roomDestinations, ...interactiveDestinations].sort(destinationSort),
+        colliders: colliders.sort((a, b) => a.id.localeCompare(b.id)),
+        walkNodes: walkNodes.sort((a, b) => a.id.localeCompare(b.id)),
+        roomDiagnostics: zoneResolver.diagnostics,
+        nodeCount: rooms.length + doors.length + positionDestinations.length + computerDestinations.length + interactiveDestinations.length + walkNodes.length,
+        edgeCount: doors.length + walkNodes.length,
     };
 }
 
@@ -320,99 +429,138 @@ function destinationById(graph: CandidateNavigationGraph, destinationId: string)
     return graph.destinations.find(destination => destination.id === destinationId) ?? null;
 }
 
+function routeFailure(status: CandidateRouteStatus, reason: string, failureCategory: string, expandedNodeCount = 0, crossedDoorIds: readonly string[] = []): CandidateRouteResult {
+    return { status, reason: safeReason(reason), points: [], crossedDoorIds, nodeSequence: [], cost: 0, length: 0, expandedNodeCount, failureCategory };
+}
+
 function validatePoint(graph: CandidateNavigationGraph, value: Point, label: string): CandidateRouteResult | null {
-    if (!bounded(value)) return { status: 'malformed', reason: safeReason(`${label} is outside bounded Floor 1 candidate coordinates.`), points: [], crossedDoorIds: [], cost: 0, length: 0, expandedNodeCount: 0, failureCategory: 'bounds' };
-    const collider = graph.colliders.find(item => pointInPolygon(value, item.points));
-    if (collider) return { status: 'blocked', reason: safeReason(`${label} is inside candidate ${collider.kind} collision geometry.`), points: [], crossedDoorIds: [], cost: 0, length: 0, expandedNodeCount: 0, failureCategory: 'collision' };
+    if (!bounded(value)) return routeFailure('malformed', `${label} is outside bounded Floor 1 candidate coordinates.`, 'bounds');
+    const collider = graph.colliders.find(item => item.closed && pointInPolygon(value, item.points));
+    if (collider) return routeFailure('blocked', `${label} is inside candidate ${collider.kind} collision geometry (${collider.id}).`, 'collision');
     return null;
 }
 
-function validateSegments(graph: CandidateNavigationGraph, routePoints: readonly Point[], crossedDoorIds: readonly string[]): CandidateRouteResult | null {
+function doorForHit(graph: CandidateNavigationGraph, pointValue: Point, crossedDoorIds: readonly string[]): CandidateDoorNode | null {
+    return crossedDoorIds.map(id => graph.doors.find(door => door.id === id) ?? null)
+        .find((door): door is CandidateDoorNode => door !== null && distance(pointValue, door.point) <= door.apertureRadius) ?? null;
+}
+
+export function validateCandidateRouteSegments(graph: CandidateNavigationGraph, routePoints: readonly Point[], crossedDoorIds: readonly string[]): CandidateRouteResult | null {
     for (let index = 1; index < routePoints.length; index += 1) {
         const a = routePoints[index - 1];
         const b = routePoints[index];
-        if (!bounded(a) || !bounded(b)) return { status: 'malformed', reason: 'Route includes out-of-bounds coordinates.', points: [], crossedDoorIds: [], cost: 0, length: 0, expandedNodeCount: index, failureCategory: 'bounds' };
-        const collider = graph.colliders.find(item => segmentIntersectsPolygon(a, b, item.points));
-        if (collider) {
-            const isDoorEndpoint = crossedDoorIds.some(doorId => {
-                const door = graph.doors.find(item => item.id === doorId);
-                return door ? distance(door.point, a) < 2 || distance(door.point, b) < 2 : false;
-            });
-            if (!isDoorEndpoint) return { status: 'blocked', reason: safeReason(`Route segment intersects candidate ${collider.kind} collision geometry.`), points: [], crossedDoorIds, cost: 0, length: 0, expandedNodeCount: index, failureCategory: 'collision' };
+        if (!bounded(a) || !bounded(b)) return routeFailure('malformed', 'Route includes out-of-bounds coordinates.', 'bounds', index, crossedDoorIds);
+        for (const collider of graph.colliders) {
+            const hits = colliderIntersections(a, b, collider);
+            if (hits.length === 0) continue;
+            if (collider.kind === 'object') return routeFailure('blocked', `Route segment intersects candidate object collision geometry (${collider.id}).`, 'collision', index, crossedDoorIds);
+            const invalidWallHit = hits.find(hit => !doorForHit(graph, hit, crossedDoorIds));
+            if (invalidWallHit) return routeFailure('blocked', `Route segment intersects candidate wall collision geometry outside a validated doorway aperture (${collider.id}).`, 'collision', index, crossedDoorIds);
+            const uniqueDoors = new Set(hits.map(hit => doorForHit(graph, hit, crossedDoorIds)?.id).filter(Boolean));
+            if (uniqueDoors.size > 1) return routeFailure('blocked', 'Route segment crosses multiple wall apertures without intermediate doorway nodes.', 'door-aperture', index, crossedDoorIds);
         }
     }
     return null;
 }
 
-function doorBetween(graph: CandidateNavigationGraph, a: CandidateRoom, b: CandidateRoom): CandidateDoorNode | null {
-    const candidates = graph.doors.filter(door => door.zones.includes(a.name) && door.zones.includes(b.name));
-    return candidates.sort((left, right) => accessOutcome(left).localeCompare(accessOutcome(right)) || left.id.localeCompare(right.id))[0] ?? null;
+function nearestWalkPoint(graph: CandidateNavigationGraph, source: Point, roomId: string): Point | null {
+    const candidates = graph.walkNodes
+        .filter(node => node.roomId === roomId)
+        .sort((a, b) => distance(a.point, source) - distance(b.point, source) || a.id.localeCompare(b.id))
+        .slice(0, CONNECTOR_SEARCH_LIMIT);
+    return candidates.find(node => distance(node.point, source) <= CONNECTOR_MAX_DISTANCE)?.point ?? null;
 }
 
-export function planCandidateRoute(
-    graph: CandidateNavigationGraph,
-    start: Point,
-    destinationId: string,
-): CandidateRouteResult {
+function buildTopology(graph: CandidateNavigationGraph) {
+    const adjacency = new Map<string, Array<{ to: string; door: CandidateDoorNode }>>();
+    const denied: CandidateDoorNode[] = [];
+    for (const door of graph.doors) {
+        const outcome = accessOutcome(door);
+        if (outcome !== 'allowed') { denied.push(door); continue; }
+        const [a, b] = door.zoneIds;
+        if (!a || !b) continue;
+        adjacency.set(a, [...(adjacency.get(a) ?? []), { to: b, door }]);
+        adjacency.set(b, [...(adjacency.get(b) ?? []), { to: a, door }]);
+    }
+    adjacency.forEach(edges => edges.sort((a, b) => a.door.id.localeCompare(b.door.id) || a.to.localeCompare(b.to)));
+    return { adjacency, denied };
+}
+
+function findDoorPath(graph: CandidateNavigationGraph, startRoomId: string, destRoomId: string) {
+    const { adjacency, denied } = buildTopology(graph);
+    const queue: Array<{ roomId: string; path: CandidateDoorNode[]; nodes: string[] }> = [{ roomId: startRoomId, path: [], nodes: [startRoomId] }];
+    const visited = new Set([startRoomId]);
+    let expanded = 0;
+    while (queue.length > 0 && expanded < MAX_EXPANDED_NODES) {
+        const current = queue.shift();
+        if (!current) break;
+        expanded += 1;
+        if (current.roomId === destRoomId) return { path: current.path, nodes: current.nodes, expanded, denied };
+        for (const edge of adjacency.get(current.roomId) ?? []) {
+            if (visited.has(edge.to)) continue;
+            visited.add(edge.to);
+            queue.push({ roomId: edge.to, path: [...current.path, edge.door], nodes: [...current.nodes, edge.to] });
+        }
+    }
+    return { path: null, nodes: [] as string[], expanded, denied };
+}
+
+function roomName(graph: CandidateNavigationGraph, roomId: string): string {
+    return graph.rooms.find(room => room.id === roomId)?.name ?? roomId.replace(/^zone:/, '');
+}
+
+export function planCandidateRoute(graph: CandidateNavigationGraph, start: Point, destinationId: string): CandidateRouteResult {
     const startValidation = validatePoint(graph, start, 'Route start');
     if (startValidation) return startValidation;
     const destination = destinationById(graph, destinationId);
-    if (!destination) return { status: 'malformed', reason: 'Destination could not be resolved to a candidate review point.', points: [], crossedDoorIds: [], cost: 0, length: 0, expandedNodeCount: 0, failureCategory: 'destination' };
+    if (!destination) return routeFailure('malformed', 'Destination could not be resolved to a candidate review point.', 'destination');
     const destinationValidation = validatePoint(graph, destination.point, 'Route destination');
     if (destinationValidation) return destinationValidation;
 
     const startRoom = roomForPoint(graph.rooms, start);
-    const destRoom = roomForPoint(graph.rooms, destination.point);
+    const destRoom = graph.rooms.find(room => room.id === destination.roomId) ?? roomForPoint(graph.rooms, destination.point);
     const crossedDoorIds: string[] = [];
     const pointsOut: Point[] = [start];
-    let expanded = 1;
+    const nodeSequence = [`point:start`, startRoom.id];
+    const startWalk = nearestWalkPoint(graph, start, startRoom.id);
+    if (startWalk && distance(startWalk, start) > 1) pointsOut.push(startWalk);
 
+    const doorSearch = findDoorPath(graph, startRoom.id, destRoom.id);
     if (startRoom.id !== destRoom.id) {
-        const queue: Array<{ room: CandidateRoom; path: CandidateDoorNode[] }> = [{ room: startRoom, path: [] }];
-        const visited = new Set([startRoom.name]);
-        let found: CandidateDoorNode[] | null = null;
-        while (queue.length > 0 && expanded < MAX_EXPANDED_NODES) {
-            const current = queue.shift();
-            if (!current) break;
-            if (current.room.name === destRoom.name) { found = current.path; break; }
-            const nextDoors = graph.doors.filter(door => door.zones.includes(current.room.name)).sort((a, b) => a.id.localeCompare(b.id));
-            for (const door of nextDoors) {
-                expanded += 1;
-                const otherName = door.zones.find(zone => zone !== current.room.name);
-                if (!otherName || visited.has(otherName)) continue;
-                const otherRoom = graph.rooms.find(room => room.name === otherName) ?? { id: `zone:${otherName}`, name: otherName, polygon: [], center: door.point };
-                visited.add(otherName);
-                queue.push({ room: otherRoom, path: [...current.path, door] });
+        if (!doorSearch.path) {
+            const relevantDenied = doorSearch.denied.find(door => door.zoneIds.includes(startRoom.id) || door.zoneIds.includes(destRoom.id));
+            if (relevantDenied) {
+                const outcome = accessOutcome(relevantDenied);
+                return routeFailure(outcome === 'restricted' ? 'restricted' : 'blocked', `${relevantDenied.id} is ${outcome}; candidate search continued but no allowed alternate route reached ${roomName(graph, destRoom.id)}.`, outcome, doorSearch.expanded, [relevantDenied.id]);
             }
+            return routeFailure('unreachable', `No allowed candidate door path connects ${roomName(graph, startRoom.id)} to ${roomName(graph, destRoom.id)}.`, 'disconnected', doorSearch.expanded);
         }
-        if (!found) {
-            const directDoor = doorBetween(graph, startRoom, destRoom);
-            if (directDoor) found = [directDoor];
-        }
-        if (!found || found.length === 0) return { status: 'unreachable', reason: safeReason(`No candidate door path connects ${startRoom.name} to ${destRoom.name}.`), points: [], crossedDoorIds: [], cost: 0, length: 0, expandedNodeCount: expanded, failureCategory: 'disconnected' };
-        for (const door of found) {
-            const outcome = accessOutcome(door);
-            if (outcome !== 'allowed') {
-                const status = outcome === 'restricted' ? 'restricted' : 'blocked';
-                return { status, reason: safeReason(`${door.id} is ${outcome}; candidate movement will not pass through it.`), points: [], crossedDoorIds: [door.id], cost: 0, length: 0, expandedNodeCount: expanded, failureCategory: outcome };
-            }
+        for (const door of doorSearch.path) {
             pointsOut.push(door.point);
             crossedDoorIds.push(door.id);
-            if (pointsOut.length > MAX_ROUTE_POINTS) return { status: 'malformed', reason: 'Route exceeded the candidate route point limit.', points: [], crossedDoorIds, cost: 0, length: 0, expandedNodeCount: expanded, failureCategory: 'limits' };
+            nodeSequence.push(`door:${door.id}`);
+            if (pointsOut.length > MAX_ROUTE_POINTS) return routeFailure('malformed', 'Route exceeded the candidate route point limit.', 'limits', doorSearch.expanded, crossedDoorIds);
         }
     }
+
+    const destWalk = nearestWalkPoint(graph, destination.point, destRoom.id);
+    if (destWalk && distance(destWalk, destination.point) > 1) pointsOut.push(destWalk);
     pointsOut.push(destination.point);
-    const segmentFailure = validateSegments(graph, pointsOut, crossedDoorIds);
-    if (segmentFailure) return segmentFailure;
-    const length = pointsOut.slice(1).reduce((acc, pointValue, index) => acc + distance(pointsOut[index], pointValue), 0);
+    nodeSequence.push(destRoom.id, `destination:${destination.id}`);
+
+    const compact = pointsOut.filter((item, index, all) => index === 0 || distance(item, all[index - 1]) > 0.001);
+    const segmentFailure = validateCandidateRouteSegments(graph, compact, crossedDoorIds);
+    if (segmentFailure) return { ...segmentFailure, expandedNodeCount: Math.max(segmentFailure.expandedNodeCount, doorSearch.expanded) };
+    const length = routeLength(compact);
     return {
         status: 'valid',
         reason: crossedDoorIds.length > 0 ? `Candidate route allowed through ${crossedDoorIds.join(', ')}.` : 'Candidate same-room route is valid.',
-        points: pointsOut,
+        points: compact,
         crossedDoorIds,
+        nodeSequence,
         cost: Math.round(length),
         length: Math.round(length),
-        expandedNodeCount: expanded,
+        expandedNodeCount: doorSearch.expanded,
     };
 }
 
@@ -430,4 +578,28 @@ export function interpolateRoute(pointsIn: readonly Point[], distanceAlongRoute:
         remaining -= segmentLength;
     }
     return pointsIn[pointsIn.length - 1];
+}
+
+export function advanceCandidateAgents<T extends { status: string; route: CandidateRouteResult | null; progress: number; point: Point }>(
+    agents: readonly T[],
+    deltaMs: number,
+    speedPxPerSecond: number,
+): readonly T[] {
+    const clampedDelta = Math.min(MAX_FRAME_DELTA_MS, Math.max(0, deltaMs));
+    if (clampedDelta === 0 || agents.every(agent => agent.status !== 'walking')) return agents;
+    let changed = false;
+    const next = agents.map(agent => {
+        if (agent.status !== 'walking' || !agent.route || agent.route.status !== 'valid') return agent;
+        const length = routeLength(agent.route.points);
+        const nextProgress = Math.min(length, agent.progress + (speedPxPerSecond * clampedDelta) / 1000);
+        const nextAgent = {
+            ...agent,
+            point: interpolateRoute(agent.route.points, nextProgress),
+            progress: nextProgress,
+            status: nextProgress >= length ? 'arrived' : 'walking',
+        };
+        changed = true;
+        return nextAgent as T;
+    });
+    return changed ? next : agents;
 }

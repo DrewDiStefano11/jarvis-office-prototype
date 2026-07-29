@@ -118,6 +118,7 @@ export function SpritePlayer({
             return;
         }
         if (paused) {
+            playbackOriginRef.current = null;
             update(lastFrameRef.current ?? resolved.clip.frames[0]);
             return;
         }

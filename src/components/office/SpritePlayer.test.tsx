@@ -157,6 +157,39 @@ describe('SpritePlayer texture failure', () => {
         await waitFor(() => expect(frame()?.style.backgroundPosition).toBe('0px 0px'));
     });
 
+    it('excludes an individual paused player from shared clock elapsed while other sprites can continue', async () => {
+        const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
+        let tick: ((elapsed: number) => void) | undefined;
+        const runtime = {
+            textures: { load: vi.fn().mockResolvedValue(image) },
+            clock: {
+                subscribe: vi.fn((subscriber: (elapsed: number) => void) => {
+                    tick = subscriber;
+                    return vi.fn();
+                }),
+            },
+        } as unknown as SpriteSurfaceRuntime;
+        const { container, rerender } = render(
+            <SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" />,
+        );
+        const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
+        await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
+        act(() => tick?.(1_000));
+        act(() => tick?.(1_250));
+        const pausedFrame = frame()?.style.backgroundPosition;
+        expect(pausedFrame).toBe('-362px 0px');
+
+        rerender(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" paused />);
+        act(() => tick?.(20_000));
+        expect(frame()?.style.backgroundPosition).toBe(pausedFrame);
+
+        rerender(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" />);
+        act(() => tick?.(20_000));
+        expect(frame()?.style.backgroundPosition).toBe(pausedFrame);
+        act(() => tick?.(20_125));
+        expect(frame()?.style.backgroundPosition).not.toBe(pausedFrame);
+    });
+
     it('unsubscribes when a one-shot clip reaches its final frame', async () => {
         const manifest = structuredClone(AGENT_SPRITE_MANIFEST);
         const walking = manifest.assets[0].clips.find(clip => clip.state === 'walking');

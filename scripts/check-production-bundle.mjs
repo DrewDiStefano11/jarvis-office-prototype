@@ -17,6 +17,12 @@ const forbiddenMarkers = [
   'Candidate routes validate static world collisions only',
   'provisionalSpriteAssignment',
   'candidateNavigation',
+  'Destination category',
+  'Walk-path and door graph nodes',
+  'Route segment intersects candidate object collision geometry',
+  'object:objects-053:path:01',
+  'floor1-candidate-agent',
+  'Search destinations',
 ];
 const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
 const matches = [];

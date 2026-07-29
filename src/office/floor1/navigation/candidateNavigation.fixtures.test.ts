@@ -10,21 +10,24 @@ function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {
             { id: 'ROOM_C', name: 'Room C', polygon: [{ x: 600, y: 0 }, { x: 900, y: 0 }, { x: 900, y: 300 }, { x: 600, y: 300 }], center: { x: 750, y: 150 } },
         ],
         doors: [
-            { id: 'D01', point: { x: 300, y: 150 }, zones: ['Room A', 'Room B'], accessMode, manualReviewRequired: false },
-            { id: 'D02', point: { x: 600, y: 150 }, zones: ['Room B', 'Room C'], accessMode: 'open', manualReviewRequired: false },
+            { id: 'D01', point: { x: 300, y: 150 }, zones: ['Room A', 'Room B'], zoneIds: ['ROOM_A', 'ROOM_B'], accessMode, manualReviewRequired: false, apertureRadius: 96 },
+            { id: 'D02', point: { x: 600, y: 150 }, zones: ['Room B', 'Room C'], zoneIds: ['ROOM_B', 'ROOM_C'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 96 },
         ],
         agents: [],
         destinations: [
-            { id: 'same-room', label: 'same room', kind: 'waypoint', point: { x: 220, y: 120 }, roomId: 'ROOM_A', roomName: 'Room A' },
+            { id: 'same-room', label: 'same room', kind: 'waypoint', point: { x: 220, y: 80 }, roomId: 'ROOM_A', roomName: 'Room A' },
             { id: 'adjacent-room', label: 'adjacent room', kind: 'waypoint', point: { x: 450, y: 130 }, roomId: 'ROOM_B', roomName: 'Room B' },
             { id: 'multi-room', label: 'multi room', kind: 'computer', point: { x: 750, y: 130 }, roomId: 'ROOM_C', roomName: 'Room C' },
-            { id: 'inside-collision', label: 'inside collision', kind: 'waypoint', point: { x: 120, y: 120 }, roomId: 'ROOM_A', roomName: 'Room A' },
+            { id: 'inside-collision', label: 'inside collision', kind: 'waypoint', point: { x: 120, y: 220 }, roomId: 'ROOM_A', roomName: 'Room A' },
             { id: 'priority-position', label: 'priority position', kind: 'position', point: { x: 230, y: 80 }, roomId: 'ROOM_A', roomName: 'Room A' },
         ],
         colliders: [
-            { id: 'object:desk', kind: 'object', points: [{ x: 100, y: 100 }, { x: 140, y: 100 }, { x: 140, y: 140 }, { x: 100, y: 140 }] },
+            { id: 'object:desk', kind: 'object', points: [{ x: 100, y: 200 }, { x: 140, y: 200 }, { x: 140, y: 240 }, { x: 100, y: 240 }], closed: true, thickness: 8 },
         ],
+        walkNodes: [],
+        roomDiagnostics: [],
         nodeCount: 8,
+        edgeCount: 2,
     } as CandidateNavigationGraph;
 }
 
