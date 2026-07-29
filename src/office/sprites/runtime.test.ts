@@ -38,6 +38,27 @@ describe('shared animation clock', () => {
         expect(request).toHaveBeenCalledTimes(1);
     });
 
+    it('excludes inactive wall-clock time from elapsed animation time', () => {
+        const callbacks: FrameRequestCallback[] = [];
+        const request = vi.fn((callback: FrameRequestCallback) => {
+            callbacks.push(callback);
+            return callbacks.length;
+        });
+        const cancel = vi.fn();
+        const clock = new AnimationClock(request, cancel);
+        const subscriber = vi.fn();
+        clock.subscribe(subscriber);
+        callbacks[0](100);
+        callbacks[1](180);
+        expect(subscriber).toHaveBeenLastCalledWith(80);
+        clock.setActive(false);
+        clock.setActive(true);
+        callbacks[2](2_000);
+        expect(subscriber).toHaveBeenLastCalledWith(80);
+        callbacks[3](2_050);
+        expect(subscriber).toHaveBeenLastCalledWith(130);
+    });
+
     it('calls browser frame methods with their required window receiver', () => {
         const request = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(7);
         const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);

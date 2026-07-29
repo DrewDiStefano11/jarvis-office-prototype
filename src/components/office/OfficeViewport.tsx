@@ -22,6 +22,10 @@ const AgentSpriteLayer = import.meta.env.DEV
     ? lazy(() => import('./AgentSpriteLayer').then(module => ({ default: module.AgentSpriteLayer })))
     : null;
 
+const Floor1CandidateSimulation = import.meta.env.DEV
+    ? lazy(() => import('./Floor1CandidateSimulation').then(module => ({ default: module.Floor1CandidateSimulation })))
+    : null;
+
 type Props = Readonly<{
     active: boolean;
     document: OfficeOverlayDocument;
@@ -343,6 +347,11 @@ export function OfficeViewport({
                                 reducedMotion={reducedMotion}
                                 onSelect={onSelectDevelopmentAgent}
                             />
+                        </Suspense>
+                    )}
+                    {Floor1CandidateSimulation && reviewMode && (
+                        <Suspense fallback={null}>
+                            <Floor1CandidateSimulation active={active} reducedMotion={reducedMotion} />
                         </Suspense>
                     )}
                 </div>

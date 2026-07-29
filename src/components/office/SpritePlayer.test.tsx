@@ -91,7 +91,9 @@ describe('SpritePlayer texture failure', () => {
 
         const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
         await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
-        act(() => tick?.(250));
+        act(() => tick?.(10_000));
+        expect(frame()?.style.backgroundPosition).toBe('0px 0px');
+        act(() => tick?.(10_250));
         expect(frame()?.style.backgroundPosition).toBe('-362px 0px');
 
         rerender(
@@ -130,6 +132,31 @@ describe('SpritePlayer texture failure', () => {
         expect(runtime.clock.subscribe).not.toHaveBeenCalled();
     });
 
+    it('starts a newly activated clip from its own first frame instead of shared clock lifetime', async () => {
+        const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
+        let tick: ((elapsed: number) => void) | undefined;
+        const runtime = {
+            textures: { load: vi.fn().mockResolvedValue(image) },
+            clock: {
+                subscribe: vi.fn((subscriber: (elapsed: number) => void) => {
+                    tick = subscriber;
+                    return vi.fn();
+                }),
+            },
+        } as unknown as SpriteSurfaceRuntime;
+        const { container, rerender } = render(
+            <SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" />,
+        );
+        const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
+        await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
+        act(() => tick?.(250_000));
+        expect(frame()?.style.backgroundPosition).toBe('0px 0px');
+        act(() => tick?.(250_250));
+        expect(frame()?.style.backgroundPosition).toBe('-362px 0px');
+        rerender(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="offline" />);
+        await waitFor(() => expect(frame()?.style.backgroundPosition).toBe('0px 0px'));
+    });
+
     it('unsubscribes when a one-shot clip reaches its final frame', async () => {
         const manifest = structuredClone(AGENT_SPRITE_MANIFEST);
         const walking = manifest.assets[0].clips.find(clip => clip.state === 'walking');
@@ -158,7 +185,8 @@ describe('SpritePlayer texture failure', () => {
         );
 
         await waitFor(() => expect(runtime.clock.subscribe).toHaveBeenCalledOnce());
-        act(() => tick?.(750));
+        act(() => tick?.(10_000));
+        act(() => tick?.(10_750));
         expect(unsubscribe).toHaveBeenCalledOnce();
     });
 });

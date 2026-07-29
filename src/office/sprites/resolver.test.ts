@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_SPRITE_MANIFEST } from './manifest';
-import { frameAtElapsedTime, framePosition, resolveSpriteClip } from './resolver';
+import { frameAtElapsedTime, framePosition, resolveSpriteClip, spriteFrameSequence } from './resolver';
 import { SpriteManifest } from './types';
 
 describe('sprite state resolution', () => {
@@ -29,6 +29,25 @@ describe('sprite state resolution', () => {
         const resolved = resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'agent-sheet-01', 'offline', 'none');
         expect(resolved?.resolvedState).toBe('offline');
         expect(resolved?.clip.frames).toEqual([0]);
+        expect(frameAtElapsedTime(resolved!, 10_000)).toBe(0);
+    });
+
+    it('builds correct yoyo frame sequences for looping and non-looping clips', () => {
+        expect(spriteFrameSequence([0, 1], true, false)).toEqual([0, 1, 0]);
+        expect(spriteFrameSequence([0, 1, 2], true, false)).toEqual([0, 1, 2, 1, 0]);
+        expect(spriteFrameSequence([0, 1, 2], true, true)).toEqual([0, 1, 2, 1]);
+        expect(spriteFrameSequence([0, 1, 2], false, false)).toEqual([0, 1, 2]);
+    });
+
+    it('finishes a non-looping yoyo clip on its initial frame', () => {
+        const manifest = structuredClone(AGENT_SPRITE_MANIFEST);
+        const walking = manifest.assets[0].clips.find(clip => clip.state === 'walking');
+        if (!walking) throw new Error('Expected walking clip.');
+        const mutableWalking = walking as unknown as { loop: boolean; yoyo: boolean; frames: number[] };
+        mutableWalking.loop = false;
+        mutableWalking.yoyo = true;
+        mutableWalking.frames = [0, 1, 2];
+        const resolved = resolveSpriteClip(manifest, 'agent-sheet-01', 'walking', 'none');
         expect(frameAtElapsedTime(resolved!, 10_000)).toBe(0);
     });
 

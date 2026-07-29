@@ -1,0 +1,200 @@
+.floor1-candidate-simulation {
+    position: absolute;
+    inset: 0;
+    z-index: 18;
+    pointer-events: none;
+}
+
+.floor1-candidate-agent-layer,
+.floor1-candidate-route,
+.floor1-candidate-debug {
+    position: absolute;
+    inset: 0;
+    width: 8192px;
+    height: 5460px;
+    overflow: visible;
+}
+
+.floor1-candidate-route,
+.floor1-candidate-debug {
+    pointer-events: none;
+}
+
+.floor1-candidate-route polyline {
+    fill: none;
+    stroke: #65c7ff;
+    stroke-width: 18;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 44 28;
+}
+
+.floor1-candidate-route circle {
+    fill: #07121a;
+    stroke-width: 12;
+}
+
+.floor1-candidate-route .start { stroke: #42d77d; }
+.floor1-candidate-route .destination { stroke: #ffd44d; }
+.floor1-candidate-route text,
+.floor1-candidate-debug text {
+    fill: #f5fbff;
+    paint-order: stroke;
+    stroke: #071017;
+    stroke-width: 8px;
+    font-size: 72px;
+    font-weight: 800;
+}
+
+.floor1-candidate-debug--graph circle {
+    fill: rgba(101, 199, 255, .25);
+    stroke: #65c7ff;
+    stroke-width: 8;
+}
+
+.floor1-candidate-debug--colliders polygon {
+    fill: rgba(255, 78, 95, .18);
+    stroke: rgba(255, 78, 95, .72);
+    stroke-width: 8;
+}
+
+.floor1-candidate-agent {
+    position: absolute;
+    width: 260px;
+    height: 280px;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    pointer-events: auto;
+    transform: translate(-50%, -94%);
+}
+
+.floor1-candidate-agent:hover { background: transparent; }
+
+.floor1-candidate-agent::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    width: 94px;
+    height: 30px;
+    transform: translateX(-50%);
+    border: 7px solid rgba(255, 212, 77, .45);
+    border-radius: 50%;
+    background: rgba(5, 12, 18, .2);
+}
+
+.floor1-candidate-agent--selected::after {
+    border-color: #65c7ff;
+    box-shadow: 0 0 24px #65c7ff;
+}
+
+.floor1-candidate-agent .sprite-player {
+    left: 50%;
+    top: 94%;
+}
+
+.floor1-candidate-agent__label {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    min-width: max-content;
+    padding: 6px 10px;
+    color: #f5fbff;
+    background: rgba(5, 11, 16, .9);
+    border: 2px solid #b29337;
+    border-radius: 8px;
+    font-size: 42px;
+    font-weight: 800;
+}
+
+.floor1-candidate-controls {
+    position: absolute;
+    top: 120px;
+    right: 120px;
+    width: 1500px;
+    max-height: 2100px;
+    overflow: auto;
+    padding: 46px;
+    color: #eef4f8;
+    background: rgba(8, 13, 18, .94);
+    border: 8px solid #38566a;
+    border-radius: 28px;
+    pointer-events: auto;
+    box-shadow: 0 24px 90px rgba(0,0,0,.55);
+}
+
+.floor1-candidate-controls h2 {
+    margin: 0 0 24px;
+    font-size: 74px;
+}
+
+.floor1-candidate-controls p,
+.floor1-candidate-controls label,
+.floor1-candidate-controls legend,
+.floor1-candidate-controls dt,
+.floor1-candidate-controls dd {
+    font-size: 46px;
+    line-height: 1.32;
+}
+
+.floor1-candidate-controls label {
+    display: grid;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.floor1-candidate-controls select {
+    width: 100%;
+    min-height: 82px;
+    color: #eef4f8;
+    background: #111c25;
+    border: 4px solid #47687d;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font: inherit;
+}
+
+.floor1-candidate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 26px 0;
+}
+
+.floor1-candidate-actions button {
+    font-size: 42px;
+    border-width: 4px;
+    border-radius: 12px;
+}
+
+.floor1-candidate-actions button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.floor1-candidate-controls fieldset {
+    margin: 24px 0;
+    border: 4px solid #2c4352;
+    border-radius: 18px;
+}
+
+.floor1-candidate-controls fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.floor1-candidate-controls dl {
+    display: grid;
+    grid-template-columns: 420px minmax(0, 1fr);
+    gap: 12px 24px;
+}
+
+.floor1-candidate-controls dd { margin: 0; color: #b8cad5; }
+
+@media (prefers-reduced-motion: reduce) {
+    .floor1-candidate-route polyline { stroke-dasharray: none; }
+}

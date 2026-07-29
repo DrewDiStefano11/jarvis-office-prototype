@@ -1,0 +1,473 @@
+# Floor 1 Candidate Multi-Agent Navigation
+
+Status: draft
+Plan ID: 090
+Owner: Arena agent
+Reviewer: TBD
+Created: 2026-07-29
+Last Updated: 2026-07-29
+Related Task: Floor 1 candidate multi-agent navigation, validated movement, and sprite integration
+Related Branch: arena/019fadd5-jarvis-office-prototype
+Related Pull Request: TBD
+
+## Executive Summary
+
+Build a development-only Floor 1 candidate review simulation behind `?floor1Review=candidate`. The phase adds deterministic provisional review agents rendered with the validated generated sprite sheets, a fail-closed candidate navigation domain, route preview/movement controls, debug overlays, focused animation runtime corrections, tests, and bundle-exclusion checks. Floor 1 remains candidate-only and unapproved.
+
+## Goal
+
+Allow reviewers to select one of approximately 36–42 candidate agents placed on existing candidate position anchors, choose a safe candidate destination, validate an access-aware route, preview it, and move the agent along it without changing approved or production Floor 1 data.
+
+## Background and Context
+
+Confirmed:
+- Remote state was fetched before planning.
+- The working branch is `arena/019fadd5-jarvis-office-prototype` and starts at `345d61cfe3dea77cf1ef74e1e6d92e07264c9517`, the PR #21 merge commit.
+- PR #19 added Floor 1 candidate review mode and explicitly left production approval out of scope.
+- PR #21 added the deterministic sprite inventory/generation/runtime and left permanent role-to-sprite assignments out of scope.
+- Candidate Floor 1 data is unapproved and must remain outside production semantics.
+
+Inferred:
+- Candidate coordinate values are already the existing candidate transform/registration output consumed by current Floor 1 review mode.
+- The existing provisional `navigation.json` contains no reviewed cells/routes, so this phase needs a bounded candidate-only graph from walk paths, doors, positions, rooms, computers, and colliders.
+
+Decided:
+- Navigation and fixtures will be development-only modules loaded only in candidate review mode through compile-time `import.meta.env.DEV` boundaries.
+- Routes validate against static world collisions and door/access data; dynamic agent-to-agent avoidance is documented as out of scope.
+
+Unresolved:
+- Human-reviewed route approval remains future work. This plan must not create a real approval artifact.
+
+## Current Repository State
+
+- Framework: React 19 + Vite.
+- Package manager: npm with `package-lock.json`.
+- Build command: `npm run build` / `npm run build-nolog`.
+- Test command: `npm test`.
+- Lint command: `npm run lint`.
+- Typecheck command: `npm run typecheck` / `npx tsc --noEmit`.
+- Existing relevant files: `src/components/office/*`, `src/office/floor1/*`, `src/office/sprites/*`, `src/office/data/floor1/provisional/*.json`, `docs/DOOR_ACCESS.csv`.
+- Known failures: none observed before implementation; validation pending.
+- Uncommitted changes: this plan.
+
+## Source-of-Truth Files
+
+| File | Controls |
+|---|---|
+| `AGENTS.md` | Repository rules, source/world coordinates, candidate/approval boundaries |
+| `docs/AI_HUB_MARKUP_LEGEND.md` | Markup meanings, coordinate rules, room/door/position semantics |
+| `docs/DOOR_ACCESS.csv` | Authoritative D01–D47 access modes and safe behavior |
+| `docs/INTERACTIONS.md` | Interaction and accessibility behavior |
+| `docs/ANIMATION_MANIFEST.md` | Animation states and runtime requirements |
+| `docs/AGENT_SPRITE_PIPELINE.md` | Generated sprite constraints, blocked Nexus/reference-only assets |
+| `.agent/PLANS.md` | Plan structure/status requirements |
+| `.agent/plans/000-repository-audit.md` | Floor 1 pipeline plan from PR #19 |
+| `.agent/plans/080-agent-sprite-animation-pipeline.md` | Sprite pipeline plan from PR #21 |
+
+## Scope
+
+- [ ] Fix animation clip-origin, inactive-time, and non-looping yoyo behavior.
+- [ ] Add deterministic provisional candidate agent fixtures from existing candidate positions.
+- [ ] Add candidate-only navigation graph, route validation, and route outcomes.
+- [ ] Integrate candidate sprites into the office coordinate system.
+- [ ] Add selection, destination, preview, movement, pause/resume/cancel, inspector/status updates.
+- [ ] Add independently toggled candidate route/collision debug overlays.
+- [ ] Expand tests and production-bundle exclusion checks.
+
+## Out of Scope
+
+- Production Floor 1 approval or promotion.
+- Creating `src/office/data/floor1/production/`.
+- Editing source PNGs or markup PDFs.
+- Permanent job/role-to-sprite assignments.
+- Nexus sprite generation or fabricated metadata.
+- Dynamic agent-to-agent collision avoidance.
+
+## Assumptions
+
+| ID | Assumption | Confidence | Evidence | Impact if wrong |
+|---|---|---:|---|---|
+| A-001 | Candidate position anchors are usable review anchors after existing candidate transform. | Medium | PR #19 review mode renders these entities. | Agents may need filtering/validation to fail closed. |
+| A-002 | Door `csvAccessMode` in provisional doors mirrors `docs/DOOR_ACCESS.csv`. | High | PR #19 reconciliation and document fields. | Route outcomes must fail closed on mismatch/missing metadata. |
+| A-003 | A grid/waypoint graph over walk-path records is acceptable for candidate review evidence. | Medium | Current provisional `navigation.json` has no approved cells. | Future human approval may replace graph. |
+
+## Known Unknowns
+
+| ID | Unknown | Blocks phase? | Resolution method | Safe temporary behavior |
+|---|---|---:|---|---|
+| U-001 | Exact human-approved navigation cells. | No | Future approval workflow. | Label routes as candidate evidence only. |
+| U-002 | Permanent sprite-role mapping. | No | Future authored data. | Use provisional fixture mapping only. |
+| U-003 | Dynamic agent avoidance. | No | Future simulation plan. | Document static-collision-only validation. |
+
+## Questions Requiring User Decision
+
+None blocking. Human merge reviewers should later decide whether candidate route evidence is sufficient for approval workflow expansion.
+
+## Architecture Decision
+
+### Selected Approach
+
+Use development-only React controls and sprite layer integration over the existing DOM/SVG office viewport. Build a deterministic candidate route graph from candidate world/source pixels: positions, computers, interactive anchors, room centers, door centers, and sampled walk-path vertices. Validate routes with geometry predicates, door access outcomes, finite/bounds checks, work limits, and deterministic A* tie-breaking.
+
+### Why It Fits
+
+It preserves the current renderer, coordinate transforms, layers, accessibility behavior, and candidate-only boundary. It avoids production data changes and can be bundle-isolated with existing Vite DEV guards.
+
+## Alternatives Considered
+
+### Navigation mesh
+
+Advantages:
+- Better geometric optimality.
+
+Disadvantages:
+- Requires human-approved polygons/cells not present in candidate data.
+
+Decision:
+- Defer until approval-grade navigation cells exist.
+
+### Pure grid pathfinding
+
+Advantages:
+- Simple and deterministic.
+
+Disadvantages:
+- Higher node count and more risk of invented walkable geometry.
+
+Decision:
+- Use sampled candidate waypoints and explicit validation instead.
+
+### Sprite-per-agent clocks
+
+Advantages:
+- Simple component isolation.
+
+Disadvantages:
+- Violates one-clock-per-surface performance requirement.
+
+Decision:
+- Use shared `SpriteSurfaceRuntime` per mounted candidate surface.
+
+## Data Model
+
+Candidate-only types: `CandidateAgentFixture`, `CandidateNavigationGraph`, `CandidateDestination`, `CandidateRouteResult`, `CandidateMovementState`, `CandidateRouteDebugOptions`. Each stores world/source pixel coordinates, stable IDs, candidate-only status labels, bounded route diagnostics, and provisional sprite asset IDs.
+
+## File and Directory Changes
+
+| Path | Action | Purpose |
+|---|---|---|
+| `.agent/plans/090-floor1-candidate-multi-agent-navigation.md` | create/update | Execution plan |
+| `src/office/floor1/navigation/*` | create | Candidate graph, fixtures, routes, movement helpers, tests |
+| `src/components/office/Floor1CandidateSimulation.tsx` | create | Candidate-only simulation UI/layer |
+| `src/components/office/floor1-candidate-simulation.css` | create | Dev-only route/debug CSS |
+| `src/components/office/SpritePlayer.tsx` | modify | Animation-origin/pause fixes |
+| `src/office/sprites/*` | modify/tests | Runtime/yoyo fixes |
+| `scripts/check-production-bundle.mjs` | modify | Expand candidate route exclusion markers |
+
+## Implementation Milestones
+
+### Milestone 1 — Animation corrections
+
+Status: not_started
+
+Objective:
+Fix per-clip origin, inactive-time exclusion, pause/resume continuity, and yoyo sequences.
+
+Dependencies:
+- Existing sprite runtime and tests.
+
+Tasks:
+- [ ] T-001 Add frame-sequence helper and yoyo tests.
+- [ ] T-002 Change clock elapsed to active elapsed only.
+- [ ] T-003 Add SpritePlayer playback-origin reset and pause continuity.
+
+Files:
+- `src/office/sprites/runtime.ts`
+- `src/office/sprites/resolver.ts`
+- `src/components/office/SpritePlayer.tsx`
+
+Tests:
+- `src/office/sprites/runtime.test.ts`
+- `src/office/sprites/resolver.test.ts`
+- `src/components/office/SpritePlayer.test.tsx`
+
+Visual artifacts:
+- Browser evidence for sprite playback/reduced motion.
+
+Acceptance criteria:
+- [ ] New loop starts at first frame.
+- [ ] Inactive wall-clock time is not counted.
+- [ ] Non-looping yoyo ends at initial frame.
+
+### Milestone 2 — Candidate graph and routes
+
+Status: not_started
+
+Objective:
+Create a fail-closed deterministic route graph and validation matrix.
+
+Dependencies:
+- Candidate data files only.
+
+Tasks:
+- [ ] T-010 Build candidate graph from existing candidate records.
+- [ ] T-011 Validate start/destination/collisions/doors/access/bounds/work limits.
+- [ ] T-012 Add route and movement unit tests.
+
+Files:
+- `src/office/floor1/navigation/*`
+
+Tests:
+- candidate route matrix tests.
+
+Visual artifacts:
+- Debug overlays and browser route screenshots.
+
+Acceptance criteria:
+- [ ] Required route outcomes are covered by tests.
+- [ ] Blocked/restricted/malformed routes do not animate.
+
+### Milestone 3 — Candidate UI and sprites
+
+Status: not_started
+
+Objective:
+Render 36–42 candidate agents with selected route controls and movement.
+
+Dependencies:
+- Milestones 1 and 2.
+
+Tasks:
+- [ ] T-020 Add deterministic fixture generation outside components.
+- [ ] T-021 Add candidate layer with shared sprite runtime.
+- [ ] T-022 Add accessible controls, status announcements, and debug toggles.
+
+Files:
+- `src/components/office/Floor1CandidateSimulation.tsx`
+- `src/components/office/OfficeViewport.tsx`
+- `src/components/office/OfficeEngine.tsx`
+
+Tests:
+- selection, inspector/status, movement, pause/resume, cancellation, concurrent agents, no sample mixing.
+
+Acceptance criteria:
+- [ ] 36–42 agents render in candidate mode only.
+- [ ] Production bundle excludes fixtures/controls/debug strings.
+
+## Detailed Task Breakdown
+
+| Task ID | Task | Status | Dependency | Evidence |
+|---|---|---|---|---|
+| T-001 | Add yoyo sequence helper/tests | not_started | none | Vitest |
+| T-002 | Active-time animation clock | not_started | none | Vitest |
+| T-003 | Per-clip playback origin in SpritePlayer | not_started | T-001/T-002 | Vitest |
+| T-010 | Candidate fixtures | not_started | none | Vitest |
+| T-011 | Candidate graph/pathfinding | not_started | T-010 | Vitest |
+| T-012 | Route validation matrix | not_started | T-011 | Vitest |
+| T-020 | Candidate simulation layer | not_started | T-010/T-011 | RTL/browser |
+| T-021 | Debug controls | not_started | T-020 | RTL/browser |
+| T-022 | Bundle exclusion | not_started | T-020 | production bundle check |
+
+## Validation Strategy
+
+Run generation, drift, lint, strict typecheck, full Vitest, production build, production bundle check, source-drift checks, and focused browser QA. Do not claim any command passed unless it ran successfully.
+
+## Test Plan
+
+### Unit
+- Animation origin, inactive time, yoyo sequences.
+- Graph construction, deterministic pathfinding, access denial, collision/bounds/malformed data.
+- Movement interpolation, reduced motion, cleanup, one-clock/concurrent agents.
+
+### Integration
+- Candidate data loading, agent initialization, selection/status, route preview, movement, arrival, pause/resume/cancel, blocked route, view switching, pan/zoom, layer toggles, no sample mixing.
+
+### End-to-End
+- Real-browser QA for desktop/laptop, normal mode, candidate mode, production build, reduced motion, keyboard operation, multiple agents, blocked and allowed routes, view switching, pan/zoom during movement.
+
+### Regression
+- Production bundle exclusion and no creation of production Floor 1 artifacts.
+
+## Visual Review Plan
+
+Capture focused browser evidence under the established artifact structure without generating production approval artifacts.
+
+## Performance Considerations
+
+Use one shared sprite runtime per mounted candidate surface, static agents avoid unnecessary subscriptions, completed one-shots unsubscribe, route search has explicit node/work limits, and animation movement updates DOM/CSS transforms without unbounded React rerender loops where practical.
+
+## Accessibility Considerations
+
+Keyboard-selectable agents and destinations, visible focus, route status text/announcements, non-color-only statuses, meaningful labels, and reduced-motion behavior.
+
+## Security and Data Integrity
+
+All candidate data remains development-only and fail-closed. No source PNGs/PDFs, approved data, approval artifact, or production directory are changed. Missing door metadata/access fails closed.
+
+## Risks and Mitigations
+
+| Risk ID | Risk | Likelihood | Impact | Mitigation | Trigger |
+|---|---|---:|---:|---|---|
+| R-090-01 | Candidate graph implies approval | Medium | High | labels and metadata say candidate-only; no approval artifact | PR review |
+| R-090-02 | Bundle leakage | Medium | High | compile-time DEV boundaries plus check markers | production-bundle check |
+| R-090-03 | Route graph disconnected due provisional data | Medium | Medium | safe failure reasons and curated test destinations | route tests |
+| R-090-04 | Animation rerender/performance regressions | Medium | Medium | shared clock and DOM frame updates | runtime tests/browser QA |
+
+## Rollback Strategy
+
+Revert the plan, candidate navigation modules, candidate simulation components/CSS/tests, SpritePlayer/runtime/resolver changes, and production-bundle marker additions. No production Floor 1 data should exist to remove.
+
+## Decision Log
+
+### D-090-01 — Candidate-only waypoint graph
+
+Date: 2026-07-29
+Decision: Use a bounded deterministic waypoint graph over existing candidate source-coordinate records.
+Context: No approved navigation cells exist in provisional navigation data.
+Alternatives: full navmesh or production-style approved cells.
+Reason: Preserves candidate boundary and fails closed.
+Consequences: Evidence supports review but is not approval.
+Affected Files: `src/office/floor1/navigation/*`.
+
+### D-090-02 — Static collision only
+
+Date: 2026-07-29
+Decision: Validate against static world collisions and document no dynamic agent avoidance.
+Context: User allowed out-of-scope if documented.
+Alternatives: dynamic reservations and avoidance.
+Reason: Avoids pretending unimplemented behavior exists.
+Consequences: Concurrent agents may visually pass near each other; static blockers still apply.
+Affected Files: simulation docs/UI/tests.
+
+## Progress Log
+
+### 2026-07-29
+
+- Fetched remote state before planning.
+- Confirmed branch `arena/019fadd5-jarvis-office-prototype` at starting SHA `345d61cfe3dea77cf1ef74e1e6d92e07264c9517`.
+- Read required repository instructions, markup/access/interaction/animation/sprite docs, PR #19/#21 summaries and plans, and inspected relevant candidate data/runtime/render/sprite/test files.
+- Created this execution plan before implementation.
+
+## Unexpected Discoveries
+
+None yet.
+
+## Manual Review Items
+
+- [ ] Human route evidence review before any future approval.
+- [ ] Permanent sprite-role assignments.
+- [ ] Dynamic agent avoidance scope decision.
+
+## Completion Criteria
+
+### Functional
+- [ ] Candidate agents render/move with selected validated routes.
+
+### Data Integrity
+- [ ] No production data, approval artifact, source PNG, or markup PDF changed.
+
+### Tests
+- [ ] Required unit/integration tests pass.
+
+### Visual
+- [ ] Browser evidence captured.
+
+### Performance
+- [ ] Route and animation bounds measured.
+
+### Accessibility
+- [ ] Keyboard/reduced-motion/status behavior verified.
+
+### Documentation
+- [ ] PR and plan document limitations.
+
+### Build
+- [ ] Generation, drift, lint, typecheck, tests, build, bundle check, and diff check pass.
+
+## Final Report
+
+### Delivered
+
+TBD.
+
+### Files Changed
+
+TBD.
+
+### Data Generated
+
+TBD.
+
+### Tests Run
+
+TBD.
+
+### Test Results
+
+TBD.
+
+### Build Results
+
+TBD.
+
+### Visual Artifacts
+
+TBD.
+
+### Performance Results
+
+TBD.
+
+### Accessibility Results
+
+TBD.
+
+### Known Limitations
+
+Dynamic agent-to-agent avoidance is out of scope unless later implemented.
+
+### Deferred Work
+
+Production approval/promotion, permanent role mapping, Nexus sprites, approval-grade navigation cells.
+
+### Manual Review Remaining
+
+Floor 1 remains unapproved.
+
+### Recommended Next Plan
+
+Human navigation review and approval workflow expansion after this candidate evidence phase.
+
+## Implementation Update — 2026-07-29
+
+Status: implemented-local-validation
+
+Confirmed:
+- Candidate simulation was implemented behind the existing development-only `?floor1Review=candidate` path.
+- It creates 40 deterministic provisional review agents from existing candidate positions and labels sprite assignments as provisional review fixtures.
+- It adds candidate route graph/validation helpers, route preview/movement controls, pause/resume/cancel controls, and independent route/door/collider overlay toggles.
+- Routes validate static candidate collisions, finite/bounded coordinates, destination resolution, D01–D47 door metadata, access modes, manual-review doors, node/route limits, and deterministic reruns.
+- Dynamic agent-to-agent avoidance remains out of scope and is disclosed in the UI.
+- The production bundle check now rejects candidate navigation controls/fixtures/debug markers.
+- Floor 1 remains unapproved; no approval artifact or production dataset was created.
+
+Evidence:
+- `npm ci` passed.
+- `npm run generate:floor1` passed: 65 generated files / 11,568,585 bytes.
+- `npm run check:floor1-generated` passed.
+- `npm run inventory:sprites` passed: 18 sources, 16 production candidates, 1 reference-only, 1 blocked.
+- `npm run generate:sprites` passed.
+- `npm run check:sprites-generated` passed.
+- `npm run typecheck` passed.
+- `npx tsc --noEmit` passed.
+- `npm run lint` and `npx eslint src` passed.
+- `npm test -- --run` passed: 36 files, 347 tests.
+- `npm run build` passed.
+- `npm run check:production-bundle` passed and reported candidate navigation markers excluded.
+- `git diff --check` passed.
+- Verified no source PNG/PDF changed, no `src/office/data/floor1/production/` exists, and no approval artifact was found.
+
+Limitations:
+- Browser QA evidence has not been captured in this environment yet.
+- The candidate route graph is review evidence only and is not approval-grade navigation.
+- React state is used for bounded movement snapshots; future performance work can move interpolation fully to refs/CSS transforms if review finds render frequency too high.

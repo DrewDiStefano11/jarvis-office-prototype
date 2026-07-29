@@ -1,6 +1,6 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { resolvePublicAssetPath } from '../../office/assets';
-import { frameAtElapsedTime, framePosition, resolveSpriteClip } from '../../office/sprites/resolver';
+import { frameAtElapsedTime, framePosition, resolveSpriteClip, spriteFrameSequence } from '../../office/sprites/resolver';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import { SpriteDirection, SpriteManifest, SpriteState } from '../../office/sprites/types';
 import './sprite-player.css';
@@ -40,6 +40,9 @@ export function SpritePlayer({
     const lastFrameRef = useRef<number | null>(null);
     const lastClipKeyRef = useRef<string | null>(null);
     const lastRenderKeyRef = useRef<string | null>(null);
+    const accumulatedClipElapsedRef = useRef(0);
+    const playbackOriginRef = useRef<number | null>(null);
+    const previousManualModeRef = useRef(false);
     const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
     const [loadFailure, setLoadFailure] = useState<string | null>(null);
     const resolved = useMemo(
@@ -83,11 +86,16 @@ export function SpritePlayer({
 
     useEffect(() => {
         if (!resolved || loadState !== 'ready') return;
-        const clipKey = `${resolved.asset.id}:${resolved.clip.id}`;
-        if (lastClipKeyRef.current !== clipKey) {
+        const clipKey = `${resolved.asset.id}:${resolved.clip.id}:${resolved.requestedState}:${resolved.resolvedState}:${resolved.requestedDirection}:${resolved.resolvedDirection}`;
+        const returnedFromManualPlayback = previousManualModeRef.current && manualFrame === null;
+        if (lastClipKeyRef.current !== clipKey || returnedFromManualPlayback) {
             lastClipKeyRef.current = clipKey;
             lastFrameRef.current = null;
+            lastRenderKeyRef.current = null;
+            accumulatedClipElapsedRef.current = 0;
+            playbackOriginRef.current = null;
         }
+        previousManualModeRef.current = manualFrame !== null;
         const update = (frame: number) => {
             const renderKey = `${resolved.asset.id}:${frame}:${scale}`;
             if (lastRenderKeyRef.current === renderKey) return;
@@ -110,20 +118,22 @@ export function SpritePlayer({
             return;
         }
         if (paused) {
-            update(lastFrameRef.current ?? resolved.clip.staticFallbackFrame);
+            update(lastFrameRef.current ?? resolved.clip.frames[0]);
             return;
         }
-        update(resolved.clip.frames[0]);
+        update(lastFrameRef.current ?? resolved.clip.frames[0]);
         if (resolved.clip.frames.length === 1) return;
-        const yoyoFrameCount = resolved.clip.yoyo && resolved.clip.frames.length > 2
-            ? resolved.clip.frames.length * 2 - 2
-            : resolved.clip.frames.length;
-        const playbackDuration = yoyoFrameCount * 1000
+        const playbackDuration = spriteFrameSequence(resolved.clip.frames, resolved.clip.yoyo, resolved.clip.loop).length * 1000
             / (resolved.clip.framesPerSecond * Math.max(0.1, speed));
         let unsubscribe: () => void = () => undefined;
-        unsubscribe = runtime.clock.subscribe(elapsed => {
-            update(frameAtElapsedTime(resolved, elapsed, speed));
-            if (!resolved.clip.loop && elapsed >= playbackDuration) unsubscribe();
+        unsubscribe = runtime.clock.subscribe(clockElapsed => {
+            if (playbackOriginRef.current === null) {
+                playbackOriginRef.current = clockElapsed - accumulatedClipElapsedRef.current;
+            }
+            const clipElapsed = Math.max(0, clockElapsed - playbackOriginRef.current);
+            accumulatedClipElapsedRef.current = clipElapsed;
+            update(frameAtElapsedTime(resolved, clipElapsed, speed));
+            if (!resolved.clip.loop && clipElapsed >= playbackDuration) unsubscribe();
         });
         return unsubscribe;
     }, [loadState, manualFrame, onFrameChange, paused, reducedMotion, resolved, runtime.clock, scale, speed]);

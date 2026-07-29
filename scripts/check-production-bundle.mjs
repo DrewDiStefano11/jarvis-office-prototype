@@ -11,6 +11,12 @@ const forbiddenMarkers = [
   'spriteDemo',
   'agent-sprite-layer',
   'demo-agent__label',
+  'Candidate navigation',
+  'floor1-candidate-simulation',
+  'floor1-review-agent',
+  'Candidate routes validate static world collisions only',
+  'provisionalSpriteAssignment',
+  'candidateNavigation',
 ];
 const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
 const matches = [];
@@ -46,4 +52,4 @@ if (matches.length > 0) {
   throw new Error(`Development-only sprite review surface leaked into production:\n${matches.join('\n')}`);
 }
 
-process.stdout.write('Production bundle excludes development-only sprite lab and demo markers.\n');
+process.stdout.write('Production bundle excludes development-only sprite lab, demo, and Floor 1 candidate navigation markers.\n');

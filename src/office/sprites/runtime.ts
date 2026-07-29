@@ -6,7 +6,8 @@ export type AnimationSubscriber = (elapsedMs: number) => void;
 export class AnimationClock {
     private subscribers = new Set<AnimationSubscriber>();
     private handle: number | null = null;
-    private startedAt: number | null = null;
+    private lastTimestamp: number | null = null;
+    private elapsedMs = 0;
     private active = true;
 
     constructor(
@@ -24,19 +25,23 @@ export class AnimationClock {
     }
 
     setActive(active: boolean) {
+        if (this.active === active) return;
         this.active = active;
+        this.lastTimestamp = null;
         if (active) this.ensureRunning();
         else this.stopFrame();
     }
 
     restart() {
-        this.startedAt = null;
+        this.elapsedMs = 0;
+        this.lastTimestamp = null;
     }
 
     dispose() {
         this.stopFrame();
         this.subscribers.clear();
-        this.startedAt = null;
+        this.elapsedMs = 0;
+        this.lastTimestamp = null;
     }
 
     get subscriberCount() {
@@ -51,9 +56,13 @@ export class AnimationClock {
         if (!this.active || this.handle !== null || this.subscribers.size === 0) return;
         this.handle = this.requestFrame(timestamp => {
             this.handle = null;
-            if (this.startedAt === null) this.startedAt = timestamp;
-            const elapsed = timestamp - this.startedAt;
-            this.subscribers.forEach(subscriber => subscriber(elapsed));
+            if (this.lastTimestamp === null) {
+                this.lastTimestamp = timestamp;
+            } else {
+                this.elapsedMs += Math.max(0, timestamp - this.lastTimestamp);
+                this.lastTimestamp = timestamp;
+            }
+            this.subscribers.forEach(subscriber => subscriber(this.elapsedMs));
             this.ensureRunning();
         });
     }
