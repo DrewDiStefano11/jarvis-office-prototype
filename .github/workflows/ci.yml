@@ -42,3 +42,6 @@ jobs:
 
     - name: Build
       run: npm run build
+
+    - name: Verify development surfaces are excluded
+      run: npm run check:production-bundle

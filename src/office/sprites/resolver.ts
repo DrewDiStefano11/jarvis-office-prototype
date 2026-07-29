@@ -41,18 +41,7 @@ export function resolveSpriteClip(
         }
         state = manifest.fallbackGraph[state];
     }
-    const idle = findClip(asset, 'idle', 'none') ?? asset.clips[0];
-    if (!idle) return null;
-    return {
-        asset,
-        clip: idle,
-        requestedState,
-        requestedDirection,
-        resolvedState: 'idle',
-        resolvedDirection: 'none',
-        fallbackChain,
-        staticFrame: idle.staticFallbackFrame,
-    };
+    return null;
 }
 
 export function frameAtElapsedTime(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_SPRITE_MANIFEST } from './manifest';
 import { frameAtElapsedTime, framePosition, resolveSpriteClip } from './resolver';
+import { SpriteManifest } from './types';
 
 describe('sprite state resolution', () => {
     it('selects an exact walking clip and advances deterministically', () => {
@@ -22,5 +23,18 @@ describe('sprite state resolution', () => {
         expect(resolved?.staticFrame).toBe(0);
         expect(frameAtElapsedTime(resolved!, 10_000)).toBe(0);
         expect(resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'missing', 'idle', 'none')).toBeNull();
+    });
+
+    it('returns explicit unavailability instead of guessing an unrelated clip', () => {
+        const partial = structuredClone(AGENT_SPRITE_MANIFEST) as unknown as {
+            assets: Array<{ clips: typeof AGENT_SPRITE_MANIFEST.assets[number]['clips'] }>;
+        };
+        partial.assets[0].clips = partial.assets[0].clips.filter(clip => clip.state === 'walking');
+        expect(resolveSpriteClip(
+            partial as unknown as SpriteManifest,
+            'agent-sheet-01',
+            'reviewing',
+            'none',
+        )).toBeNull();
     });
 });

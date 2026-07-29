@@ -3,6 +3,7 @@ import { resolvePublicAssetPath } from '../../office/assets';
 import { frameAtElapsedTime, framePosition, resolveSpriteClip } from '../../office/sprites/resolver';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import { SpriteDirection, SpriteManifest, SpriteState } from '../../office/sprites/types';
+import './sprite-player.css';
 
 type Props = Readonly<{
     manifest: SpriteManifest;
@@ -38,6 +39,7 @@ export function SpritePlayer({
     const frameRef = useRef<HTMLDivElement>(null);
     const lastFrameRef = useRef<number | null>(null);
     const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [loadFailure, setLoadFailure] = useState<string | null>(null);
     const resolved = useMemo(
         () => resolveSpriteClip(manifest, assetId, state, direction, reducedMotion),
         [assetId, direction, manifest, reducedMotion, state],
@@ -48,26 +50,37 @@ export function SpritePlayer({
     useEffect(() => {
         let cancelled = false;
         setLoadState('loading');
+        setLoadFailure(null);
         if (!asset) {
             setLoadState('error');
+            setLoadFailure('No asset and clip fallback can satisfy this sprite request.');
             return;
         }
         runtime.textures.load(url).then(image => {
             if (cancelled) return;
-            setLoadState(
+            if (
                 image.naturalWidth === asset.frameWidth * asset.columns
                 && image.naturalHeight === asset.frameHeight * asset.rows
-                    ? 'ready'
-                    : 'error',
-            );
-        }).catch(() => {
-            if (!cancelled) setLoadState('error');
+            ) {
+                setLoadState('ready');
+                return;
+            }
+            const message = `Sprite texture dimensions do not match the manifest: ${url}`;
+            setLoadFailure(message);
+            setLoadState('error');
+            if (import.meta.env.DEV) console.error(message);
+        }).catch((error: unknown) => {
+            if (cancelled) return;
+            const message = error instanceof Error ? error.message : `Sprite texture failed to load: ${url}`;
+            setLoadFailure(message);
+            setLoadState('error');
+            if (import.meta.env.DEV) console.error(message);
         });
         return () => { cancelled = true; };
     }, [asset, runtime.textures, url]);
 
     useEffect(() => {
-        if (!resolved || loadState === 'error') return;
+        if (!resolved || loadState !== 'ready') return;
         const update = (frame: number) => {
             if (lastFrameRef.current === frame) return;
             lastFrameRef.current = frame;
@@ -90,9 +103,10 @@ export function SpritePlayer({
     }, [loadState, manualFrame, onFrameChange, paused, reducedMotion, resolved, runtime.clock, scale, speed]);
 
     if (!resolved || loadState === 'error') {
+        const label = `Sprite ${assetId} unavailable${loadFailure ? `: ${loadFailure}` : ''}`;
         return (
-            <div className={`sprite-player sprite-player--missing ${className}`} role="img" aria-label={`Sprite ${assetId} unavailable`}>
-                <span aria-hidden="true">?</span>
+            <div className={`sprite-player sprite-player--missing ${className}`} role="img" aria-label={label}>
+                {import.meta.env.DEV && <span aria-hidden="true">?</span>}
             </div>
         );
     }

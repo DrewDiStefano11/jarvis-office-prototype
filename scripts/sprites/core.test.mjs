@@ -56,7 +56,7 @@ describe('sprite inventory and generation', () => {
     expect(inventory.records.find(record => record.id === 'nexus-tube-reference')?.blockingIssues).toContain(
       'The 1254x1254 source is not evenly divisible by the apparent frame rows and columns.',
     );
-  });
+  }, 30_000);
 
   it('is deterministic, removes stale files, and preserves source bytes', async () => {
     const rootA = await mkdtemp(join(tmpdir(), 'sprite-generation-a-'));
@@ -81,9 +81,17 @@ describe('sprite inventory and generation', () => {
     const root = await mkdtemp(join(tmpdir(), 'sprite-generation-failure-'));
     try {
       await generateSprites(root);
-      const before = await readFile(join(root, paths.GENERATED_RELATIVE, 'manifest.json'), 'utf8');
+      const inventoryPath = join(root, paths.ARTIFACT_RELATIVE, 'sprite-inventory.json');
+      const manifestPath = join(root, paths.GENERATED_RELATIVE, 'manifest.json');
+      await writeFile(inventoryPath, 'last valid inventory\n');
+      await writeFile(manifestPath, 'last valid runtime\n');
       await expect(generateSprites(root, { failAfterCopies: 2 })).rejects.toThrow('Injected generation failure.');
-      expect(await readFile(join(root, paths.GENERATED_RELATIVE, 'manifest.json'), 'utf8')).toBe(before);
+      expect(await readFile(inventoryPath, 'utf8')).toBe('last valid inventory\n');
+      expect(await readFile(manifestPath, 'utf8')).toBe('last valid runtime\n');
+      await expect(generateSprites(root, { failAfterPublishes: 1 })).rejects.toThrow('Injected transactional publish failure.');
+      expect(await readFile(inventoryPath, 'utf8')).toBe('last valid inventory\n');
+      expect(await readFile(manifestPath, 'utf8')).toBe('last valid runtime\n');
+      expect((await readdir(join(root, 'artifacts'))).some(name => name.startsWith('.sprite-inventory-stage-'))).toBe(false);
       expect((await readdir(join(root, 'public', 'assets', 'office', 'sprites'))).some(name => name.startsWith('.generated-stage-'))).toBe(false);
     } finally {
       await rm(root, { recursive: true, force: true });

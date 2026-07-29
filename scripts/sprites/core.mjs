@@ -306,13 +306,21 @@ function inventoryMarkdown(inventory) {
   return lines.join('\n');
 }
 
-export async function writeInventory(root = REPO_ROOT) {
-  const inventory = await buildInventory();
-  const directory = join(root, ARTIFACT_RELATIVE);
-  assertInside(root, directory, 'inventory output');
+async function writeInventoryFiles(directory, inventory) {
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, 'sprite-inventory.json'), canonicalJson(inventory));
   await writeFile(join(directory, 'sprite-inventory.md'), inventoryMarkdown(inventory));
+}
+
+export async function writeInventory(root = REPO_ROOT) {
+  const inventory = await buildInventory();
+  const destination = join(root, ARTIFACT_RELATIVE);
+  const parent = dirname(destination);
+  const staging = join(parent, `.sprite-inventory-stage-${process.pid}-${Date.now()}`);
+  assertInside(root, destination, 'inventory output');
+  assertInside(parent, staging, 'inventory staging');
+  await writeInventoryFiles(staging, inventory);
+  await replaceDirectoriesTransactionally([{ staging, destination }]);
   return inventory;
 }
 
@@ -394,38 +402,71 @@ function runtimeManifest(inventory) {
   };
 }
 
-async function replaceDirectoryAtomically(staging, destination) {
-  const parent = dirname(destination);
-  const backup = join(parent, `.generated-backup-${process.pid}-${Date.now()}`);
-  assertInside(parent, staging, 'staging directory');
-  assertInside(parent, destination, 'generated destination');
-  let hadDestination = false;
+async function replaceDirectoriesTransactionally(pairs, options = {}) {
+  const transactionId = `${process.pid}-${Date.now()}`;
+  const records = pairs.map(({ staging, destination }, index) => {
+    const parent = dirname(destination);
+    assertInside(parent, staging, 'staging directory');
+    assertInside(parent, destination, 'generated destination');
+    return {
+      staging,
+      destination,
+      backup: join(parent, `.sprite-backup-${transactionId}-${index}`),
+      hadDestination: false,
+      backedUp: false,
+      published: false,
+    };
+  });
   try {
-    await stat(destination);
-    hadDestination = true;
-  } catch {
-    hadDestination = false;
-  }
-  if (hadDestination) await rename(destination, backup);
-  try {
-    await rename(staging, destination);
-    if (hadDestination) await rm(backup, { recursive: true, force: true });
+    for (const record of records) {
+      try {
+        await stat(record.destination);
+        record.hadDestination = true;
+      } catch {
+        record.hadDestination = false;
+      }
+      if (record.hadDestination) {
+        await rename(record.destination, record.backup);
+        record.backedUp = true;
+      }
+    }
+    let publishedCount = 0;
+    for (const record of records) {
+      await rename(record.staging, record.destination);
+      record.published = true;
+      publishedCount += 1;
+      if (options.failAfterPublishes === publishedCount) {
+        throw new Error('Injected transactional publish failure.');
+      }
+    }
   } catch (error) {
-    await rm(staging, { recursive: true, force: true });
-    if (hadDestination) await rename(backup, destination);
+    for (const record of [...records].reverse()) {
+      if (record.published) await rm(record.destination, { recursive: true, force: true });
+      if (record.backedUp) await rename(record.backup, record.destination);
+      await rm(record.staging, { recursive: true, force: true });
+    }
     throw error;
+  }
+  for (const record of records) {
+    if (record.backedUp) await rm(record.backup, { recursive: true, force: true });
   }
 }
 
 export async function generateSprites(root = REPO_ROOT, options = {}) {
-  const inventory = await writeInventory(root);
+  const inventory = await buildInventory();
+  const inventoryDestination = join(root, ARTIFACT_RELATIVE);
+  const inventoryParent = dirname(inventoryDestination);
+  const inventoryStaging = join(inventoryParent, `.sprite-inventory-stage-${process.pid}-${Date.now()}`);
   const destination = join(root, GENERATED_RELATIVE);
   const parent = dirname(destination);
   const staging = join(parent, `.generated-stage-${process.pid}-${Date.now()}`);
+  assertInside(root, inventoryDestination, 'inventory output');
+  assertInside(inventoryParent, inventoryStaging, 'inventory staging');
   assertInside(root, destination, 'generated destination');
   assertInside(parent, staging, 'generated staging');
-  await mkdir(staging, { recursive: true });
   try {
+    await writeInventoryFiles(inventoryStaging, inventory);
+    await mkdir(staging, { recursive: true });
     let copiedCount = 0;
     for (const record of inventory.records.filter(item => item.status === 'production_candidate' && item.blockingIssues.length === 0)) {
       const source = resolve(REPO_ROOT, record.path);
@@ -437,8 +478,12 @@ export async function generateSprites(root = REPO_ROOT, options = {}) {
       if (sha256(copied) !== record.sha256) throw new Error(`${record.id}: generated checksum mismatch.`);
     }
     await writeFile(join(staging, 'manifest.json'), canonicalJson(runtimeManifest(inventory)));
-    await replaceDirectoryAtomically(staging, destination);
+    await replaceDirectoriesTransactionally([
+      { staging: inventoryStaging, destination: inventoryDestination },
+      { staging, destination },
+    ], options);
   } catch (error) {
+    await rm(inventoryStaging, { recursive: true, force: true });
     await rm(staging, { recursive: true, force: true });
     throw error;
   }

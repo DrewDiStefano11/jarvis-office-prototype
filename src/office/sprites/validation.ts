@@ -12,6 +12,7 @@ import {
 
 const stateSet = new Set<string>(SPRITE_STATES);
 const directionSet = new Set<string>(SPRITE_DIRECTIONS);
+const classificationSet = new Set(['agent', 'hologram', 'effect']);
 const checksumPattern = /^[a-f0-9]{64}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -114,6 +115,24 @@ function validateAsset(
     if (typeof value.visualScale !== 'number' || !Number.isFinite(value.visualScale) || value.visualScale <= 0) {
         issue(issues, `${path}.visualScale`, 'Visual scale must be positive.');
     }
+    if (typeof value.pixelArt !== 'boolean') issue(issues, `${path}.pixelArt`, 'Expected a boolean.');
+    if (!classificationSet.has(String(value.classification))) {
+        issue(issues, `${path}.classification`, 'Unsupported sprite classification.');
+    }
+    if (!Array.isArray(value.agentProfileCompatibility)) {
+        issue(issues, `${path}.agentProfileCompatibility`, 'Agent profile compatibility must be an array.');
+    } else {
+        const seenProfiles = new Set<string>();
+        value.agentProfileCompatibility.forEach((profile, index) => {
+            if (typeof profile !== 'string' || profile.trim() === '') {
+                issue(issues, `${path}.agentProfileCompatibility[${index}]`, 'Profile ID must be a nonempty string.');
+            } else if (seenProfiles.has(profile)) {
+                issue(issues, `${path}.agentProfileCompatibility[${index}]`, `Duplicate profile ID ${profile}.`);
+            } else {
+                seenProfiles.add(profile);
+            }
+        });
+    }
     for (const field of ['sourceChecksum', 'generatedChecksum'] as const) {
         if (typeof value[field] !== 'string' || !checksumPattern.test(value[field])) {
             issue(issues, `${path}.${field}`, 'Expected a lowercase SHA-256 checksum.');
@@ -137,6 +156,12 @@ function validateAsset(
     }
     if (value.availability !== 'available' && value.availability !== 'blocked') issue(issues, `${path}.availability`, 'Invalid availability.');
     if (value.approval !== 'approved' && value.approval !== 'provisional') issue(issues, `${path}.approval`, 'Invalid approval.');
+    if (value.availability === 'available' && value.blockingReason !== null) {
+        issue(issues, `${path}.blockingReason`, 'Available assets require a null blocking reason.');
+    }
+    if (value.availability === 'blocked' && (typeof value.blockingReason !== 'string' || value.blockingReason.trim() === '')) {
+        issue(issues, `${path}.blockingReason`, 'Blocked assets require a blocking reason.');
+    }
     if (integrity.productionMode && (value.approval !== 'approved' || value.availability !== 'available')) {
         issue(issues, path, 'Production mode rejects provisional or blocked assets.');
     }
@@ -206,6 +231,9 @@ export function validateSpriteManifest(
     const issues: SpriteManifestValidationIssue[] = [];
     if (!isRecord(value)) return [{ path: '', message: 'Manifest must be an object.' }];
     if (value.schemaVersion !== 1) issue(issues, 'schemaVersion', 'Unsupported sprite manifest version.');
+    if (typeof value.generatedBy !== 'string' || value.generatedBy.trim() === '') {
+        issue(issues, 'generatedBy', 'Generator identity is required.');
+    }
     validateFallbackGraph(value.fallbackGraph, issues);
     const seenAssetIds = new Set<string>();
     if (!Array.isArray(value.assets)) issue(issues, 'assets', 'Assets must be an array.');
@@ -222,6 +250,9 @@ export function validateSpriteManifest(
             else seenAssetIds.add(asset.id);
             if (asset.availability !== 'blocked' || asset.approval !== 'provisional' || typeof asset.blockingReason !== 'string' || asset.blockingReason.trim() === '') {
                 issue(issues, `blockedAssets[${index}]`, 'Blocked assets require provisional status and a blocking reason.');
+            }
+            if (typeof asset.sourceAssetReference !== 'string' || asset.sourceAssetReference.trim() === '') {
+                issue(issues, `blockedAssets[${index}].sourceAssetReference`, 'Source reference is required.');
             }
         });
     }

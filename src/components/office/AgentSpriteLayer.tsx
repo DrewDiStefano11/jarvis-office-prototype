@@ -3,6 +3,7 @@ import { SpriteDemoAgent } from '../../domain/seed';
 import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import { SpritePlayer } from './SpritePlayer';
+import './agent-sprite-layer.css';
 
 type Props = Readonly<{
     active: boolean;

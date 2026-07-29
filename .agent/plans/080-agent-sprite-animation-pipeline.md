@@ -283,6 +283,8 @@ Affected Files: manifest/resolver/demo.
 - Verified production builds ignore both development-only sprite query flags.
 - Preserved Floor 1 data exactly; its existing Windows regeneration path records a one-byte newline difference in the generated manifest, while Linux CI remains authoritative.
 - Opened draft PR #21; CI exposed and the branch fixed a Node 18 incompatibility in module-directory resolution, then verified the sprite drift checker directly on Node 18.20.8.
+- Codex review cycle 1 reported five P2 findings; addressed all five with explicit unavailable resolution, complete required-field validation, production-safe texture failure behavior, cross-tree generator rollback, and compile-time production exclusion of the visual lab.
+- Added regression coverage for all review findings and a post-build production-bundle isolation check; final development and production browser routes were reverified.
 
 ## Unexpected Discoveries
 

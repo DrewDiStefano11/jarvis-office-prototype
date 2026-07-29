@@ -33,9 +33,6 @@
 .sprite-lab__stage--light { background: #eef2f4; }
 .sprite-lab__stage--dark { background: #070a0d; }
 .sprite-lab__player { position: relative; width: 0; height: 0; }
-.sprite-player { position: absolute; left: 0; top: 0; overflow: hidden; pointer-events: none; }
-.sprite-player__frame { position: absolute; inset: 0; background-repeat: no-repeat; }
-.sprite-player__loading, .sprite-player--missing { display: grid; place-items: center; color: #5bd3ff; font-size: 64px; }
 .sprite-overlay { position: absolute; pointer-events: none; z-index: 2; }
 .sprite-overlay--anchor { left: -10px; top: -10px; width: 20px; height: 20px; border: 2px solid #ff3da4; border-radius: 50%; }
 .sprite-overlay--anchor::before, .sprite-overlay--anchor::after { content: ""; position: absolute; background: #ff3da4; }
@@ -74,20 +71,6 @@
 .sprite-lab__inspector code { font-size: .68rem; overflow-wrap: anywhere; }
 .sprite-lab__inspector h3 { font-size: .82rem; }
 .sprite-lab__inspector li, .sprite-lab__inspector p { color: #b7c8d1; font-size: .78rem; line-height: 1.45; }
-.agent-sprite-layer { position: absolute; inset: 0; pointer-events: none; z-index: 12; }
-.demo-agent {
-    position: absolute; width: 380px; height: 410px; padding: 0; overflow: visible;
-    border: 0; background: transparent; pointer-events: auto; transform: translate(-50%, -94%);
-}
-.demo-agent:hover { background: transparent; }
-.demo-agent::after { content: ""; position: absolute; left: 50%; bottom: 7px; width: 116px; height: 38px; transform: translateX(-50%); border: 7px solid rgba(101, 199, 255, .35); border-radius: 50%; }
-.demo-agent--selected::after { border-color: #65c7ff; box-shadow: 0 0 24px #65c7ff; }
-.demo-agent .sprite-player { left: 50%; top: 94%; }
-.demo-agent__label {
-    position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
-    min-width: max-content; padding: 8px 12px; color: #f5fbff; background: rgba(5, 11, 16, .9);
-    border: 2px solid #537389; border-radius: 8px; font-size: 54px; font-weight: 700;
-}
 @media (max-width: 1050px) {
     .sprite-lab__workspace { grid-template-columns: 1fr 1fr; }
     .sprite-lab__inspector { grid-column: 1 / -1; grid-row: auto; }

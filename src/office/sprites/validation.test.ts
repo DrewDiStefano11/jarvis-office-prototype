@@ -30,6 +30,14 @@ describe('sprite manifest validation', () => {
         ['unsupported direction', (value: Record<string, unknown>) => { clips(assets(value)[0])[0].direction = 'north'; }],
         ['fallback cycle', (value: Record<string, unknown>) => { (value.fallbackGraph as Record<string, unknown>).idle = 'walking'; }],
         ['blocked asset in production mode', (value: Record<string, unknown>) => { assets(value)[0].approval = 'provisional'; }],
+        ['missing pixel-art declaration', (value: Record<string, unknown>) => { delete assets(value)[0].pixelArt; }],
+        ['invalid classification', (value: Record<string, unknown>) => { assets(value)[0].classification = 'vehicle'; }],
+        ['invalid profile compatibility', (value: Record<string, unknown>) => { assets(value)[0].agentProfileCompatibility = ['jarvis', 1]; }],
+        ['invalid available blocking reason', (value: Record<string, unknown>) => { assets(value)[0].blockingReason = 'not null'; }],
+        ['missing generator identity', (value: Record<string, unknown>) => { delete value.generatedBy; }],
+        ['missing blocked source reference', (value: Record<string, unknown>) => {
+            delete (value.blockedAssets as Record<string, unknown>[])[0].sourceAssetReference;
+        }],
     ])('rejects %s', (_name, mutate) => {
         const value = cloneManifest();
         mutate(value);
