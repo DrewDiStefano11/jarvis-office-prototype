@@ -19,7 +19,11 @@ const TEST_REGISTRATION = {
     offsetX: 0,
     offsetY: 0,
     rotationDegrees: 0,
-    status: 'approved',
+    status: 'unverified',
+    approvalStatus: 'candidate_unverified',
+    storedCoordinateSpace: 'registered_candidate_source',
+    productionApproved: false,
+    provenance: { generator: 'test', generatedArtifact: 'test', sourceEvidence: ['test'] },
     registrationLandmarks: [{ id: 'synthetic', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 }],
     maximumResidualErrorPixels: 0,
 } as const;
@@ -31,7 +35,7 @@ const testRoute = (
     start: { x: number; y: number },
     destinationId: string,
     accessTier: 'standard' | 'priority' = 'priority',
-) => planCandidateRoute(graphValue, { start, destinationId, agentId: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}` });
+) => planCandidateRoute(graphValue, { destinationId, agent: { id: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}`, currentPoint: start, revision: 0 } });
 
 
 describe('Codex review collision and access regressions', () => {
@@ -41,7 +45,7 @@ describe('Codex review collision and access regressions', () => {
         for (const computerNumber of ['022', '023', '024', '025']) {
             const destination = graph.destinations.find(item => item.label === `Computer ${computerNumber}`);
             expect(destination?.id).toBe(`computer:computers-${computerNumber}`);
-            const route = planCandidateRoute(graph, { start: agent!.point, destinationId: destination!.id, agentId: agent!.id });
+            const route = planCandidateRoute(graph, { destinationId: destination!.id, agent: { id: agent!.id, currentPoint: agent!.point, revision: 0 } });
             expect(route.status).toBe('blocked');
             expect(route.failureCategory).toBe('collision');
             expect(route.reason).toContain('object collision');
@@ -118,7 +122,7 @@ describe('door access is applied during search', () => {
 import { advanceCandidateAgents } from './candidateNavigation';
 
 describe('movement timing and frame lifecycle helpers', () => {
-    const route = { status: 'valid' as const, reason: 'ok', points: [{ x: 0, y: 0 }, { x: 420, y: 0 }], crossedDoorIds: [], nodeSequence: [], cost: 420, length: 420, expandedNodeCount: 1 };
+    const route = { status: 'valid' as const, reason: 'ok', points: [{ x: 0, y: 0 }, { x: 420, y: 0 }], crossedDoorIds: [], doorSteps: [], nodeSequence: [], cost: 420, length: 420, expandedNodeCount: 1 };
     const agent = { status: 'walking', route, progress: 0, point: { x: 0, y: 0 } };
 
     it('returns the same array when every agent is idle or delta is zero', () => {
@@ -218,10 +222,10 @@ describe('current merge-blocker regressions', () => {
         const agent = graph.agents.find(item => item.positionId === 'POSITION_117');
         expect(agent?.roomIds).toEqual(['ROOM_CENTRAL_NEXUS', 'ROOM_MAIN_CONNECTING_WALKWAY']);
         const destination = graph.destinations.find(item => item.id === 'position:POSITION_034');
-        const route = planCandidateRoute(graph, { start: agent!.point, destinationId: destination!.id, agentId: agent!.id });
+        const route = planCandidateRoute(graph, { destinationId: destination!.id, agent: { id: agent!.id, currentPoint: agent!.point, revision: 0 } });
         expect(route.status).toBe('valid');
         expect(route.crossedDoorIds).not.toContain('D38');
-        expect(planCandidateRoute(graph, { start: agent!.point, destinationId: destination!.id, agentId: agent!.id })).toEqual(route);
+        expect(planCandidateRoute(graph, { destinationId: destination!.id, agent: { id: agent!.id, currentPoint: agent!.point, revision: 0 } })).toEqual(route);
     });
 
     it('uses overlapping membership to choose an allowed edge instead of a restricted edge', () => {
@@ -300,7 +304,7 @@ describe('final review access, alternate geometry, and computer approach regress
         expect(denied.points).toHaveLength(0);
         expect(testRoute(graph, priorityAgent!.point, priorityDestination!.id, 'priority').failureCategory).not.toBe('destination_access_restricted');
         expect(testRoute(graph, standardAgent!.point, standardDestination!.id, 'standard').status).toBe('valid');
-        expect(planCandidateRoute(graph, { start: standardAgent!.point, destinationId: priorityDestination!.id, agentId: '' }).failureCategory).toBe('agent_context_missing');
+        expect(planCandidateRoute(graph, { destinationId: priorityDestination!.id, agent: { id: '', currentPoint: standardAgent!.point, revision: 0 } }).failureCategory).toBe('agent_context_missing');
         expect(testRoute(graph, standardAgent!.point, priorityDestination!.id, 'standard')).toEqual(denied);
     });
 
@@ -352,26 +356,27 @@ describe('markup registration boundary', () => {
         expect(disabled.agents).toHaveLength(0);
         expect(disabled.destinations).toHaveLength(0);
         expect(disabled.colliders).toHaveLength(0);
-        expect(disabled.unavailableReason).toContain('registration is not approved');
-        expect(planCandidateRoute(disabled, { start: { x: 1, y: 1 }, destinationId: 'anything', agentId: 'anything' }).failureCategory).toBe('registration_unavailable');
+        expect(disabled.unavailableReason).toContain('provenance is missing');
+        expect(planCandidateRoute(disabled, { destinationId: 'anything', agent: { id: 'anything', currentPoint: { x: 1, y: 1 }, revision: 0 } }).failureCategory).toBe('registration_unavailable');
     });
 
     it('transforms markup points with one uniform approved registration', () => {
-        const registration = { ...TEST_REGISTRATION, scale: 2, offsetX: 10, offsetY: -5 } as const;
+        const registration = { ...TEST_REGISTRATION, storedCoordinateSpace: 'raw_markup', scale: 2, offsetX: 10, offsetY: -5 } as const;
         expect(transformMarkupPoint({ x: 3, y: 4 }, registration)).toEqual({ x: 16, y: 3 });
     });
 
     it('rejects missing, unverified, review-required, and invalid registrations', () => {
         expect(validateMarkupRegistration(null)).toContain('missing');
-        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, status: 'unverified' })).toContain('not approved');
-        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, status: 'review_required' })).toContain('not approved');
-        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, scale: 0 })).toContain('scale');
-        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, rotationDegrees: 1 as 0 })).toContain('rotation');
-        expect(validateMarkupRegistration({ ...TEST_REGISTRATION, registrationLandmarks: [] })).toContain('landmark');
+        const approvedRegistration = { ...TEST_REGISTRATION, status: 'approved', approvalStatus: 'approved', storedCoordinateSpace: 'raw_markup' } as const;
+        expect(validateMarkupRegistration({ ...approvedRegistration, status: 'unverified' })).toContain('not approved');
+        expect(validateMarkupRegistration({ ...approvedRegistration, status: 'review_required' })).toContain('not approved');
+        expect(validateMarkupRegistration({ ...approvedRegistration, scale: 0 })).toContain('scale');
+        expect(validateMarkupRegistration({ ...approvedRegistration, rotationDegrees: 1 as 0 })).toContain('rotation');
+        expect(validateMarkupRegistration({ ...approvedRegistration, registrationLandmarks: [] })).toContain('landmark');
     });
 
     it('transforms rooms, agents, doors, walk nodes, colliders, computers, and interactive destinations consistently', () => {
-        const registration = { ...TEST_REGISTRATION, scale: 2, offsetX: 10, offsetY: -5 } as const;
+        const registration = { ...TEST_REGISTRATION, storedCoordinateSpace: 'raw_markup', scale: 2, offsetX: 10, offsetY: -5 } as const;
         const transformed = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration });
         const baseline = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
         expect(transformed.navigationAvailable).toBe(true);

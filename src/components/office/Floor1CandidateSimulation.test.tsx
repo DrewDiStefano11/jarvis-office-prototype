@@ -15,7 +15,11 @@ const TEST_REGISTRATION = {
     offsetX: 0,
     offsetY: 0,
     rotationDegrees: 0,
-    status: 'approved',
+    status: 'unverified',
+    approvalStatus: 'candidate_unverified',
+    storedCoordinateSpace: 'registered_candidate_source',
+    productionApproved: false,
+    provenance: { generator: 'test', generatedArtifact: 'test', sourceEvidence: ['test'] },
     registrationLandmarks: [{ id: 'synthetic', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 }],
     maximumResidualErrorPixels: 0,
 } as const;

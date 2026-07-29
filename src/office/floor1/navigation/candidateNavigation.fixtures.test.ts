@@ -7,7 +7,7 @@ const testRoute = (
     start: { x: number; y: number },
     destinationId: string,
     accessTier: 'standard' | 'priority' = 'priority',
-) => planCandidateRoute(graphValue, { start, destinationId, agentId: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}` });
+) => planCandidateRoute(graphValue, { destinationId, agent: { id: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}`, currentPoint: start, revision: 0 } });
 
 
 function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {

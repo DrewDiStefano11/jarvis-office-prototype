@@ -36,9 +36,12 @@ export type CandidateDestination = Readonly<{
 }>;
 
 export type CandidateRouteRequest = Readonly<{
-    start: Point;
     destinationId: string;
-    agentId: string;
+    agent: Readonly<{
+        id: string;
+        currentPoint: Point;
+        revision: number;
+    }>;
 }>;
 
 export type RegistrationLandmark = Readonly<{
@@ -58,13 +61,25 @@ export type MarkupRegistration = Readonly<{
     offsetY: number;
     rotationDegrees: 0;
     status: 'unverified' | 'review_required' | 'approved';
+    approvalStatus?: 'candidate_unverified' | 'candidate_review_required' | 'approved';
+    storedCoordinateSpace?: 'raw_markup' | 'registered_candidate_source';
+    productionApproved?: false;
     registrationLandmarks: readonly RegistrationLandmark[];
     maximumResidualErrorPixels: number;
+    provenance?: Readonly<{
+        generator: string;
+        generatedArtifact: string;
+        sourceEvidence: readonly string[];
+    }>;
 }>;
 
 export type CandidateNavigationBuildOptions = Readonly<{
     registration?: MarkupRegistration | null;
 }>;
+
+export type CandidateDoorPermission = 'general' | 'restricted' | 'reserved' | 'blocked' | 'elevator' | 'manual_review_required' | 'malformed';
+export type CandidateDoorPhysicalState = 'closed' | 'opening' | 'open' | 'closing' | 'waiting' | 'unavailable';
+export type CandidateDoorStep = Readonly<{ doorId: string; permission: CandidateDoorPermission; currentState: CandidateDoorPhysicalState; requiredAction: 'automatic_open' | 'elevator_runtime_required' | 'none'; }>;
 
 export type CandidateDoorNode = Readonly<{
     id: string;
@@ -72,6 +87,13 @@ export type CandidateDoorNode = Readonly<{
     zones: readonly string[];
     zoneIds: readonly string[];
     accessMode: string;
+    permission?: CandidateDoorPermission;
+    defaultState?: string;
+    currentState?: CandidateDoorPhysicalState;
+    openRule?: string;
+    closeRule?: string;
+    collisionRule?: string;
+    elevatorRule?: string;
     manualReviewRequired: boolean;
     apertureRadius: number;
     malformedReason?: string;
@@ -120,6 +142,7 @@ export type CandidateRouteResult = Readonly<{
     reason: string;
     points: readonly Point[];
     crossedDoorIds: readonly string[];
+    doorSteps: readonly CandidateDoorStep[];
     nodeSequence: readonly string[];
     cost: number;
     length: number;
@@ -167,24 +190,46 @@ const DEFAULT_CANDIDATE_REGISTRATION: MarkupRegistration = {
     offsetY: -0.6666666666665151,
     rotationDegrees: 0,
     status: 'unverified',
+    approvalStatus: 'candidate_unverified',
+    storedCoordinateSpace: 'raw_markup',
+    productionApproved: false,
     registrationLandmarks: [],
     maximumResidualErrorPixels: Number.POSITIVE_INFINITY,
 };
 
-export function validateMarkupRegistration(registration: MarkupRegistration | null | undefined): string | null {
+function validateRegistrationShape(registration: MarkupRegistration | null | undefined): string | null {
     if (!registration) return 'Candidate navigation unavailable: Floor 1 markup registration is missing.';
-    if (registration.status !== 'approved') return 'Candidate navigation unavailable: Floor 1 markup registration is not approved.';
     if (registration.sourceWidth !== 8192 || registration.sourceHeight !== 5460) return 'Candidate navigation unavailable: Floor 1 registration source dimensions are invalid.';
     if (!Number.isFinite(registration.markupWidth) || !Number.isFinite(registration.markupHeight) || registration.markupWidth <= 0 || registration.markupHeight <= 0) return 'Candidate navigation unavailable: Floor 1 registration markup dimensions are invalid.';
     if (!Number.isFinite(registration.scale) || registration.scale <= 0) return 'Candidate navigation unavailable: Floor 1 registration scale is invalid.';
     if (!Number.isFinite(registration.offsetX) || !Number.isFinite(registration.offsetY)) return 'Candidate navigation unavailable: Floor 1 registration offsets are invalid.';
     if (registration.rotationDegrees !== 0) return 'Candidate navigation unavailable: Floor 1 registration rotation is unsupported.';
+    if (registration.storedCoordinateSpace !== 'raw_markup' && registration.storedCoordinateSpace !== 'registered_candidate_source') return 'Candidate navigation unavailable: Floor 1 stored coordinate space is unknown.';
+    return null;
+}
+
+export function validateCandidateReviewRegistration(registration: MarkupRegistration | null | undefined): string | null {
+    const shapeFailure = validateRegistrationShape(registration);
+    if (shapeFailure) return shapeFailure;
+    if (!registration) return 'Candidate navigation unavailable: Floor 1 markup registration is missing.';
+    if (registration.productionApproved !== false) return 'Candidate navigation unavailable: Floor 1 candidate registration crossed the production boundary.';
+    if (registration.approvalStatus !== 'candidate_unverified' && registration.approvalStatus !== 'candidate_review_required') return 'Candidate navigation unavailable: Floor 1 candidate registration status is invalid.';
+    if (!registration.provenance?.generator || !registration.provenance.generatedArtifact || registration.provenance.sourceEvidence.length === 0) return 'Candidate navigation unavailable: Floor 1 candidate registration provenance is missing.';
+    return null;
+}
+
+export function validateMarkupRegistration(registration: MarkupRegistration | null | undefined): string | null {
+    const shapeFailure = validateRegistrationShape(registration);
+    if (shapeFailure) return shapeFailure;
+    if (!registration) return 'Candidate navigation unavailable: Floor 1 markup registration is missing.';
+    if (registration.status !== 'approved' || registration.approvalStatus !== 'approved') return 'Candidate navigation unavailable: Floor 1 markup registration is not approved.';
     if (!Array.isArray(registration.registrationLandmarks) || registration.registrationLandmarks.length === 0) return 'Candidate navigation unavailable: Floor 1 registration landmark evidence is missing.';
     if (!Number.isFinite(registration.maximumResidualErrorPixels) || registration.maximumResidualErrorPixels < 0) return 'Candidate navigation unavailable: Floor 1 registration residual is invalid.';
     return null;
 }
 
 export function transformMarkupPoint(pointValue: Point, registration: MarkupRegistration): Point {
+    if (registration.storedCoordinateSpace === 'registered_candidate_source') return pointValue;
     return {
         x: pointValue.x * registration.scale + registration.offsetX,
         y: pointValue.y * registration.scale + registration.offsetY,
@@ -196,7 +241,7 @@ function transformMarkupPoints(pointValues: readonly Point[], registration: Mark
 }
 
 function transformMarkupWidth(width: number, registration: MarkupRegistration): number {
-    return width * registration.scale;
+    return registration.storedCoordinateSpace === 'registered_candidate_source' ? width : width * registration.scale;
 }
 
 function unavailableGraph(reason: string): CandidateNavigationGraph {
@@ -418,12 +463,14 @@ function makeZoneResolver(rooms: readonly CandidateRoom[]) {
 }
 
 export function accessOutcome(door: CandidateDoorNode): CandidateAccessOutcome {
-    if (door.malformedReason || !door.id || door.zoneIds.length < 2 || !door.accessMode || door.zoneIds.some(zone => zone.startsWith('ambiguous:'))) return 'malformed-door';
-    if (door.manualReviewRequired) return 'manual-review-required';
-    if (door.accessMode === 'open' || door.accessMode === 'elevator') return 'allowed';
-    if (door.accessMode === 'blocked') return 'blocked';
-    if (door.accessMode === 'restricted') return 'restricted';
-    if (door.accessMode === 'event') return 'reserved';
+    if (door.malformedReason || !door.id || door.zoneIds.length < 2 || door.zoneIds.some(zone => zone.startsWith('ambiguous:'))) return 'malformed-door';
+    const permission = door.permission ?? (door.manualReviewRequired ? 'manual_review_required' : door.accessMode === 'open' ? 'general' : door.accessMode === 'restricted' ? 'restricted' : door.accessMode === 'event' ? 'reserved' : door.accessMode === 'elevator' ? 'elevator' : door.accessMode === 'blocked' ? 'blocked' : 'malformed');
+    if (permission === 'manual_review_required') return 'manual-review-required';
+    if (permission === 'general') return 'allowed';
+    if (permission === 'elevator') return 'blocked';
+    if (permission === 'blocked') return 'blocked';
+    if (permission === 'restricted') return 'restricted';
+    if (permission === 'reserved') return 'reserved';
     return 'malformed-door';
 }
 
@@ -441,7 +488,7 @@ function destinationSort(a: CandidateDestination, b: CandidateDestination): numb
 
 export function buildCandidateNavigationGraph(documents: CandidateDocuments, options: CandidateNavigationBuildOptions = {}): CandidateNavigationGraph {
     const registration = options.registration ?? DEFAULT_CANDIDATE_REGISTRATION;
-    const registrationFailure = validateMarkupRegistration(registration);
+    const registrationFailure = validateCandidateReviewRegistration(registration);
     if (registrationFailure) return unavailableGraph(registrationFailure);
     const roomData = wrapperData(documents.rooms, 'rooms');
     const positionData = wrapperData(documents.positions, 'positions');
@@ -511,13 +558,30 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         const polygon = transformMarkupPoints(points(item.pdfPolygon, `door[${index}].pdfPolygon`), registration);
         const zones = [text(facts.zone_a, ''), text(facts.zone_b, '')].filter(Boolean);
         const zoneIds = zones.map(zoneResolver.resolve);
+        const accessMode = text(item.csvAccessMode, text(facts.access_mode, ''));
+        const manualReviewRequired = item.manualReviewRequired === true || text(facts.manual_review_required, 'no') === 'yes';
+        const permission: CandidateDoorPermission = manualReviewRequired ? 'manual_review_required'
+            : accessMode === 'open' ? 'general'
+                : accessMode === 'restricted' ? 'restricted'
+                    : accessMode === 'event' ? 'reserved'
+                        : accessMode === 'blocked' ? 'blocked'
+                            : accessMode === 'elevator' ? 'elevator'
+                                : 'malformed';
+        const defaultState = text(item.csvDefaultState, text(facts.default_door_state, 'closed'));
         return {
             id: text(item.id, `D${String(index + 1).padStart(2, '0')}`),
             point: centroid(polygon),
             zones,
             zoneIds,
-            accessMode: text(item.csvAccessMode, text(facts.access_mode, '')),
-            manualReviewRequired: item.manualReviewRequired === true || text(facts.manual_review_required, 'no') === 'yes',
+            accessMode,
+            permission,
+            defaultState,
+            currentState: defaultState.includes('open') ? 'open' : defaultState.includes('unavailable') ? 'unavailable' : 'closed',
+            openRule: text(facts.door_open_rule, ''),
+            closeRule: text(facts.door_close_rule, ''),
+            collisionRule: text(facts.collision_and_pathfinding_rule, ''),
+            elevatorRule: text(facts.elevator_rule, ''),
+            manualReviewRequired,
             apertureRadius: DOOR_APERTURE_RADIUS,
             malformedReason: polygon.length < 3 || zoneIds.length < 2 ? 'Malformed doorway geometry or zone association.' : undefined,
         };
@@ -627,7 +691,7 @@ function destinationById(graph: CandidateNavigationGraph, destinationId: string)
 }
 
 function routeFailure(status: CandidateRouteStatus, reason: string, failureCategory: string, expandedNodeCount = 0, crossedDoorIds: readonly string[] = []): CandidateRouteResult {
-    return { status, reason: safeReason(reason), points: [], crossedDoorIds, nodeSequence: [], cost: 0, length: 0, expandedNodeCount, failureCategory };
+    return { status, reason: safeReason(reason), points: [], crossedDoorIds, doorSteps: [], nodeSequence: [], cost: 0, length: 0, expandedNodeCount, failureCategory };
 }
 
 function validatePoint(graph: CandidateNavigationGraph, value: Point, label: string): CandidateRouteResult | null {
@@ -787,6 +851,7 @@ function routeForDoorPath(
     expandedNodeCount: number,
 ): CandidateRouteResult {
     const crossedDoorIds: string[] = [];
+    const doorSteps: CandidateDoorStep[] = [];
     const pointsOut: Point[] = [start];
     const nodeSequence = ['point:start', ...(roomNodes.length > 0 ? [roomNodes[0]] : startRoomIds)];
     const startWalk = nearestWalkPoint(graph, start, startRoomIds);
@@ -807,13 +872,14 @@ function routeForDoorPath(
     nodeSequence.push(`destination:${destination.id}`);
     const compact = pointsOut.filter((item, index, all) => index === 0 || distance(item, all[index - 1]) > 0.001);
     const segmentFailure = validateCandidateRouteSegments(graph, compact, crossedDoorIds);
-    if (segmentFailure) return { ...segmentFailure, expandedNodeCount: Math.max(segmentFailure.expandedNodeCount, expandedNodeCount), crossedDoorIds };
+    if (segmentFailure) return { ...segmentFailure, expandedNodeCount: Math.max(segmentFailure.expandedNodeCount, expandedNodeCount), crossedDoorIds, doorSteps };
     const length = routeLength(compact);
     return {
         status: 'valid',
         reason: crossedDoorIds.length > 0 ? `Candidate route allowed through ${crossedDoorIds.join(', ')}.` : 'Candidate same-room route is valid.',
         points: compact,
         crossedDoorIds,
+        doorSteps,
         nodeSequence,
         cost: Math.round(length),
         length: Math.round(length),
@@ -823,18 +889,15 @@ function routeForDoorPath(
 
 export function planCandidateRoute(graph: CandidateNavigationGraph, request: CandidateRouteRequest): CandidateRouteResult {
     if (!graph.navigationAvailable) return routeFailure('malformed', graph.unavailableReason ?? 'Candidate navigation unavailable.', 'registration_unavailable');
-    const { start, destinationId } = request;
-    if (!request.agentId) return routeFailure('malformed', 'Route planning requires a candidate agent identity.', 'agent_context_missing');
-    const agent = graph.agents.find(item => item.id === request.agentId);
+    const { destinationId } = request;
+    if (!request.agent?.id) return routeFailure('malformed', 'Route planning requires a candidate agent identity.', 'agent_context_missing');
+    const agent = graph.agents.find(item => item.id === request.agent.id);
     if (!agent) return routeFailure('malformed', 'Route planning agent identity is not part of the candidate graph.', 'agent_context_unknown');
+    const start = request.agent.currentPoint;
     const startValidation = validatePoint(graph, start, 'Route start');
     if (startValidation) return startValidation;
     const destination = destinationById(graph, destinationId);
     if (!destination) return routeFailure('malformed', 'Destination could not be resolved to a candidate review point.', 'destination');
-    const startMemberships = membershipIds(graph.rooms, start);
-    if (!startMemberships.some(roomId => agent.roomIds.includes(roomId)) && distance(start, agent.point) > CONNECTOR_MAX_DISTANCE) {
-        return routeFailure('malformed', 'Route start is not compatible with the selected candidate agent context.', 'agent_context_mismatch');
-    }
     if (destination.availability === 'unavailable') return routeFailure('blocked', destination.unavailableReason ?? 'Destination is unavailable for candidate navigation.', 'destination_unavailable');
     if (destination.accessTier === 'priority' && agent.accessTier !== 'priority') {
         return routeFailure('restricted', `Destination ${destination.label} requires a priority review agent.`, 'destination_access_restricted');

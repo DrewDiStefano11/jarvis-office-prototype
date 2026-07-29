@@ -172,9 +172,8 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const previewRoute = () => {
         if (!selectedAgent || !destinationId) return;
         const result = planCandidateRoute(graph, {
-            start: selectedAgent.point,
             destinationId,
-            agentId: selectedAgent.fixture.id,
+            agent: { id: selectedAgent.fixture.id, currentPoint: selectedAgent.point, revision: selectedAgent.revision },
         });
         setPreview({
             agentId: selectedAgent.fixture.id,
@@ -193,9 +192,8 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const startMovement = () => {
         if (!selectedAgent || !beginEnabled || !preview) return;
         const route = planCandidateRoute(graph, {
-            start: selectedAgent.point,
             destinationId,
-            agentId: selectedAgent.fixture.id,
+            agent: { id: selectedAgent.fixture.id, currentPoint: selectedAgent.point, revision: selectedAgent.revision },
         });
         if (route.status !== 'valid') {
             setPreview({ ...preview, result: route });

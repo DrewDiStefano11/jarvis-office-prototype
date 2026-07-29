@@ -26,7 +26,11 @@ const TEST_REGISTRATION = {
     offsetX: 0,
     offsetY: 0,
     rotationDegrees: 0,
-    status: 'approved',
+    status: 'unverified',
+    approvalStatus: 'candidate_unverified',
+    storedCoordinateSpace: 'registered_candidate_source',
+    productionApproved: false,
+    provenance: { generator: 'test', generatedArtifact: 'test', sourceEvidence: ['test'] },
     registrationLandmarks: [{ id: 'synthetic', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 }],
     maximumResidualErrorPixels: 0,
 } as const;
@@ -38,7 +42,7 @@ const testRoute = (
     start: { x: number; y: number },
     destinationId: string,
     accessTier: 'standard' | 'priority' = 'priority',
-) => planCandidateRoute(graphValue, { start, destinationId, agentId: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}` });
+) => planCandidateRoute(graphValue, { destinationId, agent: { id: graphValue.agents.find(item => item.accessTier === accessTier)?.id ?? graphValue.agents[0]?.id ?? `missing-${accessTier}`, currentPoint: start, revision: 0 } });
 
 
 describe('candidate Floor 1 navigation graph', () => {

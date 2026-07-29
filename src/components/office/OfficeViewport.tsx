@@ -1,5 +1,6 @@
 import { lazy, PointerEvent as ReactPointerEvent, Suspense, WheelEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { OFFICE_ASSETS } from '../../office/assets';
+import { FLOOR1_CANDIDATE_REGISTRATION } from '../../office/floor1/candidateRegistration';
 import { constrainTransform, fitTransform, screenToOffice, zoomAtScreenPoint } from '../../office/coordinates';
 import { DEFAULT_VIEWPORT_OPTIONS, OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../office/constants';
 import {
@@ -351,7 +352,7 @@ export function OfficeViewport({
                     )}
                     {Floor1CandidateSimulation && reviewMode && (
                         <Suspense fallback={null}>
-                            <Floor1CandidateSimulation active={active} reducedMotion={reducedMotion} />
+                            <Floor1CandidateSimulation active={active} reducedMotion={reducedMotion} registration={FLOOR1_CANDIDATE_REGISTRATION} />
                         </Suspense>
                     )}
                 </div>
