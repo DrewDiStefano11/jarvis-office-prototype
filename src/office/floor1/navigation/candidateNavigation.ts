@@ -81,7 +81,7 @@ export type CandidateNavigationBuildOptions = Readonly<{
 
 export type CandidateDoorPermission = 'general' | 'restricted' | 'reserved' | 'blocked' | 'elevator' | 'manual_review_required' | 'malformed';
 export type CandidateDoorPhysicalState = 'closed' | 'opening' | 'open' | 'closing' | 'waiting' | 'unavailable';
-export type CandidateDoorStep = Readonly<{ doorId: string; permission: CandidateDoorPermission; initialPhysicalState: CandidateDoorPhysicalState; requiredAction: 'automatic_open' | 'wait_for_open' | 'elevator_call' | 'unavailable' | 'none'; approachPoint: Point; thresholdPoint: Point; exitPoint: Point; }>;
+export type CandidateDoorStep = Readonly<{ doorId: string; permission: CandidateDoorPermission; initialPhysicalState: CandidateDoorPhysicalState; requiredAction: 'automatic_open' | 'wait_for_open' | 'elevator_call' | 'unavailable' | 'none'; approachPoint: Point; thresholdPoint: Point; exitPoint: Point; approachDistance: number; thresholdDistance: number; exitDistance: number; clearanceReleaseDistance: number; }>;
 export type CandidateDoorRuntime = Readonly<{ doorId: string; state: CandidateDoorPhysicalState; stateElapsedMs: number; requestedByAgentId?: string; revision: number }>;
 export const CANDIDATE_DOOR_OPEN_MS = 400;
 export const CANDIDATE_DOOR_HOLD_MS = 600;
@@ -900,6 +900,66 @@ function roomName(graph: CandidateNavigationGraph, roomId: string): string {
     return graph.rooms.find(room => room.id === roomId)?.name ?? roomId.replace(/^zone:/, '');
 }
 
+function pointKey(pointValue: Point): string {
+    return `${Math.round(pointValue.x * 100) / 100},${Math.round(pointValue.y * 100) / 100}`;
+}
+
+function appendPath(pointsOut: Point[], path: readonly Point[]): void {
+    for (const pointValue of path.slice(1)) {
+        if (distance(pointsOut[pointsOut.length - 1], pointValue) > 0.001) pointsOut.push(pointValue);
+    }
+}
+
+function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Point, roomIds: readonly string[]): Point[] | null {
+    if (graph.walkSegments.length === 0) return [from, to];
+    const roomSet = new Set(roomIds);
+    const relevant = graph.walkSegments.filter(segment => {
+        const aRooms = membershipIds(graph.rooms, segment.a);
+        const bRooms = membershipIds(graph.rooms, segment.b);
+        return aRooms.some(roomId => roomSet.has(roomId)) || bRooms.some(roomId => roomSet.has(roomId));
+    });
+    const nodes = new Map<string, Point>();
+    const edges = new Map<string, Array<{ to: string; length: number; edgeId: string }>>();
+    const addNode = (pointValue: Point) => { const key = pointKey(pointValue); if (!nodes.has(key)) nodes.set(key, pointValue); return key; };
+    const addEdge = (a: string, b: string, length: number, edgeId: string) => {
+        edges.set(a, [...(edges.get(a) ?? []), { to: b, length, edgeId }]);
+        edges.set(b, [...(edges.get(b) ?? []), { to: a, length, edgeId }]);
+    };
+    for (const segment of relevant) {
+        const a = addNode(segment.a);
+        const b = addNode(segment.b);
+        addEdge(a, b, distance(segment.a, segment.b), segment.id);
+    }
+    const nearest = (pointValue: Point) => [...nodes.entries()]
+        .map(([id, nodePoint]) => ({ id, point: nodePoint, distance: distance(pointValue, nodePoint) }))
+        .filter(item => item.distance <= CONNECTOR_MAX_DISTANCE)
+        .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id))[0] ?? null;
+    const start = nearest(from);
+    const end = nearest(to);
+    if (!start || !end) return null;
+    const queue = [{ id: start.id, cost: 0, path: [start.id] }];
+    const best = new Map([[start.id, 0]]);
+    let expanded = 0;
+    while (queue.length > 0 && expanded < MAX_EXPANDED_NODES) {
+        queue.sort((a, b) => a.cost - b.cost || a.id.localeCompare(b.id));
+        const current = queue.shift();
+        if (!current) break;
+        expanded += 1;
+        if (current.id === end.id) {
+            return [from, ...current.path.map(id => nodes.get(id)!).filter(Boolean), to]
+                .filter((pointValue, index, all) => index === 0 || distance(pointValue, all[index - 1]) > 0.001);
+        }
+        for (const edge of (edges.get(current.id) ?? []).sort((a, b) => a.to.localeCompare(b.to) || a.edgeId.localeCompare(b.edgeId))) {
+            if (current.path.includes(edge.to)) continue;
+            const cost = current.cost + edge.length;
+            if (cost >= (best.get(edge.to) ?? Number.POSITIVE_INFINITY)) continue;
+            best.set(edge.to, cost);
+            queue.push({ id: edge.to, cost, path: [...current.path, edge.to] });
+        }
+    }
+    return null;
+}
+
 function routeForDoorPath(
     graph: CandidateNavigationGraph,
     start: Point,
@@ -914,29 +974,40 @@ function routeForDoorPath(
     const doorSteps: CandidateDoorStep[] = [];
     const pointsOut: Point[] = [start];
     const nodeSequence = ['point:start', ...(roomNodes.length > 0 ? [roomNodes[0]] : startRoomIds)];
-    const startWalk = nearestWalkPoint(graph, start, startRoomIds);
-    if (startWalk && distance(startWalk, start) > 1) pointsOut.push(startWalk);
+    let currentPoint = start;
+    let currentRooms = startRoomIds;
     for (const door of doorPath) {
         if (door.apertureRadius <= AGENT_FOOTPRINT_RADIUS) {
             return routeFailure('blocked', `${door.id} doorway aperture cannot fit the candidate agent footprint.`, 'collision', expandedNodeCount, [door.id]);
         }
+        const pathToDoor = connectedWalkPath(graph, currentPoint, door.point, currentRooms) ?? [currentPoint, door.point];
+        appendPath(pointsOut, pathToDoor);
+        const thresholdDistance = routeLength(pointsOut);
+        const approachPoint = pointsOut.length > 1 ? pointsOut[pointsOut.length - 2] : currentPoint;
+        const approachDistance = Math.max(0, thresholdDistance - distance(approachPoint, door.point));
         doorSteps.push({
             doorId: door.id,
             permission: door.permission ?? 'general',
             initialPhysicalState: door.currentState ?? 'closed',
             requiredAction: (door.permission ?? 'general') === 'elevator' ? 'elevator_call' : (door.currentState ?? 'closed') === 'open' ? 'none' : 'automatic_open',
-            approachPoint: pointsOut[pointsOut.length - 1],
+            approachPoint,
             thresholdPoint: door.point,
             exitPoint: door.point,
+            approachDistance,
+            thresholdDistance,
+            exitDistance: thresholdDistance,
+            clearanceReleaseDistance: thresholdDistance + AGENT_FOOTPRINT_RADIUS * 2,
         });
-        pointsOut.push(door.point);
         crossedDoorIds.push(door.id);
         nodeSequence.push(`door:${door.id}`);
+        const nextRoom = roomNodes[crossedDoorIds.length];
+        if (nextRoom && nodeSequence[nodeSequence.length - 1] !== nextRoom) nodeSequence.push(nextRoom);
+        currentPoint = door.point;
+        currentRooms = nextRoom ? [nextRoom] : currentRooms;
         if (pointsOut.length > MAX_ROUTE_POINTS) return routeFailure('malformed', 'Route exceeded the candidate route point limit.', 'limits', expandedNodeCount, crossedDoorIds);
     }
-    const destWalk = nearestWalkPoint(graph, destination.point, destRoomIds);
-    if (destWalk && distance(destWalk, destination.point) > 1) pointsOut.push(destWalk);
-    pointsOut.push(destination.point);
+    const pathToDestination = connectedWalkPath(graph, currentPoint, destination.point, destRoomIds) ?? [currentPoint, destination.point];
+    appendPath(pointsOut, pathToDestination);
     for (const roomId of destRoomIds) { if (nodeSequence[nodeSequence.length - 1] !== roomId) nodeSequence.push(roomId); }
     nodeSequence.push(`destination:${destination.id}`);
     const compact = pointsOut.filter((item, index, all) => index === 0 || distance(item, all[index - 1]) > 0.001);
@@ -1013,17 +1084,18 @@ export function interpolateRoute(pointsIn: readonly Point[], distanceAlongRoute:
     return pointsIn[pointsIn.length - 1];
 }
 
-function distanceAlongRouteToPoint(pointsIn: readonly Point[], target: Point): number | null {
-    let traveled = 0;
-    for (let index = 1; index < pointsIn.length; index += 1) {
-        const a = pointsIn[index - 1];
-        const b = pointsIn[index];
-        if (distance(a, target) < 0.001) return traveled;
-        const segmentLength = distance(a, b);
-        if (pointSegmentDistance(target, a, b) < 0.001) return traveled + distance(a, target);
-        traveled += segmentLength;
+export function activeCandidateDoorRequestIds<T extends { id?: string; status: string; route: CandidateRouteResult | null; progress: number }>(agents: readonly T[]): string[] {
+    const ids = new Set<string>();
+    for (const agent of agents) {
+        if (!agent.route || !['walking', 'waiting_for_door', 'crossing_door', 'paused'].includes(agent.status)) continue;
+        for (const step of agent.route.doorSteps) {
+            if (agent.progress + AGENT_FOOTPRINT_RADIUS >= step.approachDistance && agent.progress <= step.clearanceReleaseDistance) {
+                ids.add(step.doorId);
+                break;
+            }
+        }
     }
-    return distance(pointsIn[pointsIn.length - 1], target) < 0.001 ? traveled : null;
+    return [...ids].sort((a, b) => a.localeCompare(b));
 }
 
 export function advanceCandidateDoorRuntimes(
@@ -1066,18 +1138,21 @@ export function advanceCandidateAgents<T extends { id?: string; status: string; 
         const length = routeLength(agent.route.points);
         let nextProgress = Math.min(length, agent.progress + (speedPxPerSecond * clampedDelta) / 1000);
         for (const step of agent.route.doorSteps) {
-            if (step.requiredAction === 'none') continue;
-            const approachDistance = distanceAlongRouteToPoint(agent.route.points, step.approachPoint);
-            if (approachDistance === null || agent.progress > approachDistance + 0.001) continue;
+            if (agent.progress > step.clearanceReleaseDistance) continue;
             const runtime = doorRuntimes[step.doorId];
-            if (!runtime || runtime.state !== 'open') {
-                if (nextProgress >= approachDistance) {
-                    nextProgress = approachDistance;
-                    const waitingAgent = { ...agent, point: interpolateRoute(agent.route.points, nextProgress), progress: nextProgress, status: 'waiting_for_door' };
-                    changed = true;
-                    return waitingAgent as T;
-                }
+            const open = runtime?.state === 'open' || step.requiredAction === 'none';
+            if (!open && nextProgress >= step.approachDistance) {
+                nextProgress = step.approachDistance;
+                const waitingAgent = { ...agent, point: interpolateRoute(agent.route.points, nextProgress), progress: nextProgress, status: 'waiting_for_door' };
+                changed = true;
+                return waitingAgent as T;
             }
+            if (open && agent.progress < step.clearanceReleaseDistance && nextProgress > step.thresholdDistance) {
+                const crossingAgent = { ...agent, point: interpolateRoute(agent.route.points, nextProgress), progress: nextProgress, status: nextProgress >= step.clearanceReleaseDistance ? 'walking' : 'crossing_door' };
+                changed = true;
+                return crossingAgent as T;
+            }
+            break;
         }
         const nextAgent = {
             ...agent,

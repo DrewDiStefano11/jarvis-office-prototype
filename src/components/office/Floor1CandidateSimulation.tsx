@@ -11,6 +11,7 @@ import walkPaths from '../../office/data/floor1/provisional/walk-paths.json';
 import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import {
+    activeCandidateDoorRequestIds,
     advanceCandidateAgents,
     advanceCandidateDoorRuntimes,
     buildCandidateNavigationGraph,
@@ -34,7 +35,7 @@ type Props = Readonly<{
 type AgentRuntime = Readonly<{
     fixture: CandidateAgentFixture;
     point: Point;
-    status: 'idle' | 'walking' | 'waiting_for_door' | 'paused' | 'arrived' | 'blocked';
+    status: 'idle' | 'walking' | 'waiting_for_door' | 'crossing_door' | 'paused' | 'arrived' | 'blocked';
     route: CandidateRouteResult | null;
     progress: number;
     revision: number;
@@ -116,7 +117,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const lastTimestampRef = useRef<number | null>(null);
 
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? agents[0] ?? null;
-    const anyWalking = agents.some(agent => agent.status === 'walking' || agent.status === 'waiting_for_door');
+    const anyWalking = agents.some(agent => agent.status === 'walking' || agent.status === 'waiting_for_door' || agent.status === 'crossing_door');
     const beginEnabled = previewIsStartValid(selectedAgent, preview, destinationId);
 
     useEffect(() => {
@@ -149,8 +150,8 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
             const delta = last === null ? 0 : timestamp - last;
-            const waitingDoorIds = agents.flatMap(agent => agent.status === 'waiting_for_door' && agent.route ? agent.route.doorSteps.map(step => step.doorId) : []);
-            setDoorRuntimes(previous => advanceCandidateDoorRuntimes(previous, waitingDoorIds, delta));
+            const requestingDoorIds = activeCandidateDoorRequestIds(agents);
+            setDoorRuntimes(previous => advanceCandidateDoorRuntimes(previous, requestingDoorIds, delta));
             setAgents(previous => {
                 const resumed = previous.map(agent => {
                     if (agent.status !== 'waiting_for_door' || !agent.route) return agent;
