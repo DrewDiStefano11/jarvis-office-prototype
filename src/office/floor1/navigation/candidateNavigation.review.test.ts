@@ -7,14 +7,15 @@ import interactiveObjects from '../../data/floor1/provisional/interactive-object
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
-import { advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateMarkupRegistration, validateCandidateRouteSegments } from './candidateNavigation';
+import type { MarkupRegistration } from './candidateNavigation';
+import { advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, computeCandidateRegistrationResiduals, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateCandidateReviewRegistration, validateMarkupRegistration, validateCandidateRouteDoorClearance, validateCandidateRouteSegments } from './candidateNavigation';
 
 
 const TEST_REGISTRATION = {
     sourceWidth: 8192,
     sourceHeight: 5460,
-    markupWidth: 6144,
-    markupHeight: 4096,
+    markupWidth: 8192,
+    markupHeight: 5460,
     scale: 1,
     offsetX: 0,
     offsetY: 0,
@@ -26,12 +27,28 @@ const TEST_REGISTRATION = {
     provenance: { generator: 'test', generatedArtifact: 'test', sourceEvidence: ['test'] },
     registrationLandmarks: [
         { id: 'nw', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 },
-        { id: 'ne', markup: { x: 6144, y: 0 }, source: { x: 8192, y: 0 }, residualErrorPixels: 0 },
-        { id: 'sw', markup: { x: 0, y: 4096 }, source: { x: 0, y: 5460 }, residualErrorPixels: 0 },
-        { id: 'se', markup: { x: 6144, y: 4096 }, source: { x: 8192, y: 5460 }, residualErrorPixels: 0 },
+        { id: 'ne', markup: { x: 8192, y: 0 }, source: { x: 8192, y: 0 }, residualErrorPixels: 0 },
+        { id: 'sw', markup: { x: 0, y: 5460 }, source: { x: 0, y: 5460 }, residualErrorPixels: 0 },
+        { id: 'se', markup: { x: 8192, y: 5460 }, source: { x: 8192, y: 5460 }, residualErrorPixels: 0 },
     ],
     maximumResidualErrorPixels: 0,
 } as const;
+
+
+function reviewedRegistration(overrides: Partial<MarkupRegistration> = {}): MarkupRegistration {
+    const registration = { ...TEST_REGISTRATION, ...overrides } as MarkupRegistration;
+    const landmarks = overrides.registrationLandmarks ?? [
+        { id: 'nw', markup: { x: 0, y: 0 } },
+        { id: 'ne', markup: { x: Math.min(registration.markupWidth, (registration.sourceWidth - registration.offsetX) / registration.scale), y: 0 } },
+        { id: 'sw', markup: { x: 0, y: Math.min(registration.markupHeight, (registration.sourceHeight - registration.offsetY) / registration.scale) } },
+        { id: 'se', markup: { x: Math.min(registration.markupWidth, (registration.sourceWidth - registration.offsetX) / registration.scale), y: Math.min(registration.markupHeight, (registration.sourceHeight - registration.offsetY) / registration.scale) } },
+    ].map(landmark => ({
+        ...landmark,
+        source: { x: landmark.markup.x * registration.scale + registration.offsetX, y: landmark.markup.y * registration.scale + registration.offsetY },
+        residualErrorPixels: 0,
+    }));
+    return { ...registration, registrationLandmarks: landmarks, maximumResidualErrorPixels: overrides.maximumResidualErrorPixels ?? 0 };
+}
 
 const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
 
@@ -83,12 +100,12 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
             { id: 'C', name: 'C', polygon: [{ x: 0, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 0, y: 200 }], center: { x: 100, y: 150 } },
         ],
         doors: [
-            { id: 'D01', point: { x: 100, y: 50 }, zones: ['A', 'B'], zoneIds: ['A', 'B'], accessMode: firstDoorMode, manualReviewRequired: false, apertureRadius: 80 },
-            { id: 'D02', point: { x: 50, y: 100 }, zones: ['A', 'C'], zoneIds: ['A', 'C'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
-            { id: 'D03', point: { x: 150, y: 100 }, zones: ['C', 'B'], zoneIds: ['C', 'B'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
+            { id: 'D01', point: { x: 100, y: 50 }, zones: ['A', 'B'], zoneIds: ['A', 'B'], accessMode: firstDoorMode, manualReviewRequired: false, apertureRadius: 35 },
+            { id: 'D02', point: { x: 50, y: 100 }, zones: ['A', 'C'], zoneIds: ['A', 'C'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 35 },
+            { id: 'D03', point: { x: 150, y: 100 }, zones: ['C', 'B'], zoneIds: ['C', 'B'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 35 },
         ],
         agents: [{ id: 'fixture-priority', label: 'Fixture priority', positionId: 'P1', roomId: 'A', roomIds: ['A'], roomName: 'A', point: { x: 40, y: 40 }, accessTier: 'priority', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
-        destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 160, y: 40 }, roomId: 'B', roomIds: ['B'], roomName: 'B' }],
+        destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 185, y: 40 }, roomId: 'B', roomIds: ['B'], roomName: 'B' }],
         colliders: [],
         walkNodes: [],
         walkSegments: [],
@@ -240,8 +257,8 @@ describe('current merge-blocker regressions', () => {
                 { id: 'TARGET', name: 'Target', polygon: [{ x: 220, y: 0 }, { x: 420, y: 0 }, { x: 420, y: 220 }, { x: 220, y: 220 }], center: { x: 320, y: 110 } },
             ],
             doors: [
-                { id: 'D38', point: { x: 220, y: 60 }, zones: ['Restricted', 'Target'], zoneIds: ['RESTRICTED', 'TARGET'], accessMode: 'restricted', manualReviewRequired: false, apertureRadius: 80 },
-                { id: 'D10', point: { x: 220, y: 160 }, zones: ['Walkway', 'Target'], zoneIds: ['WALKWAY', 'TARGET'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 80 },
+                { id: 'D38', point: { x: 220, y: 60 }, zones: ['Restricted', 'Target'], zoneIds: ['RESTRICTED', 'TARGET'], accessMode: 'restricted', manualReviewRequired: false, apertureRadius: 35 },
+                { id: 'D10', point: { x: 220, y: 160 }, zones: ['Walkway', 'Target'], zoneIds: ['WALKWAY', 'TARGET'], accessMode: 'open', manualReviewRequired: false, apertureRadius: 35 },
             ],
             agents: [{ id: 'fixture-priority', label: 'Fixture priority', positionId: 'P1', roomId: 'A', roomIds: ['A'], roomName: 'A', point: { x: 40, y: 40 }, accessTier: 'priority', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
             destinations: [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 320, y: 160 }, roomId: 'TARGET', roomIds: ['TARGET'], roomName: 'Target' }],
@@ -379,27 +396,99 @@ describe('markup registration boundary', () => {
         expect(validateMarkupRegistration({ ...approvedRegistration, registrationLandmarks: [] })).toContain('landmark');
     });
 
+    it('recomputes candidate registration residuals from landmark coordinate pairs', () => {
+        const residuals = computeCandidateRegistrationResiduals(TEST_REGISTRATION);
+        expect(residuals.computedMaximumResidualPixels).toBe(0);
+        expect(residuals.landmarkResiduals.map(item => item.computedResidualPixels)).toEqual([0, 0, 0, 0]);
+        expect(validateCandidateReviewRegistration(TEST_REGISTRATION)).toBeNull();
+
+        const inconsistentZero = reviewedRegistration({
+            registrationLandmarks: [
+                ...TEST_REGISTRATION.registrationLandmarks.slice(0, 3),
+                { ...TEST_REGISTRATION.registrationLandmarks[3], source: { x: 8180, y: 5460 }, residualErrorPixels: 0 },
+            ],
+            maximumResidualErrorPixels: 0,
+        });
+        expect(computeCandidateRegistrationResiduals(inconsistentZero).computedMaximumResidualPixels).toBe(12);
+        expect(validateCandidateReviewRegistration(inconsistentZero)).toContain('registration_residual_mismatch');
+    });
+
+    it('rejects stale declared residual evidence and calculated residuals above tolerance', () => {
+        const staleLandmarkResidual = reviewedRegistration({
+            registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.map((landmark, index) => index === 0 ? { ...landmark, residualErrorPixels: 1 } : landmark),
+            maximumResidualErrorPixels: 1,
+        });
+        expect(validateCandidateReviewRegistration(staleLandmarkResidual)).toContain('registration_residual_mismatch');
+
+        const staleMaximum = reviewedRegistration({ maximumResidualErrorPixels: 1 });
+        expect(validateCandidateReviewRegistration(staleMaximum)).toContain('registration_maximum_residual_mismatch');
+
+        const aboveTolerance = reviewedRegistration({
+            registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.map((landmark, index) => index === 3 ? { ...landmark, source: { x: landmark.source.x - 9, y: landmark.source.y }, residualErrorPixels: 9 } : landmark),
+            maximumResidualErrorPixels: 9,
+        });
+        expect(validateCandidateReviewRegistration(aboveTolerance)).toContain('registration_residual_exceeds_tolerance');
+    });
+
+    it('continues to reject invalid, clustered, duplicate, and out-of-bounds reviewed landmarks', () => {
+        expect(validateCandidateReviewRegistration(reviewedRegistration({ registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.slice(0, 3) }))).toContain('registration_landmarks_insufficient');
+        expect(validateCandidateReviewRegistration(reviewedRegistration({ registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.map(landmark => ({ ...landmark, source: { x: 100, y: 100 }, markup: { x: 100, y: 100 } })) }))).toContain('registration_landmarks_not_distributed');
+        expect(validateCandidateReviewRegistration(reviewedRegistration({ registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.map((landmark, index) => index === 1 ? { ...landmark, id: 'nw' } : landmark) }))).toContain('registration_landmark_invalid');
+        expect(validateCandidateReviewRegistration(reviewedRegistration({ registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.map((landmark, index) => index === 0 ? { ...landmark, markup: { x: -1, y: 0 } } : landmark) }))).toContain('registration_landmark_invalid');
+        expect(validateCandidateReviewRegistration(reviewedRegistration({ registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.map((landmark, index) => index === 0 ? { ...landmark, source: { x: Number.NaN, y: 0 } } : landmark) }))).toContain('registration_landmark_invalid');
+        expect(validateCandidateReviewRegistration(reviewedRegistration({ registrationLandmarks: TEST_REGISTRATION.registrationLandmarks.map((landmark, index) => index === 0 ? { ...landmark, residualErrorPixels: -1 } : landmark) }))).toContain('registration_residual_invalid');
+    });
+
     it('transforms rooms, agents, doors, walk nodes, colliders, computers, and interactive destinations consistently', () => {
-        const registration = { ...TEST_REGISTRATION, storedCoordinateSpace: 'raw_markup', scale: 2, offsetX: 10, offsetY: -5 } as const;
+        const registration = reviewedRegistration({ storedCoordinateSpace: 'raw_markup', scale: 1.01, offsetX: 3, offsetY: 0 });
         const transformed = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration });
         const baseline = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
         expect(transformed.navigationAvailable).toBe(true);
-        expect(transformed.rooms[0].center.x).toBeCloseTo(baseline.rooms[0].center.x * 2 + 10);
-        expect(transformed.agents[0].point.x).toBeCloseTo(baseline.agents[0].point.x * 2 + 10);
-        expect(transformed.doors[0].point.y).toBeCloseTo(baseline.doors[0].point.y * 2 - 5);
-        expect(transformed.walkNodes[0].point.x).toBeCloseTo(baseline.walkNodes[0].point.x * 2 + 10);
-        expect(transformed.colliders[0].points[0].y).toBeCloseTo(baseline.colliders[0].points[0].y * 2 - 5);
+        expect(transformed.rooms[0].center.x).toBeCloseTo(baseline.rooms[0].center.x * 1.01 + 3);
+        expect(transformed.agents[0].point.x).toBeCloseTo(baseline.agents[0].point.x * 1.01 + 3);
+        expect(transformed.doors[0].point.y).toBeCloseTo(baseline.doors[0].point.y * 1.01);
+        expect(transformed.walkNodes[0].point.x).toBeCloseTo(baseline.walkNodes[0].point.x * 1.01 + 3);
+        expect(transformed.colliders[0].points[0].y).toBeCloseTo(baseline.colliders[0].points[0].y * 1.01);
         const transformedComputer = transformed.destinations.find(item => item.kind === 'computer');
         const baselineComputer = baseline.destinations.find(item => item.id === transformedComputer?.id);
-        expect(transformedComputer?.markerPoint?.x).toBeCloseTo((baselineComputer?.markerPoint?.x ?? 0) * 2 + 10);
+        expect(transformedComputer?.markerPoint?.x).toBeCloseTo((baselineComputer?.markerPoint?.x ?? 0) * 1.01 + 3);
         const transformedInteractive = transformed.destinations.find(item => item.kind === 'interactive-object');
         const baselineInteractive = baseline.destinations.find(item => item.id === transformedInteractive?.id);
-        expect(transformedInteractive?.markerPoint?.y).toBeCloseTo((baselineInteractive?.markerPoint?.y ?? 0) * 2 - 5);
+        expect(transformedInteractive?.markerPoint?.y).toBeCloseTo((baselineInteractive?.markerPoint?.y ?? 0) * 1.01);
     });
 });
 
 
 describe('candidate door runtime and destination anchor regressions', () => {
+    it('rejects routes whose endpoint remains inside final-door clearance', () => {
+        const unsafe = alternateGraph('open') as unknown as { destinations: CandidateNavigationGraph['destinations'] };
+        unsafe.destinations = [{ id: 'target', label: 'target', kind: 'waypoint', point: { x: 160, y: 40 }, roomId: 'B', roomIds: ['B'], roomName: 'B' }];
+        const route = testRoute(unsafe as unknown as CandidateNavigationGraph, { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('blocked');
+        expect(['final_door_clearance_unreachable', 'destination_inside_door_clearance']).toContain(route.failureCategory);
+    });
+
+    it('validates final-door clearance boundaries and leaves same-room routes unaffected', () => {
+        const route = testRoute(alternateGraph('open'), { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('valid');
+        expect(validateCandidateRouteDoorClearance(route.points, route.doorSteps, alternateGraph('open').doors)).toBeNull();
+        const shortened = route.points.slice(0, -1).concat([{ x: 160, y: 40 }]);
+        expect(['final_door_clearance_unreachable', 'destination_inside_door_clearance']).toContain(validateCandidateRouteDoorClearance(shortened, route.doorSteps, alternateGraph('open').doors));
+        const sameRoom = { ...route, doorSteps: [], crossedDoorIds: [] };
+        expect(validateCandidateRouteDoorClearance(sameRoom.points, sameRoom.doorSteps, alternateGraph('open').doors)).toBeNull();
+    });
+
+    it('defensively completes malformed legacy routes at route length instead of crossing forever', () => {
+        const route = testRoute(alternateGraph('open'), { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('valid');
+        const malformedRoute = { ...route, points: [route.points[0], { x: 160, y: 40 }], length: 125 };
+        const open = { D01: { doorId: 'D01', state: 'open' as const, stateElapsedMs: 0, revision: 0 } };
+        const agent = { id: 'agent', status: 'crossing_door', route: malformedRoute, progress: 124.9, point: malformedRoute.points[0] };
+        const next = advanceCandidateAgents([agent], 100, 420, open)[0];
+        expect(next.status).toBe('arrived');
+        expect(next.progress).toBeCloseTo(120);
+    });
+
     it('planned automatic door routes include ordered door steps and movement waits until open', () => {
         const route = testRoute(alternateGraph('open'), { x: 40, y: 40 }, 'target');
         expect(route.status).toBe('valid');

@@ -189,6 +189,8 @@ const CONNECTOR_INGRESS_DISTANCE = 180;
 const WALK_SUPPORT_RADIUS = 260;
 const WALK_SAMPLE_INTERVAL = 96;
 const MAX_FRAME_DELTA_MS = 100;
+const REGISTRATION_RESIDUAL_EPSILON_PX = 0.001;
+const ROUTE_PROGRESS_EPSILON = 0.001;
 
 const DEFAULT_CANDIDATE_REGISTRATION: MarkupRegistration = {
     sourceWidth: 8192,
@@ -218,6 +220,41 @@ function validateRegistrationShape(registration: MarkupRegistration | null | und
     return null;
 }
 
+export type CandidateRegistrationResidualResult = Readonly<{
+    landmarkResiduals: readonly Readonly<{
+        id: string;
+        expectedSource: Point;
+        actualSource: Point;
+        computedResidualPixels: number;
+        declaredResidualPixels: number;
+    }>[];
+    computedMaximumResidualPixels: number;
+}>;
+
+export function computeCandidateRegistrationResiduals(registration: MarkupRegistration): CandidateRegistrationResidualResult {
+    const landmarkResiduals = registration.registrationLandmarks.map(landmark => {
+        const expectedSource = {
+            x: landmark.markup.x * registration.scale + registration.offsetX,
+            y: landmark.markup.y * registration.scale + registration.offsetY,
+        };
+        return {
+            id: landmark.id,
+            expectedSource,
+            actualSource: landmark.source,
+            computedResidualPixels: Math.hypot(expectedSource.x - landmark.source.x, expectedSource.y - landmark.source.y),
+            declaredResidualPixels: landmark.residualErrorPixels,
+        };
+    });
+    return {
+        landmarkResiduals,
+        computedMaximumResidualPixels: landmarkResiduals.reduce((maximum, residual) => Math.max(maximum, residual.computedResidualPixels), 0),
+    };
+}
+
+function withinRegistrationResidualEpsilon(a: number, b: number): boolean {
+    return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= REGISTRATION_RESIDUAL_EPSILON_PX;
+}
+
 function validateDistributedLandmarks(registration: MarkupRegistration): string | null {
     const landmarks = registration.registrationLandmarks;
     if (!Array.isArray(landmarks) || landmarks.length < 4) return 'Candidate navigation unavailable: registration_landmarks_insufficient.';
@@ -226,7 +263,10 @@ function validateDistributedLandmarks(registration: MarkupRegistration): string 
     for (const landmark of landmarks) {
         if (!landmark.id || ids.has(landmark.id)) return 'Candidate navigation unavailable: registration_landmark_invalid.';
         ids.add(landmark.id);
-        if (!bounded(landmark.source) || !Number.isFinite(landmark.markup.x) || !Number.isFinite(landmark.markup.y)) return 'Candidate navigation unavailable: registration_landmark_invalid.';
+        const markupBounded = Number.isFinite(landmark.markup.x) && Number.isFinite(landmark.markup.y)
+            && landmark.markup.x >= 0 && landmark.markup.y >= 0
+            && landmark.markup.x <= registration.markupWidth && landmark.markup.y <= registration.markupHeight;
+        if (!bounded(landmark.source) || !markupBounded) return 'Candidate navigation unavailable: registration_landmark_invalid.';
         if (!Number.isFinite(landmark.residualErrorPixels) || landmark.residualErrorPixels < 0) return 'Candidate navigation unavailable: registration_residual_invalid.';
         minX = Math.min(minX, landmark.source.x); maxX = Math.max(maxX, landmark.source.x);
         minY = Math.min(minY, landmark.source.y); maxY = Math.max(maxY, landmark.source.y);
@@ -245,7 +285,13 @@ export function validateCandidateReviewRegistration(registration: MarkupRegistra
     const landmarkFailure = validateDistributedLandmarks(registration);
     if (landmarkFailure) return landmarkFailure;
     if (!Number.isFinite(registration.maximumResidualErrorPixels) || registration.maximumResidualErrorPixels < 0) return 'Candidate navigation unavailable: registration_residual_invalid.';
-    if (registration.maximumResidualErrorPixels > 8) return 'Candidate navigation unavailable: registration_residual_exceeds_tolerance.';
+    const residuals = computeCandidateRegistrationResiduals(registration);
+    for (const residual of residuals.landmarkResiduals) {
+        if (!Number.isFinite(residual.computedResidualPixels)) return 'Candidate navigation unavailable: registration_residual_invalid.';
+        if (!withinRegistrationResidualEpsilon(residual.declaredResidualPixels, residual.computedResidualPixels)) return 'Candidate navigation unavailable: registration_residual_mismatch.';
+    }
+    if (!withinRegistrationResidualEpsilon(registration.maximumResidualErrorPixels, residuals.computedMaximumResidualPixels)) return 'Candidate navigation unavailable: registration_maximum_residual_mismatch.';
+    if (residuals.computedMaximumResidualPixels > 8) return 'Candidate navigation unavailable: registration_residual_exceeds_tolerance.';
     return null;
 }
 
@@ -1028,6 +1074,21 @@ function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Poi
     return null;
 }
 
+export function validateCandidateRouteDoorClearance(
+    routePoints: readonly Point[],
+    doorSteps: readonly CandidateDoorStep[],
+    doors: readonly CandidateDoorNode[],
+): string | null {
+    if (doorSteps.length === 0) return null;
+    const length = routeLength(routePoints);
+    const finalStep = doorSteps[doorSteps.length - 1];
+    if (finalStep.clearanceReleaseDistance > length + ROUTE_PROGRESS_EPSILON) return 'final_door_clearance_unreachable';
+    const finalDoor = doors.find(door => door.id === finalStep.doorId);
+    const endpoint = routePoints[routePoints.length - 1];
+    if (finalDoor && endpoint && candidateAgentOccupiesDoor(endpoint, finalDoor)) return 'destination_inside_door_clearance';
+    return null;
+}
+
 function routeForDoorPath(
     graph: CandidateNavigationGraph,
     start: Point,
@@ -1083,6 +1144,8 @@ function routeForDoorPath(
     const compact = pointsOut.filter((item, index, all) => index === 0 || distance(item, all[index - 1]) > 0.001);
     const segmentFailure = validateCandidateRouteSegments(graph, compact, crossedDoorIds);
     if (segmentFailure) return { ...segmentFailure, expandedNodeCount: Math.max(segmentFailure.expandedNodeCount, expandedNodeCount), crossedDoorIds, doorSteps };
+    const clearanceFailure = validateCandidateRouteDoorClearance(compact, doorSteps, graph.doors);
+    if (clearanceFailure) return routeFailure('blocked', 'Candidate route endpoint does not clear the final doorway.', clearanceFailure, expandedNodeCount, crossedDoorIds);
     const length = routeLength(compact);
     return {
         status: 'valid',
@@ -1177,7 +1240,7 @@ export function activeCandidateDoorRequestIds<T extends { id?: string; status: s
     const ids = new Set<string>();
     for (const agent of agents) {
         for (const door of doors) if (candidateAgentOccupiesDoor(agent.point, door)) ids.add(door.id);
-        if (!agent.route || !['walking', 'waiting_for_door', 'crossing_door', 'paused', 'arrived', 'idle'].includes(agent.status)) continue;
+        if (!agent.route || !['walking', 'waiting_for_door', 'crossing_door', 'paused'].includes(agent.status)) continue;
         const active = activeCandidateDoorStep(agent);
         if (active && agent.progress + AGENT_FOOTPRINT_RADIUS >= active.step.approachDistance && agent.progress <= active.step.clearanceReleaseDistance) ids.add(active.step.doorId);
     }
@@ -1238,7 +1301,8 @@ export function advanceCandidateAgents<T extends { id?: string; status: string; 
                 return waitingAgent as T;
             }
             if (open && agent.progress < step.clearanceReleaseDistance && nextProgress > step.thresholdDistance) {
-                const crossingAgent = { ...agent, point: interpolateRoute(agent.route.points, nextProgress), progress: nextProgress, status: nextProgress >= step.clearanceReleaseDistance ? 'walking' : 'crossing_door' };
+                const reachedRouteEnd = nextProgress >= length - ROUTE_PROGRESS_EPSILON;
+                const crossingAgent = { ...agent, point: interpolateRoute(agent.route.points, nextProgress), progress: nextProgress, status: reachedRouteEnd ? 'arrived' : nextProgress >= step.clearanceReleaseDistance ? 'walking' : 'crossing_door' };
                 changed = true;
                 return crossingAgent as T;
             }

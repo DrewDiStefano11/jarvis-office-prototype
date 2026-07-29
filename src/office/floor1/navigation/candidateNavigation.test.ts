@@ -20,8 +20,8 @@ import {
 const TEST_REGISTRATION = {
     sourceWidth: 8192,
     sourceHeight: 5460,
-    markupWidth: 6144,
-    markupHeight: 4096,
+    markupWidth: 8192,
+    markupHeight: 5460,
     scale: 1,
     offsetX: 0,
     offsetY: 0,
@@ -33,9 +33,9 @@ const TEST_REGISTRATION = {
     provenance: { generator: 'test', generatedArtifact: 'test', sourceEvidence: ['test'] },
     registrationLandmarks: [
         { id: 'nw', markup: { x: 0, y: 0 }, source: { x: 0, y: 0 }, residualErrorPixels: 0 },
-        { id: 'ne', markup: { x: 6144, y: 0 }, source: { x: 8192, y: 0 }, residualErrorPixels: 0 },
-        { id: 'sw', markup: { x: 0, y: 4096 }, source: { x: 0, y: 5460 }, residualErrorPixels: 0 },
-        { id: 'se', markup: { x: 6144, y: 4096 }, source: { x: 8192, y: 5460 }, residualErrorPixels: 0 },
+        { id: 'ne', markup: { x: 8192, y: 0 }, source: { x: 8192, y: 0 }, residualErrorPixels: 0 },
+        { id: 'sw', markup: { x: 0, y: 5460 }, source: { x: 0, y: 5460 }, residualErrorPixels: 0 },
+        { id: 'se', markup: { x: 8192, y: 5460 }, source: { x: 8192, y: 5460 }, residualErrorPixels: 0 },
     ],
     maximumResidualErrorPixels: 0,
 } as const;
