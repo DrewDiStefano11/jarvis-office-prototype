@@ -1,14 +1,14 @@
 # Agent Sprite and Animation Pipeline
 
-Status: in_progress
+Status: review
 Plan ID: 080
 Owner: Codex
 Reviewer: Codex review and repository maintainer
 Created: 2026-07-28
-Last Updated: 2026-07-28
+Last Updated: 2026-07-29
 Related Task: Production agent sprite, animation-manifest, validation, visual-review, and office-rendering pipeline
 Related Branch: `codex/agent-sprite-animation-pipeline`
-Related Pull Request: TBD
+Related Pull Request: `#21` — https://github.com/DrewDiStefano11/jarvis-office-prototype/pull/21
 
 ## Executive Summary
 
@@ -152,7 +152,7 @@ Acceptance criteria:
 
 ### Milestone 3 — Visual lab and office demo
 
-Status: validation
+Status: done
 
 Acceptance criteria:
 - both routes are development-only and normal route is unchanged;
@@ -161,7 +161,7 @@ Acceptance criteria:
 
 ### Milestone 4 — Validation, publication, and review
 
-Status: not_started
+Status: review
 
 Acceptance criteria:
 - required local commands and browser matrix pass;
@@ -178,10 +178,10 @@ Acceptance criteria:
 | T-080-02 | Inventory/config/generator | done | T-080-01 | canonical artifacts and drift check |
 | T-080-03 | Manifest validation/resolver | done | T-080-02 | validation/resolver tests |
 | T-080-04 | Shared runtime renderer | done | T-080-03 | clock/cache instrumentation tests |
-| T-080-05 | Visual lab | validation | T-080-04 | component tests; browser evidence pending |
-| T-080-06 | Office demo | validation | T-080-04 | component tests; browser evidence pending |
-| T-080-07 | Full validation and QA | not_started | T-080-02..06 | command log/screenshots |
-| T-080-08 | Draft PR, CI, Codex reviews | not_started | T-080-07 | PR/review state |
+| T-080-05 | Visual lab | done | T-080-04 | component tests and browser evidence |
+| T-080-06 | Office demo | done | T-080-04 | component tests and browser evidence |
+| T-080-07 | Full validation and QA | done | T-080-02..06 | 331 tests; strict checks; screenshots |
+| T-080-08 | Draft PR, CI, Codex reviews | review | T-080-07 | draft PR #21; three review cycles addressed |
 
 ## Validation Strategy
 
@@ -287,6 +287,15 @@ Affected Files: manifest/resolver/demo.
 - Added regression coverage for all review findings and a post-build production-bundle isolation check; final development and production browser routes were reverified.
 - Codex review cycle 2 reported four residual P2 findings; added explicit offline clips, scale-aware frame cropping, a fully bundle-isolated lazy demo boundary, and rejection of unsupported horizontal-flip declarations.
 
+### 2026-07-29
+
+- CI run 88 passed on `5b603cdda552e708be6b7fc59c2f0d03f806ef42`.
+- Codex review cycle 3 reported three residual P2 findings.
+- Pause now preserves the currently displayed frame, while reduced motion alone selects the declared static fallback.
+- Static clips never subscribe to the shared clock, and completed one-shot clips unsubscribe immediately.
+- Manifest validation now proves that every state fallback chain reaches a compatible clip for every authored asset direction.
+- Added focused regressions and completed the full 34-file, 331-test suite plus generation drift, TypeScript, ESLint, production build, bundle-isolation, and diff checks.
+
 ## Unexpected Discoveries
 
 ### X-080-01 — Exact character grid, ambiguous tube grid
@@ -334,39 +343,39 @@ User review needed: only if future Nexus rectangles/directions are to be authore
 
 ### Delivered
 
-TBD after implementation and final reviewed SHA.
+A deterministic inventory/generation pipeline, strict manifest/runtime, shared-clock DOM renderer, development-only visual lab, development-only office demo, CI drift gate, documentation, tests, and browser evidence. The final submitted SHA requires one fresh Codex review before merge.
 
 ### Files Changed
 
-TBD.
+The isolated change set covers source configuration, sprite scripts, generated runtime assets, typed sprite-domain modules, renderer/lab/demo components, data-driven demo seed data, CI/package wiring, tests, documentation, and evidence. It does not modify source sprite PNGs, Floor 1 candidate data, approval artifacts, or production Floor 1 output.
 
 ### Data Generated
 
-TBD.
+Canonical JSON/Markdown inventory for 18 committed sprite-related PNGs, 16 byte-identical approved runtime sheets, and one strict generated manifest. Nexus remains blocked/manual and Sprite Jobs remains reference-only.
 
 ### Tests Run
 
-TBD.
+Sprite inventory/generation/drift checks; 34 Vitest files; strict TypeScript through both project and direct commands; project and direct ESLint; production build; production-bundle isolation; `git diff --check`; Node 18 drift verification; and real-browser route/interaction/accessibility checks.
 
 ### Test Results
 
-TBD.
+331 of 331 tests pass. Focused cycle-3 regressions cover pause-frame retention, static clock avoidance, one-shot unsubscription, and missing terminal fallback clips.
 
 ### Build Results
 
-TBD.
+Production build passes. Generated assets are current. Development-only lab/demo code and identifying markers are absent from production bundles.
 
 ### Visual Artifacts
 
-TBD.
+`artifacts/sprite-browser-evidence/` contains the sprite-lab overview, blocked Nexus/reduced-motion state, and multi-agent office demo captures.
 
 ### Performance Results
 
-TBD.
+One shared clock services each mounted surface, textures are cached per surface, static clips do not subscribe, one-shot clips unsubscribe at completion, production sprite frames update through the DOM without React rerenders, and lifecycle cleanup tests pass.
 
 ### Accessibility Results
 
-TBD.
+Keyboard selection/activation, named controls, pause, visible focus, textual status/fallbacks, and reduced-motion static frames were exercised in tests and a real browser.
 
 ### Known Limitations
 
@@ -378,8 +387,8 @@ Backend/runtime events, Floor 1 assignments, and additional authored animation s
 
 ### Manual Review Remaining
 
-TBD.
+Only the explicitly deferred art-authoring decisions remain: compass direction metadata, exact Nexus rectangles/order, and permanent profile-to-art assignments. A fresh Codex review is required on the final submitted SHA.
 
 ### Recommended Next Plan
 
-TBD after review.
+After review and maintainer approval, author directional metadata and Nexus atlas rectangles as a separate data/evidence plan before expanding runtime states or assigning permanent Floor 1 positions.

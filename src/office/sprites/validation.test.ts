@@ -41,6 +41,9 @@ describe('sprite manifest validation', () => {
         ['unsupported horizontal flip declaration', (value: Record<string, unknown>) => {
             assets(value)[0].horizontalFlipDirections = ['west'];
         }],
+        ['fallback chain without a compatible terminal clip', (value: Record<string, unknown>) => {
+            assets(value)[0].clips = clips(assets(value)[0]).filter(clip => clip.state !== 'offline');
+        }],
     ])('rejects %s', (_name, mutate) => {
         const value = cloneManifest();
         mutate(value);

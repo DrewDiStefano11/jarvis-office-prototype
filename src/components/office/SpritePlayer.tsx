@@ -38,6 +38,7 @@ export function SpritePlayer({
 }: Props) {
     const frameRef = useRef<HTMLDivElement>(null);
     const lastFrameRef = useRef<number | null>(null);
+    const lastClipKeyRef = useRef<string | null>(null);
     const lastRenderKeyRef = useRef<string | null>(null);
     const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
     const [loadFailure, setLoadFailure] = useState<string | null>(null);
@@ -82,6 +83,11 @@ export function SpritePlayer({
 
     useEffect(() => {
         if (!resolved || loadState !== 'ready') return;
+        const clipKey = `${resolved.asset.id}:${resolved.clip.id}`;
+        if (lastClipKeyRef.current !== clipKey) {
+            lastClipKeyRef.current = clipKey;
+            lastFrameRef.current = null;
+        }
         const update = (frame: number) => {
             const renderKey = `${resolved.asset.id}:${frame}:${scale}`;
             if (lastRenderKeyRef.current === renderKey) return;
@@ -99,12 +105,27 @@ export function SpritePlayer({
             update(Math.max(0, Math.min(resolved.asset.frameCount - 1, manualFrame)));
             return;
         }
-        if (paused || reducedMotion) {
+        if (reducedMotion) {
             update(resolved.staticFrame ?? resolved.clip.staticFallbackFrame);
             return;
         }
+        if (paused) {
+            update(lastFrameRef.current ?? resolved.clip.staticFallbackFrame);
+            return;
+        }
         update(resolved.clip.frames[0]);
-        return runtime.clock.subscribe(elapsed => update(frameAtElapsedTime(resolved, elapsed, speed)));
+        if (resolved.clip.frames.length === 1) return;
+        const yoyoFrameCount = resolved.clip.yoyo && resolved.clip.frames.length > 2
+            ? resolved.clip.frames.length * 2 - 2
+            : resolved.clip.frames.length;
+        const playbackDuration = yoyoFrameCount * 1000
+            / (resolved.clip.framesPerSecond * Math.max(0.1, speed));
+        let unsubscribe: () => void = () => undefined;
+        unsubscribe = runtime.clock.subscribe(elapsed => {
+            update(frameAtElapsedTime(resolved, elapsed, speed));
+            if (!resolved.clip.loop && elapsed >= playbackDuration) unsubscribe();
+        });
+        return unsubscribe;
     }, [loadState, manualFrame, onFrameChange, paused, reducedMotion, resolved, runtime.clock, scale, speed]);
 
     if (!resolved || loadState === 'error') {

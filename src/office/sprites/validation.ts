@@ -227,6 +227,45 @@ function validateFallbackGraph(value: unknown, issues: SpriteManifestValidationI
     return true;
 }
 
+function validateAssetFallbackCoverage(
+    asset: unknown,
+    path: string,
+    fallbackGraph: unknown,
+    issues: SpriteManifestValidationIssue[],
+) {
+    if (!isRecord(asset) || !Array.isArray(asset.clips) || !Array.isArray(asset.authoredDirections) || !isRecord(fallbackGraph)) {
+        return;
+    }
+    const clips = asset.clips.filter(isRecord);
+    const directions = asset.authoredDirections.filter(
+        (direction): direction is SpriteDirection => directionSet.has(String(direction)),
+    );
+    for (const direction of directions) {
+        for (const start of SPRITE_STATES) {
+            const visited = new Set<SpriteState>();
+            let current: SpriteState | null = start;
+            let found = false;
+            while (current !== null && !visited.has(current)) {
+                visited.add(current);
+                found = clips.some(clip => (
+                    clip.state === current
+                    && (clip.direction === direction || clip.direction === 'none')
+                ));
+                if (found) break;
+                const next: unknown = fallbackGraph[current];
+                current = typeof next === 'string' && stateSet.has(next) ? next as SpriteState : null;
+            }
+            if (!found) {
+                issue(
+                    issues,
+                    `${path}.clips`,
+                    `State ${start} with direction ${direction} has no compatible clip in its fallback chain.`,
+                );
+            }
+        }
+    }
+}
+
 export function validateSpriteManifest(
     value: unknown,
     integrity: SpriteManifestIntegrity = {},
@@ -240,7 +279,11 @@ export function validateSpriteManifest(
     validateFallbackGraph(value.fallbackGraph, issues);
     const seenAssetIds = new Set<string>();
     if (!Array.isArray(value.assets)) issue(issues, 'assets', 'Assets must be an array.');
-    else value.assets.forEach((asset, index) => validateAsset(asset, `assets[${index}]`, seenAssetIds, integrity, issues));
+    else value.assets.forEach((asset, index) => {
+        const path = `assets[${index}]`;
+        validateAsset(asset, path, seenAssetIds, integrity, issues);
+        validateAssetFallbackCoverage(asset, path, value.fallbackGraph, issues);
+    });
     if (!Array.isArray(value.blockedAssets)) issue(issues, 'blockedAssets', 'Blocked assets must be an array.');
     else {
         value.blockedAssets.forEach((asset, index) => {

@@ -67,11 +67,13 @@ offline   → explicit one-frame offline clip
 idle      → static fallback when required
 ```
 
-Assets may implement a subset. The resolver records the complete fallback chain and chooses an explicit static frame for reduced motion.
+Assets may implement a subset. Validation proves every authored-direction/state fallback chain reaches a compatible clip. The resolver records the complete fallback chain and chooses an explicit static frame for reduced motion.
 
 ## Runtime architecture
 
 React/domain state chooses the asset, state, direction, position, selection, and label. The sprite renderer only loads a validated texture, resolves a clip, advances frames, and positions the visual.
+
+Pause preserves the currently displayed frame. Static clips never subscribe to the animation clock, and non-looping clips unsubscribe when their final frame is reached.
 
 Each mounted visual surface owns:
 
