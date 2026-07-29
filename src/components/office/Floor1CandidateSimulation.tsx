@@ -12,9 +12,11 @@ import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import {
     advanceCandidateAgents,
+    advanceCandidateDoorRuntimes,
     buildCandidateNavigationGraph,
     CandidateAgentFixture,
     CandidateDestinationKind,
+    CandidateDoorRuntime,
     CandidateRouteResult,
     MarkupRegistration,
     planCandidateRoute,
@@ -32,7 +34,7 @@ type Props = Readonly<{
 type AgentRuntime = Readonly<{
     fixture: CandidateAgentFixture;
     point: Point;
-    status: 'idle' | 'walking' | 'paused' | 'arrived' | 'blocked';
+    status: 'idle' | 'walking' | 'waiting_for_door' | 'paused' | 'arrived' | 'blocked';
     route: CandidateRouteResult | null;
     progress: number;
     revision: number;
@@ -90,6 +92,12 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
         progress: 0,
         revision: 0,
     })));
+    const [doorRuntimes, setDoorRuntimes] = useState<Readonly<Record<string, CandidateDoorRuntime>>>(() => Object.fromEntries(graph.doors.map(door => [door.id, {
+        doorId: door.id,
+        state: door.currentState ?? 'closed',
+        stateElapsedMs: 0,
+        revision: 0,
+    }])));
     const [selectedAgentId, setSelectedAgentId] = useState(graph.agents[0]?.id ?? null);
     const [destinationFilter, setDestinationFilter] = useState<DestinationFilter>('room');
     const [destinationSearch, setDestinationSearch] = useState('');
@@ -108,7 +116,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const lastTimestampRef = useRef<number | null>(null);
 
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? agents[0] ?? null;
-    const anyWalking = agents.some(agent => agent.status === 'walking');
+    const anyWalking = agents.some(agent => agent.status === 'walking' || agent.status === 'waiting_for_door');
     const beginEnabled = previewIsStartValid(selectedAgent, preview, destinationId);
 
     useEffect(() => {
@@ -141,7 +149,16 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
             const delta = last === null ? 0 : timestamp - last;
-            setAgents(previous => advanceCandidateAgents(previous, delta, REVIEW_SPEED_PX_PER_SECOND));
+            const waitingDoorIds = agents.flatMap(agent => agent.status === 'waiting_for_door' && agent.route ? agent.route.doorSteps.map(step => step.doorId) : []);
+            setDoorRuntimes(previous => advanceCandidateDoorRuntimes(previous, waitingDoorIds, delta));
+            setAgents(previous => {
+                const resumed = previous.map(agent => {
+                    if (agent.status !== 'waiting_for_door' || !agent.route) return agent;
+                    const ready = agent.route.doorSteps.every(step => doorRuntimes[step.doorId]?.state === 'open');
+                    return ready ? { ...agent, status: 'walking' as const } : agent;
+                });
+                return advanceCandidateAgents(resumed, delta, REVIEW_SPEED_PX_PER_SECOND, doorRuntimes);
+            });
             frameRef.current = requestAnimationFrame(tick);
         };
         frameRef.current = requestAnimationFrame(tick);
@@ -150,7 +167,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             frameRef.current = null;
             lastTimestampRef.current = null;
         };
-    }, [active, anyWalking]);
+    }, [active, anyWalking, agents, doorRuntimes]);
 
     useEffect(() => {
         if (!destinationsForFilter.some(destination => destination.id === destinationId)) {
@@ -277,6 +294,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                         <dt>Current sprite clip</dt><dd>{selectedAgent.status === 'walking' ? 'walking' : 'idle/offline fallback'}</dd>
                         <dt>Current world coordinate</dt><dd>{Math.round(selectedAgent.point.x)}, {Math.round(selectedAgent.point.y)}</dd>
                         <dt>Route cost</dt><dd>{route?.cost ?? 0}px · {route?.nodeSequence.join(' → ') ?? 'none'}</dd>
+                        <dt>Door runtime</dt><dd>{route?.doorSteps.map(step => `${step.doorId}:${doorRuntimes[step.doorId]?.state ?? step.initialPhysicalState}:${step.requiredAction}`).join(', ') || 'none'}</dd>
                         <dt>Performance bounds</dt><dd>{graph.nodeCount} nodes · {graph.edgeCount} edges · {runtime.clock.subscriberCount} sprite subscribers · {runtime.textures.size} cached textures</dd>
                         <dt>Limitations</dt><dd>Candidate routes validate static world collisions only; dynamic agent-to-agent avoidance is not implemented.</dd>
                     </dl>

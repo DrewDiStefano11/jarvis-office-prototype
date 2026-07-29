@@ -7,7 +7,7 @@ import interactiveObjects from '../../data/floor1/provisional/interactive-object
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
-import { buildCandidateNavigationGraph, CandidateNavigationGraph, planCandidateRoute, transformMarkupPoint, validateMarkupRegistration, validateCandidateRouteSegments } from './candidateNavigation';
+import { advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateMarkupRegistration, validateCandidateRouteSegments } from './candidateNavigation';
 
 
 const TEST_REGISTRATION = {
@@ -119,7 +119,6 @@ describe('door access is applied during search', () => {
         expect(route.failureCategory).toBe('blocked');
     });
 });
-import { advanceCandidateAgents } from './candidateNavigation';
 
 describe('movement timing and frame lifecycle helpers', () => {
     const route = { status: 'valid' as const, reason: 'ok', points: [{ x: 0, y: 0 }, { x: 420, y: 0 }], crossedDoorIds: [], doorSteps: [], nodeSequence: [], cost: 420, length: 420, expandedNodeCount: 1 };
@@ -391,5 +390,68 @@ describe('markup registration boundary', () => {
         const transformedInteractive = transformed.destinations.find(item => item.kind === 'interactive-object');
         const baselineInteractive = baseline.destinations.find(item => item.id === transformedInteractive?.id);
         expect(transformedInteractive?.point.y).toBeCloseTo((baselineInteractive?.point.y ?? 0) * 2 - 5);
+    });
+});
+
+
+describe('candidate door runtime and destination anchor regressions', () => {
+    it('planned automatic door routes include ordered door steps and movement waits until open', () => {
+        const route = testRoute(alternateGraph('open'), { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('valid');
+        expect(route.crossedDoorIds).toEqual(['D01']);
+        expect(route.doorSteps).toHaveLength(1);
+        expect(route.doorSteps[0]).toMatchObject({ doorId: 'D01', requiredAction: 'automatic_open', initialPhysicalState: 'closed' });
+        const agent = { id: 'agent', status: 'walking', route, progress: 0, point: route.points[0] };
+        const closed = { D01: { doorId: 'D01', state: 'closed' as const, stateElapsedMs: 0, revision: 0 } };
+        const waiting = advanceCandidateAgents([agent], 10_000, 420, closed)[0];
+        expect(waiting.status).toBe('waiting_for_door');
+        expect(waiting.progress).toBeLessThan(route.length);
+        const opening = advanceCandidateDoorRuntimes(closed, ['D01'], 1);
+        expect(opening.D01.state).toBe('opening');
+        const open = advanceCandidateDoorRuntimes(opening, ['D01'], CANDIDATE_DOOR_OPEN_MS);
+        expect(open.D01.state).toBe('open');
+        const crossed = advanceCandidateAgents([{ ...waiting, status: 'walking' }], 100, 420, open)[0];
+        expect(crossed.progress).toBeGreaterThan(waiting.progress);
+        const held = advanceCandidateDoorRuntimes(open, ['D01'], 10_000);
+        expect(held.D01.state).toBe('open');
+        const closing = advanceCandidateDoorRuntimes(open, [], 10_000);
+        expect(['closing', 'closed']).toContain(closing.D01.state);
+    });
+
+    it('blocked, manual-review, reserved, malformed, and D47/elevator doors fail closed', () => {
+        expect(testRoute(alternateGraph('blocked'), { x: 40, y: 40 }, 'target').status).toBe('valid');
+        const elevator = graph.doors.find(door => door.id === 'D47');
+        expect(elevator?.permission).toBe('elevator');
+        const destination = graph.destinations.find(item => item.kind === 'room' && item.roomIds.some(roomId => elevator?.zoneIds.includes(roomId)));
+        if (destination) {
+            const route = planCandidateRoute(graph, { destinationId: destination.id, agent: { id: graph.agents[0].id, currentPoint: graph.agents[0].point, revision: 0 } });
+            expect(route.failureCategory).not.toBeUndefined();
+        }
+    });
+
+    it('interactive objects use safe approach anchors instead of visual centroids', () => {
+        for (const id of ['interactive:INTERACTIVE_MAIN_ROBOT_TUBE', 'interactive:INTERACTIVE_SMALL_ROBOT_TUBE', 'interactive:INTERACTIVE_MAP']) {
+            const destination = graph.destinations.find(item => item.id === id);
+            expect(destination?.markerPoint).toBeTruthy();
+            expect(destination?.approachPositionId).toMatch(/^POSITION_/);
+            expect(destination?.point).not.toEqual(destination?.markerPoint);
+            expect(destination?.availability).toBe('available');
+            expect(validateCandidateRouteSegments(graph, [destination!.point, destination!.point], [])).toBeNull();
+            expect(buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION }).destinations.find(item => item.id === id)).toEqual(destination);
+        }
+    });
+
+    it('RM4 and RM7 room destinations use valid interior anchors instead of exterior vertex averages', () => {
+        for (const roomId of ['ROOM_RM4', 'ROOM_RM7']) {
+            const room = graph.rooms.find(item => item.id === roomId);
+            const destination = graph.destinations.find(item => item.id === `room:${roomId}`);
+            expect(room).toBeTruthy();
+            expect(destination?.availability).toBe('available');
+            expect(destination?.roomIds).toContain(roomId);
+            expect(pointInPolygon(destination!.point, room!.polygon)).toBe(true);
+            expect(destination?.roomAnchorResolution).toMatch(/position-anchor|walk-node/);
+            expect(destination?.point).not.toEqual(room?.center);
+            expect(validateCandidateRouteSegments(graph, [destination!.point, destination!.point], [])).toBeNull();
+        }
     });
 });

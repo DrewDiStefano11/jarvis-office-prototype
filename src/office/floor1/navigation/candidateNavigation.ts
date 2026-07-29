@@ -33,6 +33,8 @@ export type CandidateDestination = Readonly<{
     approachResolution?: 'position-anchor';
     availability?: 'available' | 'unavailable';
     unavailableReason?: string;
+    roomAnchorResolution?: 'position-anchor' | 'walk-node' | 'walk-segment' | 'polygon-interior';
+    roomAnchorSourceId?: string;
 }>;
 
 export type CandidateRouteRequest = Readonly<{
@@ -79,7 +81,11 @@ export type CandidateNavigationBuildOptions = Readonly<{
 
 export type CandidateDoorPermission = 'general' | 'restricted' | 'reserved' | 'blocked' | 'elevator' | 'manual_review_required' | 'malformed';
 export type CandidateDoorPhysicalState = 'closed' | 'opening' | 'open' | 'closing' | 'waiting' | 'unavailable';
-export type CandidateDoorStep = Readonly<{ doorId: string; permission: CandidateDoorPermission; currentState: CandidateDoorPhysicalState; requiredAction: 'automatic_open' | 'elevator_runtime_required' | 'none'; }>;
+export type CandidateDoorStep = Readonly<{ doorId: string; permission: CandidateDoorPermission; initialPhysicalState: CandidateDoorPhysicalState; requiredAction: 'automatic_open' | 'wait_for_open' | 'elevator_call' | 'unavailable' | 'none'; approachPoint: Point; thresholdPoint: Point; exitPoint: Point; }>;
+export type CandidateDoorRuntime = Readonly<{ doorId: string; state: CandidateDoorPhysicalState; stateElapsedMs: number; requestedByAgentId?: string; revision: number }>;
+export const CANDIDATE_DOOR_OPEN_MS = 400;
+export const CANDIDATE_DOOR_HOLD_MS = 600;
+export const CANDIDATE_DOOR_CLOSE_MS = 400;
 
 export type CandidateDoorNode = Readonly<{
     id: string;
@@ -542,15 +548,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
 
     const positionDestinations = positions.map((item): CandidateDestination => ({ id: `position:${item.id}`, label: `${item.id} (${item.tier})`, kind: 'position', point: item.point, roomId: item.room.id, roomIds: item.roomIds, roomName: item.room.name, accessTier: item.tier }));
     const computerRecords = array(computerData.records, 'computers.records');
-    const roomDestinations = rooms.map((room): CandidateDestination => ({ id: `room:${room.id}`, label: room.name, kind: 'room', point: room.center, roomId: room.id, roomIds: [room.id], roomName: room.name }));
-    const interactiveDestinations = array(interactiveData.interactiveObjects, 'interactiveObjects').map((value, index): CandidateDestination => {
-        const item = record(value, `interactive[${index}]`);
-        const polygon = transformMarkupPoints(points(item.pdfPolygon, `interactive[${index}].pdfPolygon`), registration);
-        const candidatePoint = centroid(polygon);
-        const memberships = roomMembershipsForPoint(rooms, candidatePoint);
-        const room = memberships[0];
-        return { id: `interactive:${text(item.id, `INTERACTIVE_${index + 1}`)}`, label: text(item.name, `Interactive object ${index + 1}`), kind: 'interactive-object', point: candidatePoint, roomId: room.id, roomIds: memberships.map(itemRoom => itemRoom.id), roomName: room.name };
-    }).filter(item => bounded(item.point));
+    const interactiveRecords = array(interactiveData.interactiveObjects, 'interactiveObjects');
 
     const doors = array(doorData.doors, 'doors').map((value, index): CandidateDoorNode => {
         const item = record(value, `door[${index}]`);
@@ -630,29 +628,91 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         edgeCount: 0,
         navigationAvailable: true,
     } satisfies CandidateNavigationGraph;
-    const computerDestinations = computerRecords.map((value, index): CandidateDestination | null => {
-        const item = record(value, `computer[${index}]`);
-        const native = nativePathsFromRecord(item, `computer[${index}]`, registration)[0];
-        if (!native) return null;
-        const markerPoint = centroid(native.points);
-        const memberships = roomMembershipsForPoint(rooms, markerPoint);
-        const membershipSet = new Set(memberships.map(itemRoom => itemRoom.id));
-        const candidates = positions
+
+    const resolvePositionApproachAnchor = (markerPoint: Point, markerRoomIds: readonly string[], minimumSeparation = AGENT_FOOTPRINT_RADIUS) => {
+        const membershipSet = new Set(markerRoomIds);
+        return positions
             .filter(position => position.roomIds.some(roomId => membershipSet.has(roomId)))
             .map(position => {
                 const directSupport = isWalkSupported(graphForApproach, position.point);
                 const connectorSupport = directSupport || nearestWalkPoint(graphForApproach, position.point, position.roomIds) !== null;
                 const collisionFree = bounded(position.point)
                     && !colliders.some(collider => pointOverlapsColliderFootprint(position.point, collider))
-                    && distance(position.point, markerPoint) > AGENT_FOOTPRINT_RADIUS;
+                    && distance(position.point, markerPoint) > minimumSeparation;
                 return { position, directSupport, connectorSupport, collisionFree };
             })
             .filter(candidate => candidate.collisionFree && candidate.connectorSupport)
             .sort((a, b) => (a.position.tier === 'standard' ? 0 : 1) - (b.position.tier === 'standard' ? 0 : 1)
                 || (a.directSupport === b.directSupport ? 0 : a.directSupport ? -1 : 1)
                 || distance(a.position.point, markerPoint) - distance(b.position.point, markerPoint)
-                || a.position.id.localeCompare(b.position.id));
-        const approach = candidates[0];
+                || a.position.id.localeCompare(b.position.id))[0] ?? null;
+    };
+
+    const resolveRoomAnchor = (room: CandidateRoom) => {
+        const position = resolvePositionApproachAnchor(room.center, [room.id], 0);
+        if (position && pointInPolygon(position.position.point, room.polygon)) return {
+            point: position.position.point,
+            resolution: 'position-anchor' as const,
+            sourceId: position.position.id,
+            accessTier: position.position.tier,
+        };
+        const walkNode = walkNodes
+            .filter(node => node.roomIds.includes(room.id) && pointInPolygon(node.point, room.polygon) && !colliders.some(collider => pointOverlapsColliderFootprint(node.point, collider)))
+            .sort((a, b) => distance(a.point, room.center) - distance(b.point, room.center) || a.id.localeCompare(b.id))[0];
+        if (walkNode) return { point: walkNode.point, resolution: 'walk-node' as const, sourceId: walkNode.id, accessTier: undefined };
+        return null;
+    };
+
+    const roomDestinations = rooms.map((room): CandidateDestination => {
+        const anchor = resolveRoomAnchor(room);
+        return {
+            id: `room:${room.id}`,
+            label: room.name,
+            kind: 'room',
+            point: anchor?.point ?? room.center,
+            roomId: room.id,
+            roomIds: [room.id],
+            roomName: room.name,
+            accessTier: anchor?.accessTier,
+            availability: anchor ? 'available' : 'unavailable',
+            unavailableReason: anchor ? undefined : 'No safe candidate room destination anchor is available.',
+            roomAnchorResolution: anchor?.resolution,
+            roomAnchorSourceId: anchor?.sourceId,
+        };
+    });
+
+    const interactiveDestinations = interactiveRecords.map((value, index): CandidateDestination => {
+        const item = record(value, `interactive[${index}]`);
+        const polygon = transformMarkupPoints(points(item.pdfPolygon, `interactive[${index}].pdfPolygon`), registration);
+        const markerPoint = centroid(polygon);
+        const memberships = roomMembershipsForPoint(rooms, markerPoint);
+        const approach = resolvePositionApproachAnchor(markerPoint, memberships.map(room => room.id));
+        const room = approach?.position.room ?? memberships[0];
+        return {
+            id: `interactive:${text(item.id, `INTERACTIVE_${index + 1}`)}`,
+            label: text(item.name, `Interactive object ${index + 1}`),
+            kind: 'interactive-object',
+            point: approach?.position.point ?? markerPoint,
+            roomId: room.id,
+            roomIds: approach?.position.roomIds ?? memberships.map(itemRoom => itemRoom.id),
+            roomName: room.name,
+            accessTier: approach?.position.tier,
+            markerPoint,
+            approachPositionId: approach?.position.id,
+            approachAccessTier: approach?.position.tier,
+            approachResolution: approach ? 'position-anchor' : undefined,
+            availability: approach ? 'available' : 'unavailable',
+            unavailableReason: approach ? undefined : 'No safe candidate interactive-object approach anchor is available.',
+        };
+    }).filter(item => bounded(item.point));
+
+    const computerDestinations = computerRecords.map((value, index): CandidateDestination | null => {
+        const item = record(value, `computer[${index}]`);
+        const native = nativePathsFromRecord(item, `computer[${index}]`, registration)[0];
+        if (!native) return null;
+        const markerPoint = centroid(native.points);
+        const memberships = roomMembershipsForPoint(rooms, markerPoint);
+        const approach = resolvePositionApproachAnchor(markerPoint, memberships.map(itemRoom => itemRoom.id));
         if (!approach) return null;
         return {
             id: `computer:${text(item.id, `COMPUTER_${index + 1}`)}`,
@@ -860,6 +920,15 @@ function routeForDoorPath(
         if (door.apertureRadius <= AGENT_FOOTPRINT_RADIUS) {
             return routeFailure('blocked', `${door.id} doorway aperture cannot fit the candidate agent footprint.`, 'collision', expandedNodeCount, [door.id]);
         }
+        doorSteps.push({
+            doorId: door.id,
+            permission: door.permission ?? 'general',
+            initialPhysicalState: door.currentState ?? 'closed',
+            requiredAction: (door.permission ?? 'general') === 'elevator' ? 'elevator_call' : (door.currentState ?? 'closed') === 'open' ? 'none' : 'automatic_open',
+            approachPoint: pointsOut[pointsOut.length - 1],
+            thresholdPoint: door.point,
+            exitPoint: door.point,
+        });
         pointsOut.push(door.point);
         crossedDoorIds.push(door.id);
         nodeSequence.push(`door:${door.id}`);
@@ -944,10 +1013,50 @@ export function interpolateRoute(pointsIn: readonly Point[], distanceAlongRoute:
     return pointsIn[pointsIn.length - 1];
 }
 
-export function advanceCandidateAgents<T extends { status: string; route: CandidateRouteResult | null; progress: number; point: Point }>(
+function distanceAlongRouteToPoint(pointsIn: readonly Point[], target: Point): number | null {
+    let traveled = 0;
+    for (let index = 1; index < pointsIn.length; index += 1) {
+        const a = pointsIn[index - 1];
+        const b = pointsIn[index];
+        if (distance(a, target) < 0.001) return traveled;
+        const segmentLength = distance(a, b);
+        if (pointSegmentDistance(target, a, b) < 0.001) return traveled + distance(a, target);
+        traveled += segmentLength;
+    }
+    return distance(pointsIn[pointsIn.length - 1], target) < 0.001 ? traveled : null;
+}
+
+export function advanceCandidateDoorRuntimes(
+    runtimes: Readonly<Record<string, CandidateDoorRuntime>>,
+    requestingDoorIds: readonly string[],
+    deltaMs: number,
+): Readonly<Record<string, CandidateDoorRuntime>> {
+    const requests = new Set(requestingDoorIds);
+    let changed = false;
+    const next: Record<string, CandidateDoorRuntime> = { ...runtimes };
+    for (const doorId of Object.keys(next).sort()) {
+        const runtime = next[doorId];
+        const requested = requests.has(doorId);
+        let state = runtime.state;
+        let elapsed = runtime.stateElapsedMs + Math.max(0, deltaMs);
+        if (requested && state === 'closed') { state = 'opening'; elapsed = 0; }
+        if (state === 'opening' && elapsed >= CANDIDATE_DOOR_OPEN_MS) { state = 'open'; elapsed = 0; }
+        if (!requested && state === 'open' && elapsed >= CANDIDATE_DOOR_HOLD_MS) { state = 'closing'; elapsed = 0; }
+        if (state === 'closing' && requested) { state = 'open'; elapsed = 0; }
+        if (state === 'closing' && elapsed >= CANDIDATE_DOOR_CLOSE_MS) { state = 'closed'; elapsed = 0; }
+        if (state !== runtime.state || elapsed !== runtime.stateElapsedMs) {
+            next[doorId] = { ...runtime, state, stateElapsedMs: elapsed, revision: runtime.revision + 1 };
+            changed = true;
+        }
+    }
+    return changed ? next : runtimes;
+}
+
+export function advanceCandidateAgents<T extends { id?: string; status: string; route: CandidateRouteResult | null; progress: number; point: Point }>(
     agents: readonly T[],
     deltaMs: number,
     speedPxPerSecond: number,
+    doorRuntimes: Readonly<Record<string, CandidateDoorRuntime>> = {},
 ): readonly T[] {
     const clampedDelta = Math.min(MAX_FRAME_DELTA_MS, Math.max(0, deltaMs));
     if (clampedDelta === 0 || agents.every(agent => agent.status !== 'walking')) return agents;
@@ -955,7 +1064,21 @@ export function advanceCandidateAgents<T extends { status: string; route: Candid
     const next = agents.map(agent => {
         if (agent.status !== 'walking' || !agent.route || agent.route.status !== 'valid') return agent;
         const length = routeLength(agent.route.points);
-        const nextProgress = Math.min(length, agent.progress + (speedPxPerSecond * clampedDelta) / 1000);
+        let nextProgress = Math.min(length, agent.progress + (speedPxPerSecond * clampedDelta) / 1000);
+        for (const step of agent.route.doorSteps) {
+            if (step.requiredAction === 'none') continue;
+            const approachDistance = distanceAlongRouteToPoint(agent.route.points, step.approachPoint);
+            if (approachDistance === null || agent.progress > approachDistance + 0.001) continue;
+            const runtime = doorRuntimes[step.doorId];
+            if (!runtime || runtime.state !== 'open') {
+                if (nextProgress >= approachDistance) {
+                    nextProgress = approachDistance;
+                    const waitingAgent = { ...agent, point: interpolateRoute(agent.route.points, nextProgress), progress: nextProgress, status: 'waiting_for_door' };
+                    changed = true;
+                    return waitingAgent as T;
+                }
+            }
+        }
         const nextAgent = {
             ...agent,
             point: interpolateRoute(agent.route.points, nextProgress),

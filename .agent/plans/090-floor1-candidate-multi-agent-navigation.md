@@ -593,3 +593,22 @@ Tests:
 
 Browser QA:
 - Still unavailable in this sandbox because no browser executable/tooling is installed.
+
+## Door Runtime, Interactive Approach, and Room Anchor Fix Update — 2026-07-29
+
+Status: latest-door-anchor-findings-implemented-local-focused-validation
+
+Confirmed latest findings on `2802bdab73b84219466faddf789028b8aa5a7471`:
+1. Closed permission-eligible doors were still crossed without a candidate opening phase.
+2. Interactive-object destinations used visual centroids that can overlap object collision geometry.
+3. Concave room destinations used arithmetic vertex means that can fall outside rooms.
+
+Selected implementation:
+- Added candidate-only door runtime types and deterministic review timing constants (`CANDIDATE_DOOR_OPEN_MS`, hold, close). Planned routes now populate ordered `doorSteps`; movement helper stops at the approach point with `waiting_for_door` until door runtime reaches `open`. Door state remains separate from immutable authored permission. D47/elevator remains non-general and fails closed unless a runtime is implemented.
+- Added shared position-approach anchor resolution and reused it for computer and interactive-object destinations. Interactive destinations preserve `markerPoint` and identity while routing to collision-free, walk-supported candidate position anchors with approach metadata.
+- Added deterministic room anchor resolution: rooms prefer safe position anchors, then safe walk nodes inside the target polygon. RM4/RM7 tests prove destination points are inside their polygons and not the old exterior arithmetic center.
+
+Regression tests:
+- Door steps populated for automatic doors, movement waits before crossing, door runtime opens/holds/closes deterministically, D47/elevator is not general traversal.
+- Main Robot Tube, Small Robot Tube, and Map use approach anchors and preserve visual marker metadata.
+- RM4 and RM7 room destinations use valid interior anchors.

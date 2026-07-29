@@ -40,6 +40,13 @@ const forbiddenMarkers = [
   'Candidate navigation unavailable',
   'Floor 1 markup registration is not approved',
   'approachResolution',
+  'automatic_open',
+  'waiting_for_door',
+  'doorSteps',
+  'CANDIDATE_DOOR_OPEN_MS',
+  'roomAnchorResolution',
+  'INTERACTIVE_MAIN_ROBOT_TUBE',
+  'ROOM_RM4',
 ];
 const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
 const matches = [];
