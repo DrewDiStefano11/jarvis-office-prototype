@@ -16,6 +16,8 @@ import { panTransform, resolveFocusRequest } from '../../office/interaction';
 import { LAYER_ORDER } from '../../office/layers';
 import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform, ViewportSize } from '../../office/types';
 import { OverlayRenderer } from './OverlayRenderer';
+import { SpriteDemoAgent } from '../../domain/seed';
+import { AgentSpriteLayer } from './AgentSpriteLayer';
 
 type Props = Readonly<{
     active: boolean;
@@ -30,6 +32,9 @@ type Props = Readonly<{
     onPointerOfficePoint: (point: Point | null) => void;
     onTransformChange: (transform: ViewTransform) => void;
     focusRequest: number;
+    spriteDemoAgents?: readonly SpriteDemoAgent[];
+    selectedDemoAgentId?: string | null;
+    onSelectDemoAgent?: (id: string) => void;
 }>;
 
 export function OfficeViewport({
@@ -45,6 +50,9 @@ export function OfficeViewport({
     onPointerOfficePoint,
     onTransformChange,
     focusRequest,
+    spriteDemoAgents = [],
+    selectedDemoAgentId = null,
+    onSelectDemoAgent = () => undefined,
 }: Props) {
     const viewportRef = useRef<HTMLDivElement>(null);
     const transformRef = useRef<ViewTransform>({ scale: 0.1, x: 0, y: 0 });
@@ -324,6 +332,15 @@ export function OfficeViewport({
                         onHover={onHover}
                         onSelect={onSelect}
                     />
+                    {spriteDemoAgents.length > 0 && (
+                        <AgentSpriteLayer
+                            active={active}
+                            agents={spriteDemoAgents}
+                            selectedId={selectedDemoAgentId}
+                            reducedMotion={reducedMotion}
+                            onSelect={onSelectDemoAgent}
+                        />
+                    )}
                 </div>
                 {backgroundState === 'loading' && <div className="asset-status" role="status">Loading 8K office image…</div>}
                 {backgroundState === 'error' && (

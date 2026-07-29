@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NON_PRODUCTION_OVERLAY } from '../../domain/seed';
+import { SPRITE_DEMO_AGENTS } from '../../domain/seed';
+import { isAgentSpriteDemoRequested } from '../../office/sprites/routes';
 import {
     candidateEntityCounts,
     FLOOR1_CANDIDATE_LABEL,
@@ -33,6 +35,7 @@ type Props = Readonly<{
 
 export function OfficeEngine({ active, candidateLoader }: Props) {
     const candidateReviewRequested = isFloor1CandidateReviewRequested(window.location.search);
+    const spriteDemoRequested = isAgentSpriteDemoRequested(window.location.search) && !candidateReviewRequested;
     const [document, setDocument] = useState<OfficeOverlayDocument>(
         candidateReviewRequested ? EMPTY_REVIEW_DOCUMENT : NON_PRODUCTION_OVERLAY,
     );
@@ -51,6 +54,7 @@ export function OfficeEngine({ active, candidateLoader }: Props) {
         () => new Set(candidateReviewRequested ? FLOOR1_CANDIDATE_LAYERS : LAYER_ORDER),
     );
     const [focusRequest, setFocusRequest] = useState(0);
+    const [selectedDemoAgentId, setSelectedDemoAgentId] = useState<string | null>(null);
     const selected = useMemo(
         () => document.entities.find(entity => entity.id === selectedId) ?? null,
         [document.entities, selectedId],
@@ -135,7 +139,7 @@ export function OfficeEngine({ active, candidateLoader }: Props) {
                         className={`sample-badge ${candidateReviewRequested ? 'sample-badge--candidate' : ''}`}
                         data-testid="floor1-runtime-status"
                     >
-                        {statusLabel}
+                        {spriteDemoRequested ? 'Sprite demonstration — positions are not assignments' : statusLabel}
                     </span>
                     {candidateReviewRequested && (
                         <label className="debug-toggle">
@@ -177,8 +181,21 @@ export function OfficeEngine({ active, candidateLoader }: Props) {
                     onPointerOfficePoint={setPointer}
                     onTransformChange={setTransform}
                     focusRequest={focusRequest}
+                    spriteDemoAgents={spriteDemoRequested ? SPRITE_DEMO_AGENTS : []}
+                    selectedDemoAgentId={selectedDemoAgentId}
+                    onSelectDemoAgent={setSelectedDemoAgentId}
                 />
                 <aside className="engine-sidebar" aria-hidden={!sidebarOpen}>
+                    {spriteDemoRequested && (
+                        <section className="engine-panel" aria-label="Sprite demonstration inspector">
+                            <h2>Sprite demonstration</h2>
+                            <p className="muted">Deterministic review positions only. No Floor 1 assignments or candidate data are modified.</p>
+                            <strong>{SPRITE_DEMO_AGENTS.find(agent => agent.id === selectedDemoAgentId)?.displayName ?? 'Select an agent'}</strong>
+                            {selectedDemoAgentId && (
+                                <p>{SPRITE_DEMO_AGENTS.find(agent => agent.id === selectedDemoAgentId)?.state} · provisional profile-to-art mapping</p>
+                            )}
+                        </section>
+                    )}
                     {candidateReviewRequested && (
                         <section className="engine-panel candidate-layers" aria-label="Floor 1 candidate layer visibility">
                             <div className="panel-heading">

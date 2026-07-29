@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { LegacyAgentSimulation } from './components/LegacyAgentSimulation';
 import { OfficeEngine } from './components/office/OfficeEngine';
 import { Floor1VisualLab } from './components/office/Floor1VisualLab';
+import { AgentSpriteVisualLab } from './components/office/AgentSpriteVisualLab';
+import { isAgentSpriteVisualLabRequested } from './office/sprites/routes';
 import './app.css';
 
 type ApplicationView = 'office-engine' | 'agent-simulation';
@@ -9,6 +11,7 @@ type ApplicationView = 'office-engine' | 'agent-simulation';
 function App() {
     const [view, setView] = useState<ApplicationView>('office-engine');
     const visualLab = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('visualLab') : null;
+    if (isAgentSpriteVisualLabRequested(window.location.search)) return <AgentSpriteVisualLab />;
     if (visualLab === 'floor1-registration') return <Floor1VisualLab mode="registration" />;
     if (visualLab === 'floor1-provisional') return <Floor1VisualLab mode="provisional" />;
     return (
