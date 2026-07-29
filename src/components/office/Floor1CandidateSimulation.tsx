@@ -14,6 +14,7 @@ import {
     activeCandidateDoorRequestIds,
     activeCandidateDoorStep,
     isCandidatePausableStatus,
+    isCandidateAdvancingStatus,
     advanceCandidateAgents,
     advanceCandidateDoorRuntimes,
     buildCandidateNavigationGraph,
@@ -327,7 +328,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                 {selectedAgent && (
                     <dl>
                         <dt>Current agent state</dt><dd>{selectedAgent.status}</dd>
-                        <dt>Current sprite clip</dt><dd>{selectedAgent.status === 'walking' ? 'walking' : 'idle/offline fallback'}</dd>
+                        <dt>Current sprite clip</dt><dd>{!reducedMotion && isCandidateAdvancingStatus(selectedAgent.status) ? 'walking' : selectedAgent.status === 'blocked' ? 'offline' : 'idle'}</dd>
                         <dt>Current world coordinate</dt><dd>{Math.round(selectedAgent.point.x)}, {Math.round(selectedAgent.point.y)}</dd>
                         <dt>Route cost</dt><dd>{route?.cost ?? 0}px · {route?.nodeSequence.join(' → ') ?? 'none'}</dd>
                         <dt>Door runtime</dt><dd>{route?.doorSteps.map(step => `${step.doorId}:${doorRuntimes[step.doorId]?.state ?? step.initialPhysicalState}:${step.requiredAction}`).join(', ') || 'none'}</dd>
@@ -386,7 +387,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                             manifest={AGENT_SPRITE_MANIFEST}
                             runtime={runtime}
                             assetId={agent.fixture.spriteAssetId}
-                            state={agent.status === 'walking' && !reducedMotion ? 'walking' : agent.status === 'blocked' ? 'offline' : 'idle'}
+                            state={!reducedMotion && isCandidateAdvancingStatus(agent.status) ? 'walking' : agent.status === 'blocked' ? 'offline' : 'idle'}
                             reducedMotion={reducedMotion}
                             scale={0.52}
                         />

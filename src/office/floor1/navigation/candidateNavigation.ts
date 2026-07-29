@@ -514,6 +514,44 @@ function destinationSort(a: CandidateDestination, b: CandidateDestination): numb
         || a.id.localeCompare(b.id);
 }
 
+
+export function isCandidateAgentSpawnEligible(evaluation: CandidatePositionEvaluation): boolean {
+    return evaluation.bounded && evaluation.collisionFree && evaluation.connectorSupported && evaluation.roomIds.length > 0;
+}
+
+function selectCandidateAgentPositions(evaluations: Iterable<CandidatePositionEvaluation>): CandidatePositionRecord[] {
+    const eligible = [...evaluations].filter(isCandidateAgentSpawnEligible).map(evaluation => evaluation.position);
+    const selected: CandidatePositionRecord[] = [];
+    for (const item of eligible.filter(position => position.tier === 'priority').sort((a, b) => a.id.localeCompare(b.id))) {
+        if (selected.length >= 4) break;
+        if (selected.every(existing => distance(existing.point, item.point) >= 38)) selected.push(item);
+    }
+    for (const item of eligible.filter(position => position.tier === 'standard').sort((a, b) => a.id.localeCompare(b.id))) {
+        if (selected.length >= 32) break;
+        if (selected.every(existing => distance(existing.point, item.point) >= 38)) selected.push(item);
+    }
+    for (const item of eligible.filter(position => position.tier === 'priority').sort((a, b) => a.id.localeCompare(b.id))) {
+        if (selected.length >= 40) break;
+        if (!selected.includes(item) && selected.every(existing => distance(existing.point, item.point) >= 38)) selected.push(item);
+    }
+    return selected;
+}
+
+function buildCandidateAgents(selectedPositions: readonly CandidatePositionRecord[]): CandidateAgentFixture[] {
+    return selectedPositions.map((item, index): CandidateAgentFixture => ({
+        id: `floor1-review-agent-${String(index + 1).padStart(2, '0')}`,
+        label: `Review agent ${String(index + 1).padStart(2, '0')}`,
+        positionId: item.id,
+        roomId: item.room.id,
+        roomIds: item.roomIds,
+        roomName: item.room.name,
+        point: item.point,
+        accessTier: item.tier,
+        spriteAssetId: `agent-sheet-${String((index % SPRITE_SHEET_COUNT) + 1).padStart(2, '0')}`,
+        provisionalSpriteAssignment: true,
+    }));
+}
+
 export function buildCandidateNavigationGraph(documents: CandidateDocuments, options: CandidateNavigationBuildOptions = {}): CandidateNavigationGraph {
     const registration = options.registration ?? DEFAULT_CANDIDATE_REGISTRATION;
     const registrationFailure = validateCandidateReviewRegistration(registration);
@@ -542,32 +580,6 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         if (!room) return null;
         return { id: text(item.id, `POSITION_${String(index + 1).padStart(3, '0')}`), point: candidatePoint, tier: item.accessTier === 'priority' ? 'priority' as const : 'standard' as const, room, roomIds: memberships.map(itemRoom => itemRoom.id) };
     }).filter((item): item is NonNullable<typeof item> => item !== null && bounded(item.point));
-
-    const selectedPositions: typeof positions = [];
-    for (const item of positions.filter(position => position.tier === 'priority').sort((a, b) => a.id.localeCompare(b.id))) {
-        if (selectedPositions.length >= 4) break;
-        if (selectedPositions.every(existing => distance(existing.point, item.point) >= 38)) selectedPositions.push(item);
-    }
-    for (const item of positions.filter(position => position.tier === 'standard').sort((a, b) => a.id.localeCompare(b.id))) {
-        if (selectedPositions.length >= 32) break;
-        if (selectedPositions.every(existing => distance(existing.point, item.point) >= 38)) selectedPositions.push(item);
-    }
-    for (const item of positions.filter(position => position.tier === 'priority').sort((a, b) => a.id.localeCompare(b.id))) {
-        if (selectedPositions.length >= 40) break;
-        if (!selectedPositions.includes(item) && selectedPositions.every(existing => distance(existing.point, item.point) >= 38)) selectedPositions.push(item);
-    }
-    const agents = selectedPositions.map((item, index): CandidateAgentFixture => ({
-        id: `floor1-review-agent-${String(index + 1).padStart(2, '0')}`,
-        label: `Review agent ${String(index + 1).padStart(2, '0')}`,
-        positionId: item.id,
-        roomId: item.room.id,
-        roomIds: item.roomIds,
-        roomName: item.room.name,
-        point: item.point,
-        accessTier: item.tier,
-        spriteAssetId: `agent-sheet-${String((index % SPRITE_SHEET_COUNT) + 1).padStart(2, '0')}`,
-        provisionalSpriteAssignment: true,
-    }));
 
     const positionDestinations = positions.map((item): CandidateDestination => ({ id: `position:${item.id}`, label: `${item.id} (${item.tier})`, kind: 'position', point: item.point, roomId: item.room.id, roomIds: item.roomIds, roomName: item.room.name, accessTier: item.tier }));
     const computerRecords = array(computerData.records, 'computers.records');
@@ -651,7 +663,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
     const graphForApproach = {
         rooms,
         doors,
-        agents,
+        agents: [],
         destinations: positionDestinations,
         colliders,
         walkNodes,
@@ -679,6 +691,9 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
             roomIds: position.roomIds,
         });
     }
+
+    const safeSelectedPositions = selectCandidateAgentPositions(positionEvaluations.values());
+    const agents = buildCandidateAgents(safeSelectedPositions);
 
     const resolvePositionApproachAnchor = (markerPoint: Point, markerRoomIds: readonly string[], minimumSeparation = AGENT_FOOTPRINT_RADIUS) => {
         const membershipSet = new Set(markerRoomIds);
@@ -982,7 +997,8 @@ function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Poi
         const b = addNode(segment.b);
         addEdge(a, b, distance(segment.a, segment.b), segment.id);
     }
-    const nearest = (pointValue: Point) => [...nodes.entries()]
+    const nodeEntries = [...nodes.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const nearest = (pointValue: Point) => nodeEntries
         .map(([id, nodePoint]) => ({ id, point: nodePoint, distance: distance(pointValue, nodePoint) }))
         .filter(item => item.distance <= CONNECTOR_MAX_DISTANCE)
         .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id))[0] ?? null;
