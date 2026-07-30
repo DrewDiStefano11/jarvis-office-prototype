@@ -217,11 +217,6 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             agentRevision: selectedAgent.revision,
             result,
         });
-        if (result.status !== 'valid') {
-            setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id
-                ? { ...agent, status: 'blocked', route: null, progress: 0, revision: agent.revision + 1 }
-                : agent));
-        }
     };
 
     const startMovement = () => {
@@ -353,7 +348,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             )}
             {showGraph && (
                 <svg className="floor1-candidate-debug floor1-candidate-debug--graph" aria-hidden="true">
-                    {graph.walkNodes.slice(0, 500).map(node => <circle key={node.id} cx={node.point.x} cy={node.point.y} r="14" />)}
+                    {graph.walkNodes.map(node => <circle key={node.id} cx={node.point.x} cy={node.point.y} r="14" />)}
                     {graph.doors.map(door => <circle key={door.id} className="door" cx={door.point.x} cy={door.point.y} r="24" />)}
                     {graph.doors.map(door => <text key={`${door.id}-label`} x={door.point.x + 28} y={door.point.y}>{door.id}</text>)}
                 </svg>

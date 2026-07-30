@@ -8,7 +8,7 @@ import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
 import type { MarkupRegistration } from './candidateNavigation';
-import { advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, computeCandidateRegistrationResiduals, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateCandidateReviewRegistration, validateMarkupRegistration, validateCandidateRouteDoorClearance, validateCandidateRouteSegments } from './candidateNavigation';
+import { activeCandidateDoorRequestIds, advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, computeCandidateRegistrationResiduals, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateCandidateReviewRegistration, validateMarkupRegistration, validateCandidateRouteDoorClearance, validateCandidateRouteSegments } from './candidateNavigation';
 
 
 const TEST_REGISTRATION = {
@@ -510,6 +510,24 @@ describe('candidate door runtime and destination anchor regressions', () => {
         expect(held.D01.state).toBe('open');
         const closing = advanceCandidateDoorRuntimes(open, [], 10_000);
         expect(['closing', 'closed']).toContain(closing.D01.state);
+    });
+
+    it('does not let doorway occupancy alone authorize non-public doors', () => {
+        const restrictedDoor = { id: 'D20', point: { x: 100, y: 100 }, zones: ['A', 'B'], zoneIds: ['A', 'B'], accessMode: 'event', permission: 'reserved' as const, manualReviewRequired: false, apertureRadius: 80 };
+        const publicDoor = { ...restrictedDoor, id: 'D01', accessMode: 'open', permission: 'general' as const };
+        const routeLessOccupant = { id: 'agent', status: 'idle', route: null, progress: 0, point: { x: 100, y: 100 } };
+        expect(activeCandidateDoorRequestIds([routeLessOccupant], [restrictedDoor])).toEqual([]);
+        expect(activeCandidateDoorRequestIds([routeLessOccupant], [publicDoor])).toEqual(['D01']);
+        const closed = { D20: { doorId: 'D20', state: 'closed' as const, stateElapsedMs: 0, revision: 0 } };
+        expect(advanceCandidateDoorRuntimes(closed, activeCandidateDoorRequestIds([routeLessOccupant], [restrictedDoor]), 100).D20.state).toBe('closed');
+    });
+
+    it('keeps active authorized route steps requesting their current public door', () => {
+        const route = testRoute(alternateGraph('open'), { x: 40, y: 40 }, 'target');
+        expect(route.status).toBe('valid');
+        const step = route.doorSteps[0];
+        const agent = { id: 'agent', status: 'walking', route, progress: step.approachDistance, point: step.approachPoint };
+        expect(activeCandidateDoorRequestIds([agent], alternateGraph('open').doors)).toContain(step.doorId);
     });
 
     it('blocked, manual-review, reserved, malformed, and D47/elevator doors fail closed', () => {

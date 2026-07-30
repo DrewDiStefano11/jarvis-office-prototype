@@ -78,6 +78,13 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         expect(request).not.toHaveBeenCalled();
     });
 
+    it('renders all walk nodes in the graph review overlay instead of truncating by ID order', async () => {
+        const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
+        await screen.findByLabelText('Candidate navigation review controls');
+        fireEvent.click(screen.getByLabelText('Walk-path and door graph nodes'));
+        await waitFor(() => expect(container.querySelectorAll('.floor1-candidate-debug--graph circle:not(.door)').length).toBeGreaterThan(1000));
+    });
+
     it('exposes all destination categories through accessible controls', async () => {
         render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
         const category = await screen.findByLabelText('Destination category');
@@ -92,6 +99,7 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         const preview = await screen.findByText('Preview route');
         fireEvent.click(preview);
         await waitFor(() => expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(true));
+        expect(screen.getByLabelText(/Review agent 01\. idle\./)).toBeTruthy();
         const agentSelect = screen.getByLabelText('Agent') as HTMLSelectElement;
         fireEvent.change(agentSelect, { target: { value: 'floor1-review-agent-02' } });
         expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(true);

@@ -1239,10 +1239,12 @@ export function activeCandidateDoorStep<T extends { status: string; route: Candi
 export function activeCandidateDoorRequestIds<T extends { id?: string; status: string; route: CandidateRouteResult | null; progress: number; point: Point }>(agents: readonly T[], doors: readonly CandidateDoorNode[] = []): string[] {
     const ids = new Set<string>();
     for (const agent of agents) {
-        for (const door of doors) if (candidateAgentOccupiesDoor(agent.point, door)) ids.add(door.id);
+        for (const door of doors) {
+            if (accessOutcome(door) === 'allowed' && candidateAgentOccupiesDoor(agent.point, door)) ids.add(door.id);
+        }
         if (!agent.route || !['walking', 'waiting_for_door', 'crossing_door', 'paused'].includes(agent.status)) continue;
         const active = activeCandidateDoorStep(agent);
-        if (active && agent.progress + AGENT_FOOTPRINT_RADIUS >= active.step.approachDistance && agent.progress <= active.step.clearanceReleaseDistance) ids.add(active.step.doorId);
+        if (active && active.step.permission === 'general' && agent.progress + AGENT_FOOTPRINT_RADIUS >= active.step.approachDistance && agent.progress <= active.step.clearanceReleaseDistance) ids.add(active.step.doorId);
     }
     return [...ids].sort((a, b) => a.localeCompare(b));
 }
