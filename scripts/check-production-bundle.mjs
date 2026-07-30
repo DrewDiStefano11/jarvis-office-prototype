@@ -1,9 +1,9 @@
+/* global process */
 import { readFile, readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { join, relative, resolve } from 'node:path';
 
-const root = resolve('.');
-const output = join(root, 'dist');
-const forbiddenMarkers = [
+export const spriteReviewOnlyMarkers = [
   'Agent sprite laboratory',
   'Inventory summary',
   'sprite-inventory.json',
@@ -11,75 +11,68 @@ const forbiddenMarkers = [
   'spriteDemo',
   'agent-sprite-layer',
   'demo-agent__label',
-  'Candidate navigation',
-  'floor1-candidate-simulation',
-  'floor1-review-agent',
-  'Candidate routes validate static world collisions only',
-  'provisionalSpriteAssignment',
-  'candidateNavigation',
-  'Destination category',
-  'Walk-path and door graph nodes',
-  'Route segment intersects candidate object collision geometry',
-  'object:objects-053:path:01',
-  'floor1-candidate-agent',
-  'Search destinations',
-  'start_connector_unsupported',
-  'destination_connector_unsupported',
-  'route_leaves_walkable_geometry',
-  'footprint overlaps',
-  'candidate agent footprint',
-  'ROOM_MAIN_CONNECTING_WALKWAY',
-  'POSITION_117',
-  'width: clamp(320px, 34vw, 480px)',
-  'destination_access_restricted',
-  'approachPositionId',
-  'markerPoint',
-  'requires a priority review agent',
-  'Computer 022',
-  'registration_unavailable',
-  'Candidate navigation unavailable',
-  'Floor 1 markup registration is not approved',
-  'approachResolution',
-  'automatic_open',
-  'waiting_for_door',
-  'doorSteps',
-  'CANDIDATE_DOOR_OPEN_MS',
-  'roomAnchorResolution',
-  'INTERACTIVE_MAIN_ROBOT_TUBE',
-  'ROOM_RM4',
 ];
-const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
-const matches = [];
 
-async function visit(directory) {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
+export const floor1CandidateOnlyMarkers = [
+  'floor1-candidate-simulation',
+  'floor1-candidate-agent',
+  'floor1-review-agent-',
+  'Candidate navigation review controls',
+  'Candidate routes validate static world collisions only',
+  '?floor1Review=candidate',
+  'src/components/office/Floor1CandidateSimulation',
+  'src/office/floor1/navigation/candidateNavigation',
+  'src/office/floor1/candidateRegistration',
+  'provisionalSpriteAssignment',
+];
+
+export const forbiddenMarkers = [...spriteReviewOnlyMarkers, ...floor1CandidateOnlyMarkers];
+export const searchableExtensions = new Set(['.css', '.html', '.js', '.json', '.map']);
+
+async function visit(directory, outputRoot, markers, matches) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     const absolute = join(directory, entry.name);
     if (entry.isDirectory()) {
-      await visit(absolute);
+      await visit(absolute, outputRoot, markers, matches);
       continue;
     }
-    const extension = entry.name.slice(entry.name.lastIndexOf('.'));
+    const extensionIndex = entry.name.lastIndexOf('.');
+    const extension = extensionIndex >= 0 ? entry.name.slice(extensionIndex) : '';
     if (!searchableExtensions.has(extension)) continue;
     const content = await readFile(absolute, 'utf8');
-    for (const marker of forbiddenMarkers) {
+    for (const marker of markers) {
       if (content.includes(marker)) {
-        matches.push(`${relative(output, absolute).replaceAll('\\', '/')}: ${marker}`);
+        matches.add(`${relative(outputRoot, absolute).replaceAll('\\', '/')}: ${marker}`);
       }
     }
   }
 }
 
-try {
-  await visit(output);
-} catch (error) {
-  if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-    throw new Error('Production bundle is missing. Run npm run build first.');
+export async function findProductionBundleMarkerMatches(outputRoot, markers = forbiddenMarkers) {
+  const matches = new Set();
+  await visit(outputRoot, outputRoot, markers, matches);
+  return [...matches].sort((a, b) => a.localeCompare(b));
+}
+
+export async function checkProductionBundle(outputRoot = resolve('dist')) {
+  let matches;
+  try {
+    matches = await findProductionBundleMarkerMatches(outputRoot);
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      throw new Error('Production bundle is missing. Run npm run build first.');
+    }
+    throw error;
   }
-  throw error;
+
+  if (matches.length > 0) {
+    throw new Error(`Development-only sprite review surface leaked into production:\n${matches.join('\n')}`);
+  }
 }
 
-if (matches.length > 0) {
-  throw new Error(`Development-only sprite review surface leaked into production:\n${matches.join('\n')}`);
+const invokedPath = process.argv[1] ? resolve(process.argv[1]) : '';
+if (invokedPath === fileURLToPath(import.meta.url)) {
+  await checkProductionBundle(resolve(process.argv[2] ?? 'dist'));
+  process.stdout.write('Production bundle excludes development-only sprite lab, demo, and Floor 1 candidate navigation markers.\n');
 }
-
-process.stdout.write('Production bundle excludes development-only sprite lab, demo, and Floor 1 candidate navigation markers.\n');

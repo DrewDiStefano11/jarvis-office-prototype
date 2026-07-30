@@ -557,6 +557,51 @@ describe('room destination access tiers and walk connector candidate search', ()
         expect(route.status).toBe('restricted');
     });
 
+    it('enforces priority access for position-backed computers and interactive objects without making rooms priority', () => {
+        const standardAgent = graph.agents.find(agent => agent.accessTier === 'standard')!;
+        const priorityComputers = graph.destinations.filter(destination => destination.kind === 'computer' && destination.approachResolution === 'position-anchor' && destination.approachAccessTier === 'priority');
+        expect(priorityComputers.map(destination => destination.id)).toEqual([
+            'computer:computers-015',
+            'computer:computers-016',
+            'computer:computers-017',
+            'computer:computers-038',
+            'computer:computers-039',
+            'computer:computers-044',
+        ]);
+        for (const destination of priorityComputers) {
+            const denied = planCandidateRoute(graph, { destinationId: destination.id, agent: { id: standardAgent.id, currentPoint: standardAgent.point, revision: 0 } });
+            expect(denied.status).toBe('restricted');
+            expect(denied.failureCategory).toBe('destination_access_restricted');
+        }
+        const smallRobotTube = graph.destinations.find(destination => destination.id === 'interactive:INTERACTIVE_SMALL_ROBOT_TUBE')!;
+        expect(smallRobotTube.approachResolution).toBe('position-anchor');
+        expect(smallRobotTube.approachAccessTier).toBe('priority');
+        expect(planCandidateRoute(graph, { destinationId: smallRobotTube.id, agent: { id: standardAgent.id, currentPoint: standardAgent.point, revision: 0 } }).failureCategory).toBe('destination_access_restricted');
+        for (const id of ['interactive:INTERACTIVE_MAIN_ROBOT_TUBE', 'interactive:INTERACTIVE_MAP', 'interactive:INTERACTIVE_STAIRS1', 'interactive:INTERACTIVE_STAIRS2']) {
+            const destination = graph.destinations.find(item => item.id === id)!;
+            if (destination.approachResolution !== 'position-anchor') expect(destination.approachAccessTier).toBeUndefined();
+        }
+        const synthetic = roomAccessGraph();
+        const priorityComputer = { ...synthetic.destinations[3], id: 'computer:priority', kind: 'computer' as const, approachResolution: 'position-anchor' as const, approachPositionId: 'POSITION_PRIORITY', approachAccessTier: 'priority' as const, accessTier: 'priority' as const };
+        const priorityInteractive = { ...synthetic.destinations[3], id: 'interactive:priority', kind: 'interactive-object' as const, approachResolution: 'position-anchor' as const, approachPositionId: 'POSITION_PRIORITY', approachAccessTier: 'priority' as const, accessTier: 'priority' as const };
+        const syntheticGraph = { ...synthetic, destinations: [...synthetic.destinations, priorityComputer, priorityInteractive] };
+        expect(planCandidateRoute(syntheticGraph, { destinationId: 'computer:priority', agent: { id: 'standard-agent', currentPoint: synthetic.agents[0].point, revision: 0 } }).failureCategory).toBe('destination_access_restricted');
+        expect(planCandidateRoute(syntheticGraph, { destinationId: 'computer:priority', agent: { id: 'priority-agent', currentPoint: synthetic.agents[1].point, revision: 0 } }).status).toBe('valid');
+        expect(planCandidateRoute(syntheticGraph, { destinationId: 'interactive:priority', agent: { id: 'standard-agent', currentPoint: synthetic.agents[0].point, revision: 0 } }).failureCategory).toBe('destination_access_restricted');
+        expect(planCandidateRoute(syntheticGraph, { destinationId: 'interactive:priority', agent: { id: 'priority-agent', currentPoint: synthetic.agents[1].point, revision: 0 } }).status).toBe('valid');
+        expect(graph.destinations.filter(destination => destination.kind === 'room').every(destination => destination.accessTier === undefined)).toBe(true);
+    });
+
+    it('fails closed for inconsistent position-backed destination access metadata', () => {
+        const malformedBase = roomAccessGraph();
+        const malformedMissingTier = { ...malformedBase, destinations: [{ ...malformedBase.destinations[3], kind: 'computer' as const, approachResolution: 'position-anchor' as const, approachPositionId: 'POSITION_X', approachAccessTier: undefined }] };
+        expect(planCandidateRoute(malformedMissingTier as CandidateNavigationGraph, { destinationId: 'position:PRIORITY', agent: { id: 'standard-agent', currentPoint: { x: 80, y: 80 }, revision: 0 } }).failureCategory).toBe('destination_access_metadata_invalid');
+        const malformedMissingPosition = { ...malformedBase, destinations: [{ ...malformedBase.destinations[3], kind: 'interactive-object' as const, approachResolution: 'position-anchor' as const, approachPositionId: undefined, approachAccessTier: 'priority' as const }] };
+        expect(planCandidateRoute(malformedMissingPosition as CandidateNavigationGraph, { destinationId: 'position:PRIORITY', agent: { id: 'standard-agent', currentPoint: { x: 80, y: 80 }, revision: 0 } }).failureCategory).toBe('destination_access_metadata_invalid');
+        const contradictory = { ...malformedBase, destinations: [{ ...malformedBase.destinations[3], kind: 'computer' as const, accessTier: 'standard' as const, approachResolution: 'position-anchor' as const, approachPositionId: 'POSITION_X', approachAccessTier: 'priority' as const }] };
+        expect(planCandidateRoute(contradictory as CandidateNavigationGraph, { destinationId: 'position:PRIORITY', agent: { id: 'standard-agent', currentPoint: { x: 80, y: 80 }, revision: 0 } }).failureCategory).toBe('destination_access_metadata_invalid');
+    });
+
     it('searches a farther start connector when the nearest endpoint is isolated', () => {
         const route = planCandidateRoute(connectorGraph(), { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 90, y: 0 }, revision: 0 } });
         expect(route.status).toBe('valid');
@@ -594,6 +639,28 @@ describe('room destination access tiers and walk connector candidate search', ()
             const route = planCandidateRoute(testGraph, { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 0, y: 0 }, revision: 0 } });
             expect(route.status).toBe('valid');
             expect(route.points).toContainEqual({ x: 0, y: 120 });
+        }
+    });
+
+    it('chooses a longer collision-free walk path when the cheapest network path crosses object or wall geometry', () => {
+        for (const kind of ['object', 'wall'] as const) {
+            const testGraph = connectorGraph({
+                agents: [{ id: 'agent', label: 'Agent', positionId: 'S1', roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room', point: { x: 90, y: 0 }, accessTier: 'standard', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
+                destinations: [{ id: 'target', label: 'Target', kind: 'waypoint', point: { x: 310, y: 0 }, roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room' }],
+                colliders: [{ id: `${kind}:shortest-path-blocker`, kind, points: [{ x: 190, y: -24 }, { x: 210, y: -24 }, { x: 210, y: 24 }, { x: 190, y: 24 }], closed: true, thickness: 8 }],
+                walkSegments: [
+                    { id: 'short-colliding', a: { x: 100, y: 0 }, b: { x: 300, y: 0 }, pathId: 'short' },
+                    { id: 'detour-a', a: { x: 100, y: 0 }, b: { x: 100, y: 120 }, pathId: 'detour' },
+                    { id: 'detour-b', a: { x: 100, y: 120 }, b: { x: 300, y: 120 }, pathId: 'detour' },
+                    { id: 'detour-c', a: { x: 300, y: 120 }, b: { x: 300, y: 0 }, pathId: 'detour' },
+                ],
+            });
+            const route = planCandidateRoute(testGraph, { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 90, y: 0 }, revision: 0 } });
+            expect(route.status).toBe('valid');
+            expect(route.points).toContainEqual({ x: 100, y: 120 });
+            expect(route.points).toContainEqual({ x: 300, y: 120 });
+            expect(route.points).not.toEqual([{ x: 90, y: 0 }, { x: 310, y: 0 }]);
+            expect(planCandidateRoute(testGraph, { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 90, y: 0 }, revision: 0 } })).toEqual(route);
         }
     });
 

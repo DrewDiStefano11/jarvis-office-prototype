@@ -923,8 +923,18 @@ function destinationById(graph: CandidateNavigationGraph, destinationId: string)
     return graph.destinations.find(destination => destination.id === destinationId) ?? null;
 }
 
-function destinationRequiresPriorityAccess(destination: CandidateDestination): boolean {
-    return destination.kind === 'position' && destination.accessTier === 'priority';
+function destinationRequiredAccessTier(destination: CandidateDestination): 'standard' | 'priority' | 'malformed' | undefined {
+    if (destination.kind === 'room') return undefined;
+    if (destination.kind === 'position') return destination.accessTier;
+    if ((destination.kind === 'computer' || destination.kind === 'interactive-object') && destination.approachResolution === 'position-anchor') {
+        if (!destination.approachPositionId || !destination.approachAccessTier) return 'malformed';
+        if (destination.accessTier && destination.accessTier !== destination.approachAccessTier) return 'malformed';
+        return destination.approachAccessTier;
+    }
+    if ((destination.kind === 'computer' || destination.kind === 'interactive-object') && destination.approachResolution && destination.approachResolution !== 'position-anchor') {
+        if (destination.approachPositionId || destination.approachAccessTier) return 'malformed';
+    }
+    return undefined;
 }
 
 function routeFailure(status: CandidateRouteStatus, reason: string, failureCategory: string, expandedNodeCount = 0, crossedDoorIds: readonly string[] = []): CandidateRouteResult {
@@ -1169,7 +1179,18 @@ export function candidateWalkEndpointConnectors(
     return candidateWalkEndpointConnectorsForNetwork(graph, buildRelevantWalkNetwork(graph, allowedRoomIds), pointValue, allowedRoomIds);
 }
 
-function shortestWalkNodePath(network: CandidateWalkNetwork, startId: string, endId: string): Readonly<{ nodeIds: readonly string[]; cost: number; expanded: number }> | null {
+type CandidateWalkSearchContext = Readonly<{ allowedRoomIds: readonly string[]; allowedDoorIds: readonly string[] }>;
+
+function candidateWalkEdgeTraversable(graph: CandidateNavigationGraph, from: Point, to: Point, context: CandidateWalkSearchContext, cache: Map<string, boolean>): boolean {
+    const key = `${pointKey(from)}>${pointKey(to)}|${context.allowedDoorIds.slice().sort((a, b) => a.localeCompare(b)).join(',')}`;
+    const cached = cache.get(key);
+    if (cached !== undefined) return cached;
+    const traversable = validateCandidateRouteSegments(graph, [from, to], context.allowedDoorIds) === null;
+    cache.set(key, traversable);
+    return traversable;
+}
+
+function shortestWalkNodePath(graph: CandidateNavigationGraph, network: CandidateWalkNetwork, startId: string, endId: string, context: CandidateWalkSearchContext, edgeCollisionCache: Map<string, boolean>): Readonly<{ nodeIds: readonly string[]; cost: number; expanded: number }> | null {
     const queue = [{ id: startId, cost: 0, path: [startId] }];
     const best = new Map([[startId, 0]]);
     let expanded = 0;
@@ -1181,6 +1202,9 @@ function shortestWalkNodePath(network: CandidateWalkNetwork, startId: string, en
         if (current.id === endId) return { nodeIds: current.path, cost: current.cost, expanded };
         for (const edge of network.edges.get(current.id) ?? []) {
             if (current.path.includes(edge.to)) continue;
+            const fromPoint = network.nodes.get(current.id);
+            const toPoint = network.nodes.get(edge.to);
+            if (!fromPoint || !toPoint || !candidateWalkEdgeTraversable(graph, fromPoint, toPoint, context, edgeCollisionCache)) continue;
             const cost = current.cost + edge.length;
             if (cost >= (best.get(edge.to) ?? Number.POSITIVE_INFINITY)) continue;
             best.set(edge.to, cost);
@@ -1190,13 +1214,14 @@ function shortestWalkNodePath(network: CandidateWalkNetwork, startId: string, en
     return null;
 }
 
-function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Point, roomIds: readonly string[]): Point[] | null {
+function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Point, roomIds: readonly string[], allowedDoorIds: readonly string[] = []): Point[] | null {
     if (graph.walkSegments.length === 0) return [from, to];
     const network = buildRelevantWalkNetwork(graph, roomIds);
     if (network.nodes.size === 0) return null;
     const startCandidates = candidateWalkEndpointConnectorsForNetwork(graph, network, from, roomIds);
     const endCandidates = candidateWalkEndpointConnectorsForNetwork(graph, network, to, roomIds);
     if (startCandidates.length === 0 || endCandidates.length === 0) return null;
+    const edgeCollisionCache = new Map<string, boolean>();
     let best: Readonly<{
         points: readonly Point[];
         cost: number;
@@ -1207,7 +1232,7 @@ function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Poi
     }> | null = null;
     for (const start of startCandidates) {
         for (const end of endCandidates) {
-            const walkPath = shortestWalkNodePath(network, start.nodeId, end.nodeId);
+            const walkPath = shortestWalkNodePath(graph, network, start.nodeId, end.nodeId, { allowedRoomIds: roomIds, allowedDoorIds }, edgeCollisionCache);
             if (!walkPath) continue;
             const nodePoints = walkPath.nodeIds.map(id => network.nodes.get(id)!).filter(Boolean);
             const points = [from, ...nodePoints, to].filter((pointItem, index, all) => index === 0 || distance(pointItem, all[index - 1]) > 0.001);
@@ -1264,7 +1289,7 @@ function routeForDoorPath(
         if (door.apertureRadius <= AGENT_FOOTPRINT_RADIUS) {
             return routeFailure('blocked', `${door.id} doorway aperture cannot fit the candidate agent footprint.`, 'collision', expandedNodeCount, [door.id]);
         }
-        const pathToDoor = connectedWalkPath(graph, currentPoint, door.point, currentRooms);
+        const pathToDoor = connectedWalkPath(graph, currentPoint, door.point, currentRooms, [door.id]);
         if (!pathToDoor) return routeFailure('blocked', 'Walk network is disconnected before a doorway transition.', 'walk_network_disconnected', expandedNodeCount, crossedDoorIds);
         appendPath(pointsOut, pathToDoor);
         const thresholdDistance = routeLength(pointsOut);
@@ -1291,7 +1316,7 @@ function routeForDoorPath(
         currentRooms = nextRoom ? [nextRoom] : currentRooms;
         if (pointsOut.length > MAX_ROUTE_POINTS) return routeFailure('malformed', 'Route exceeded the candidate route point limit.', 'limits', expandedNodeCount, crossedDoorIds);
     }
-    const pathToDestination = connectedWalkPath(graph, currentPoint, destination.point, destRoomIds);
+    const pathToDestination = connectedWalkPath(graph, currentPoint, destination.point, destRoomIds, crossedDoorIds.slice(-1));
     if (!pathToDestination) return routeFailure('blocked', 'Walk network is disconnected before the destination.', 'walk_network_disconnected', expandedNodeCount, crossedDoorIds);
     appendPath(pointsOut, pathToDestination);
     for (const roomId of destRoomIds) { if (nodeSequence[nodeSequence.length - 1] !== roomId) nodeSequence.push(roomId); }
@@ -1327,7 +1352,9 @@ export function planCandidateRoute(graph: CandidateNavigationGraph, request: Can
     const destination = destinationById(graph, destinationId);
     if (!destination) return routeFailure('malformed', 'Destination could not be resolved to a candidate review point.', 'destination');
     if (destination.availability === 'unavailable') return routeFailure('blocked', destination.unavailableReason ?? 'Destination is unavailable for candidate navigation.', 'destination_unavailable');
-    if (destinationRequiresPriorityAccess(destination) && agent.accessTier !== 'priority') {
+    const requiredAccessTier = destinationRequiredAccessTier(destination);
+    if (requiredAccessTier === 'malformed') return routeFailure('malformed', 'Destination access metadata is inconsistent for candidate navigation.', 'destination_access_metadata_invalid');
+    if (requiredAccessTier === 'priority' && agent.accessTier !== 'priority') {
         return routeFailure('restricted', `Destination ${destination.label} requires a priority review agent.`, 'destination_access_restricted');
     }
     const destinationValidation = validatePoint(graph, destination.point, 'Route destination');
