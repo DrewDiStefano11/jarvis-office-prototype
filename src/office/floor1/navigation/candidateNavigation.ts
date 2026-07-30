@@ -35,6 +35,7 @@ export type CandidateDestination = Readonly<{
     unavailableReason?: string;
     roomAnchorResolution?: 'position-anchor' | 'walk-node' | 'walk-segment' | 'polygon-interior';
     roomAnchorSourceId?: string;
+    roomAnchorSourceTier?: 'standard' | 'priority';
 }>;
 
 export type CandidateRouteRequest = Readonly<{
@@ -762,12 +763,12 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
             point: position.position.point,
             resolution: 'position-anchor' as const,
             sourceId: position.position.id,
-            accessTier: position.position.tier,
+            sourceTier: position.position.tier,
         };
         const walkNode = (walkNodesByRoomId.get(room.id) ?? [])
             .filter(node => pointInPolygon(node.point, room.polygon) && !colliders.some(collider => pointOverlapsColliderFootprint(node.point, collider)))
             .sort((a, b) => distance(a.point, room.center) - distance(b.point, room.center) || a.id.localeCompare(b.id))[0];
-        if (walkNode) return { point: walkNode.point, resolution: 'walk-node' as const, sourceId: walkNode.id, accessTier: undefined };
+        if (walkNode) return { point: walkNode.point, resolution: 'walk-node' as const, sourceId: walkNode.id, sourceTier: undefined };
         return null;
     };
 
@@ -781,11 +782,11 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
             roomId: room.id,
             roomIds: [room.id],
             roomName: room.name,
-            accessTier: anchor?.accessTier,
             availability: anchor ? 'available' : 'unavailable',
             unavailableReason: anchor ? undefined : 'No safe candidate room destination anchor is available.',
             roomAnchorResolution: anchor?.resolution,
             roomAnchorSourceId: anchor?.sourceId,
+            roomAnchorSourceTier: anchor?.sourceTier,
         };
     });
 
@@ -861,6 +862,10 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
 
 function destinationById(graph: CandidateNavigationGraph, destinationId: string): CandidateDestination | null {
     return graph.destinations.find(destination => destination.id === destinationId) ?? null;
+}
+
+function destinationRequiresPriorityAccess(destination: CandidateDestination): boolean {
+    return destination.kind === 'position' && destination.accessTier === 'priority';
 }
 
 function routeFailure(status: CandidateRouteStatus, reason: string, failureCategory: string, expandedNodeCount = 0, crossedDoorIds: readonly string[] = []): CandidateRouteResult {
@@ -1023,8 +1028,20 @@ function appendPath(pointsOut: Point[], path: readonly Point[]): void {
     }
 }
 
-function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Point, roomIds: readonly string[]): Point[] | null {
-    if (graph.walkSegments.length === 0) return [from, to];
+type CandidateWalkEndpointConnector = Readonly<{
+    nodeId: string;
+    point: Point;
+    connectorPoints: readonly Point[];
+    connectorDistance: number;
+    roomIds: readonly string[];
+}>;
+
+type CandidateWalkNetwork = Readonly<{
+    nodes: ReadonlyMap<string, Point>;
+    edges: ReadonlyMap<string, readonly Readonly<{ to: string; length: number; edgeId: string }>[] >;
+}>;
+
+function buildRelevantWalkNetwork(graph: CandidateNavigationGraph, roomIds: readonly string[]): CandidateWalkNetwork {
     const roomSet = new Set(roomIds);
     const relevant = graph.walkSegments.filter(segment => {
         const aRooms = membershipIds(graph.rooms, segment.a);
@@ -1032,38 +1049,78 @@ function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Poi
         return aRooms.some(roomId => roomSet.has(roomId)) || bRooms.some(roomId => roomSet.has(roomId));
     });
     const nodes = new Map<string, Point>();
-    const edges = new Map<string, Array<{ to: string; length: number; edgeId: string }>>();
+    const mutableEdges = new Map<string, Array<{ to: string; length: number; edgeId: string }>>();
     const addNode = (pointValue: Point) => { const key = pointKey(pointValue); if (!nodes.has(key)) nodes.set(key, pointValue); return key; };
     const addEdge = (a: string, b: string, length: number, edgeId: string) => {
-        edges.set(a, [...(edges.get(a) ?? []), { to: b, length, edgeId }]);
-        edges.set(b, [...(edges.get(b) ?? []), { to: a, length, edgeId }]);
+        mutableEdges.set(a, [...(mutableEdges.get(a) ?? []), { to: b, length, edgeId }]);
+        mutableEdges.set(b, [...(mutableEdges.get(b) ?? []), { to: a, length, edgeId }]);
     };
     for (const segment of relevant) {
         const a = addNode(segment.a);
         const b = addNode(segment.b);
         addEdge(a, b, distance(segment.a, segment.b), segment.id);
     }
-    const nodeEntries = [...nodes.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    const nearest = (pointValue: Point) => nodeEntries
-        .map(([id, nodePoint]) => ({ id, point: nodePoint, distance: distance(pointValue, nodePoint) }))
-        .filter(item => item.distance <= CONNECTOR_MAX_DISTANCE)
-        .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id))[0] ?? null;
-    const start = nearest(from);
-    const end = nearest(to);
-    if (!start || !end) return null;
-    const queue = [{ id: start.id, cost: 0, path: [start.id] }];
-    const best = new Map([[start.id, 0]]);
+    const edges = new Map<string, readonly Readonly<{ to: string; length: number; edgeId: string }>[]>();
+    mutableEdges.forEach((items, id) => {
+        edges.set(id, items.sort((a, b) => a.to.localeCompare(b.to) || a.edgeId.localeCompare(b.edgeId)));
+    });
+    return { nodes, edges };
+}
+
+function connectorCandidateValid(graph: CandidateNavigationGraph, from: Point, to: Point, allowedRoomIds: readonly string[]): boolean {
+    if (!bounded(from) || !bounded(to) || distance(from, to) > CONNECTOR_MAX_DISTANCE) return false;
+    const roomSet = new Set(allowedRoomIds);
+    const fromRooms = membershipIds(graph.rooms, from);
+    const toRooms = membershipIds(graph.rooms, to);
+    if (fromRooms.length > 0 && !fromRooms.some(roomId => roomSet.has(roomId))) return false;
+    if (toRooms.length > 0 && !toRooms.some(roomId => roomSet.has(roomId))) return false;
+    return validateCandidateRouteSegments(graph, [from, to], []) === null;
+}
+
+function candidateWalkEndpointConnectorsForNetwork(
+    graph: CandidateNavigationGraph,
+    network: CandidateWalkNetwork,
+    pointValue: Point,
+    allowedRoomIds: readonly string[],
+): readonly CandidateWalkEndpointConnector[] {
+    const roomSet = new Set(allowedRoomIds);
+    const candidates = [...network.nodes.entries()]
+        .map(([nodeId, nodePoint]) => ({
+            nodeId,
+            point: nodePoint,
+            connectorPoints: [pointValue, nodePoint],
+            connectorDistance: distance(pointValue, nodePoint),
+            roomIds: membershipIds(graph.rooms, nodePoint).filter(roomId => roomSet.has(roomId)),
+        }))
+        .filter(candidate => candidate.connectorDistance <= CONNECTOR_MAX_DISTANCE && candidate.roomIds.length > 0)
+        .sort((a, b) => a.connectorDistance - b.connectorDistance || a.nodeId.localeCompare(b.nodeId));
+    const valid: CandidateWalkEndpointConnector[] = [];
+    for (const candidate of candidates) {
+        if (connectorCandidateValid(graph, pointValue, candidate.point, allowedRoomIds)) valid.push(candidate);
+        if (valid.length >= CONNECTOR_SEARCH_LIMIT) break;
+    }
+    return valid;
+}
+
+export function candidateWalkEndpointConnectors(
+    graph: CandidateNavigationGraph,
+    pointValue: Point,
+    allowedRoomIds: readonly string[],
+): readonly CandidateWalkEndpointConnector[] {
+    return candidateWalkEndpointConnectorsForNetwork(graph, buildRelevantWalkNetwork(graph, allowedRoomIds), pointValue, allowedRoomIds);
+}
+
+function shortestWalkNodePath(network: CandidateWalkNetwork, startId: string, endId: string): Readonly<{ nodeIds: readonly string[]; cost: number; expanded: number }> | null {
+    const queue = [{ id: startId, cost: 0, path: [startId] }];
+    const best = new Map([[startId, 0]]);
     let expanded = 0;
     while (queue.length > 0 && expanded < MAX_EXPANDED_NODES) {
-        queue.sort((a, b) => a.cost - b.cost || a.id.localeCompare(b.id));
+        queue.sort((a, b) => a.cost - b.cost || a.id.localeCompare(b.id) || a.path.join('|').localeCompare(b.path.join('|')));
         const current = queue.shift();
         if (!current) break;
         expanded += 1;
-        if (current.id === end.id) {
-            return [from, ...current.path.map(id => nodes.get(id)!).filter(Boolean), to]
-                .filter((pointValue, index, all) => index === 0 || distance(pointValue, all[index - 1]) > 0.001);
-        }
-        for (const edge of (edges.get(current.id) ?? []).sort((a, b) => a.to.localeCompare(b.to) || a.edgeId.localeCompare(b.edgeId))) {
+        if (current.id === endId) return { nodeIds: current.path, cost: current.cost, expanded };
+        for (const edge of network.edges.get(current.id) ?? []) {
             if (current.path.includes(edge.to)) continue;
             const cost = current.cost + edge.length;
             if (cost >= (best.get(edge.to) ?? Number.POSITIVE_INFINITY)) continue;
@@ -1072,6 +1129,45 @@ function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Poi
         }
     }
     return null;
+}
+
+function connectedWalkPath(graph: CandidateNavigationGraph, from: Point, to: Point, roomIds: readonly string[]): Point[] | null {
+    if (graph.walkSegments.length === 0) return [from, to];
+    const network = buildRelevantWalkNetwork(graph, roomIds);
+    if (network.nodes.size === 0) return null;
+    const startCandidates = candidateWalkEndpointConnectorsForNetwork(graph, network, from, roomIds);
+    const endCandidates = candidateWalkEndpointConnectorsForNetwork(graph, network, to, roomIds);
+    if (startCandidates.length === 0 || endCandidates.length === 0) return null;
+    let best: Readonly<{
+        points: readonly Point[];
+        cost: number;
+        length: number;
+        start: CandidateWalkEndpointConnector;
+        end: CandidateWalkEndpointConnector;
+        nodeSequence: string;
+    }> | null = null;
+    for (const start of startCandidates) {
+        for (const end of endCandidates) {
+            const walkPath = shortestWalkNodePath(network, start.nodeId, end.nodeId);
+            if (!walkPath) continue;
+            const nodePoints = walkPath.nodeIds.map(id => network.nodes.get(id)!).filter(Boolean);
+            const points = [from, ...nodePoints, to].filter((pointItem, index, all) => index === 0 || distance(pointItem, all[index - 1]) > 0.001);
+            const length = routeLength(points);
+            const cost = start.connectorDistance + walkPath.cost + end.connectorDistance;
+            const candidate = { points, cost, length, start, end, nodeSequence: walkPath.nodeIds.join('|') };
+            if (!best
+                || candidate.cost < best.cost
+                || (candidate.cost === best.cost && candidate.length < best.length)
+                || (candidate.cost === best.cost && candidate.length === best.length && candidate.start.connectorDistance < best.start.connectorDistance)
+                || (candidate.cost === best.cost && candidate.length === best.length && candidate.start.connectorDistance === best.start.connectorDistance && candidate.end.connectorDistance < best.end.connectorDistance)
+                || (candidate.cost === best.cost && candidate.length === best.length && candidate.start.connectorDistance === best.start.connectorDistance && candidate.end.connectorDistance === best.end.connectorDistance && candidate.start.nodeId.localeCompare(best.start.nodeId) < 0)
+                || (candidate.cost === best.cost && candidate.length === best.length && candidate.start.connectorDistance === best.start.connectorDistance && candidate.end.connectorDistance === best.end.connectorDistance && candidate.start.nodeId === best.start.nodeId && candidate.end.nodeId.localeCompare(best.end.nodeId) < 0)
+                || (candidate.cost === best.cost && candidate.length === best.length && candidate.start.connectorDistance === best.start.connectorDistance && candidate.end.connectorDistance === best.end.connectorDistance && candidate.start.nodeId === best.start.nodeId && candidate.end.nodeId === best.end.nodeId && candidate.nodeSequence.localeCompare(best.nodeSequence) < 0)) {
+                best = candidate;
+            }
+        }
+    }
+    return best ? [...best.points] : null;
 }
 
 export function validateCandidateRouteDoorClearance(
@@ -1172,7 +1268,7 @@ export function planCandidateRoute(graph: CandidateNavigationGraph, request: Can
     const destination = destinationById(graph, destinationId);
     if (!destination) return routeFailure('malformed', 'Destination could not be resolved to a candidate review point.', 'destination');
     if (destination.availability === 'unavailable') return routeFailure('blocked', destination.unavailableReason ?? 'Destination is unavailable for candidate navigation.', 'destination_unavailable');
-    if (destination.accessTier === 'priority' && agent.accessTier !== 'priority') {
+    if (destinationRequiresPriorityAccess(destination) && agent.accessTier !== 'priority') {
         return routeFailure('restricted', `Destination ${destination.label} requires a priority review agent.`, 'destination_access_restricted');
     }
     const destinationValidation = validatePoint(graph, destination.point, 'Route destination');

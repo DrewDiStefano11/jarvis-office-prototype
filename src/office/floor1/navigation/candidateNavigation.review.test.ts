@@ -8,7 +8,8 @@ import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
 import type { MarkupRegistration } from './candidateNavigation';
-import { activeCandidateDoorRequestIds, advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, computeCandidateRegistrationResiduals, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateCandidateReviewRegistration, validateMarkupRegistration, validateCandidateRouteDoorClearance, validateCandidateRouteSegments } from './candidateNavigation';
+import { activeCandidateDoorRequestIds,
+    candidateWalkEndpointConnectors, advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, computeCandidateRegistrationResiduals, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateCandidateReviewRegistration, validateMarkupRegistration, validateCandidateRouteDoorClearance, validateCandidateRouteSegments } from './candidateNavigation';
 
 
 const TEST_REGISTRATION = {
@@ -458,6 +459,160 @@ describe('markup registration boundary', () => {
     });
 });
 
+
+
+describe('room destination access tiers and walk connector candidate search', () => {
+    function roomAccessGraph(): CandidateNavigationGraph {
+        return {
+            rooms: [
+                { id: 'START', name: 'Start', polygon: [{ x: 0, y: 0 }, { x: 240, y: 0 }, { x: 240, y: 240 }, { x: 0, y: 240 }], center: { x: 120, y: 120 } },
+                { id: 'CONF', name: 'Conference', polygon: [{ x: 240, y: 0 }, { x: 520, y: 0 }, { x: 520, y: 240 }, { x: 240, y: 240 }], center: { x: 380, y: 120 } },
+                { id: 'BOARD', name: 'Boardroom', polygon: [{ x: 240, y: 240 }, { x: 520, y: 240 }, { x: 520, y: 520 }, { x: 240, y: 520 }], center: { x: 380, y: 380 } },
+                { id: 'FOCUS', name: 'Focus', polygon: [{ x: 0, y: 240 }, { x: 240, y: 240 }, { x: 240, y: 520 }, { x: 0, y: 520 }], center: { x: 120, y: 380 } },
+            ],
+            doors: [
+                { id: 'D-CONF', point: { x: 240, y: 120 }, zones: ['Start', 'Conference'], zoneIds: ['START', 'CONF'], accessMode: 'open', permission: 'general', manualReviewRequired: false, apertureRadius: 80 },
+                { id: 'D-BOARD', point: { x: 240, y: 260 }, zones: ['Start', 'Boardroom'], zoneIds: ['START', 'BOARD'], accessMode: 'open', permission: 'general', manualReviewRequired: false, apertureRadius: 80 },
+                { id: 'D-FOCUS', point: { x: 120, y: 240 }, zones: ['Start', 'Focus'], zoneIds: ['START', 'FOCUS'], accessMode: 'open', permission: 'general', manualReviewRequired: false, apertureRadius: 80 },
+            ],
+            agents: [
+                { id: 'standard-agent', label: 'Standard', positionId: 'S1', roomId: 'START', roomIds: ['START'], roomName: 'Start', point: { x: 80, y: 80 }, accessTier: 'standard', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true },
+                { id: 'priority-agent', label: 'Priority', positionId: 'P1', roomId: 'START', roomIds: ['START'], roomName: 'Start', point: { x: 90, y: 80 }, accessTier: 'priority', spriteAssetId: 'agent-sheet-02', provisionalSpriteAssignment: true },
+            ],
+            destinations: [
+                { id: 'room:CONF', label: 'Conference', kind: 'room', point: { x: 380, y: 120 }, roomId: 'CONF', roomIds: ['CONF'], roomName: 'Conference', roomAnchorResolution: 'position-anchor', roomAnchorSourceId: 'POSITION_PRIORITY_CONF', roomAnchorSourceTier: 'priority' },
+                { id: 'room:BOARD', label: 'Boardroom', kind: 'room', point: { x: 380, y: 380 }, roomId: 'BOARD', roomIds: ['BOARD'], roomName: 'Boardroom', roomAnchorResolution: 'position-anchor', roomAnchorSourceId: 'POSITION_PRIORITY_BOARD', roomAnchorSourceTier: 'priority' },
+                { id: 'room:FOCUS', label: 'Focus', kind: 'room', point: { x: 120, y: 380 }, roomId: 'FOCUS', roomIds: ['FOCUS'], roomName: 'Focus', roomAnchorResolution: 'position-anchor', roomAnchorSourceId: 'POSITION_PRIORITY_FOCUS', roomAnchorSourceTier: 'priority' },
+                { id: 'position:PRIORITY', label: 'Priority seat', kind: 'position', point: { x: 380, y: 130 }, roomId: 'CONF', roomIds: ['CONF'], roomName: 'Conference', accessTier: 'priority' },
+                { id: 'position:STANDARD', label: 'Standard seat', kind: 'position', point: { x: 380, y: 140 }, roomId: 'CONF', roomIds: ['CONF'], roomName: 'Conference', accessTier: 'standard' },
+            ],
+            colliders: [],
+            walkNodes: [],
+            walkSegments: [],
+            roomDiagnostics: [],
+            nodeCount: 11,
+            edgeCount: 3,
+            navigationAvailable: true,
+        };
+    }
+
+    function connectorGraph(overrides: Partial<CandidateNavigationGraph> = {}): CandidateNavigationGraph {
+        const base: CandidateNavigationGraph = {
+            rooms: [{ id: 'ROOM', name: 'Room', polygon: [{ x: -100, y: -100 }, { x: 700, y: -100 }, { x: 700, y: 700 }, { x: -100, y: 700 }], center: { x: 300, y: 300 } }],
+            doors: [],
+            agents: [{ id: 'agent', label: 'Agent', positionId: 'S1', roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room', point: { x: 90, y: 0 }, accessTier: 'standard', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
+            destinations: [{ id: 'target', label: 'Target', kind: 'waypoint', point: { x: 560, y: 0 }, roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room' }],
+            colliders: [],
+            walkNodes: [],
+            walkSegments: [
+                { id: 'isolated-nearest', a: { x: 100, y: 0 }, b: { x: 120, y: 0 }, pathId: 'isolated' },
+                { id: 'connected-a', a: { x: 430, y: 0 }, b: { x: 480, y: 0 }, pathId: 'connected' },
+                { id: 'connected-b', a: { x: 480, y: 0 }, b: { x: 500, y: 0 }, pathId: 'connected' },
+            ],
+            roomDiagnostics: [],
+            nodeCount: 6,
+            edgeCount: 3,
+            navigationAvailable: true,
+        };
+        return { ...base, ...overrides };
+    }
+
+    it('keeps real room destinations neutral even when backed by priority position anchors', () => {
+        for (const roomId of ['ROOM_EXECUTIVE_BOARDROOM', 'ROOM_CONFERENCE_1', 'ROOM_CONFERENCE_2', 'ROOM_FOCUS_A', 'ROOM_FOCUS_B', 'ROOM_FOCUS_C', 'ROOM_FOCUS_D']) {
+            const destination = graph.destinations.find(item => item.id === `room:${roomId}`);
+            const room = graph.rooms.find(item => item.id === roomId);
+            expect(destination).toBeTruthy();
+            expect(destination?.kind).toBe('room');
+            expect(destination?.accessTier).toBeUndefined();
+            expect(destination?.roomAnchorSourceTier).toBe('priority');
+            expect(destination?.roomAnchorSourceId).toMatch(/^POSITION_/);
+            expect(destination?.roomAnchorResolution).toBe('position-anchor');
+            expect(pointInPolygon(destination!.point, room!.polygon)).toBe(true);
+            expect(validateCandidateRouteSegments(graph, [destination!.point, destination!.point], [])).toBeNull();
+        }
+        expect(buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION }).destinations.filter(item => item.kind === 'room').map(item => [item.id, item.accessTier, item.roomAnchorSourceId])).toEqual(graph.destinations.filter(item => item.kind === 'room').map(item => [item.id, item.accessTier, item.roomAnchorSourceId]));
+    });
+
+    it('allows standard agents to route to accessible room destinations without inheriting priority seat metadata', () => {
+        const accessGraph = roomAccessGraph();
+        for (const destinationId of ['room:CONF', 'room:BOARD', 'room:FOCUS']) {
+            const destination = accessGraph.destinations.find(item => item.id === destinationId)!;
+            expect(destination.accessTier).toBeUndefined();
+            expect(destination.roomAnchorSourceTier).toBe('priority');
+            const standardRoute = planCandidateRoute(accessGraph, { destinationId, agent: { id: 'standard-agent', currentPoint: accessGraph.agents[0].point, revision: 0 } });
+            expect(standardRoute.status).toBe('valid');
+            const priorityRoute = planCandidateRoute(accessGraph, { destinationId, agent: { id: 'priority-agent', currentPoint: accessGraph.agents[1].point, revision: 0 } });
+            expect(priorityRoute.status).toBe('valid');
+        }
+        expect(planCandidateRoute(accessGraph, { destinationId: 'position:PRIORITY', agent: { id: 'standard-agent', currentPoint: accessGraph.agents[0].point, revision: 0 } }).failureCategory).toBe('destination_access_restricted');
+        expect(planCandidateRoute(accessGraph, { destinationId: 'position:STANDARD', agent: { id: 'standard-agent', currentPoint: accessGraph.agents[0].point, revision: 0 } }).status).toBe('valid');
+    });
+
+    it('still uses actual door restrictions rather than room anchor metadata for room authorization', () => {
+        const restricted = roomAccessGraph() as unknown as { doors: Array<{ accessMode: string; permission: 'general' | 'restricted' }> };
+        restricted.doors[0].accessMode = 'restricted';
+        restricted.doors[0].permission = 'restricted';
+        const route = planCandidateRoute(restricted as unknown as CandidateNavigationGraph, { destinationId: 'room:CONF', agent: { id: 'standard-agent', currentPoint: { x: 80, y: 80 }, revision: 0 } });
+        expect(route.status).toBe('restricted');
+    });
+
+    it('searches a farther start connector when the nearest endpoint is isolated', () => {
+        const route = planCandidateRoute(connectorGraph(), { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 90, y: 0 }, revision: 0 } });
+        expect(route.status).toBe('valid');
+        expect(route.points).toContainEqual({ x: 430, y: 0 });
+        expect(route.points).toContainEqual({ x: 500, y: 0 });
+        expect(route.points).not.toEqual([{ x: 90, y: 0 }, { x: 560, y: 0 }]);
+        expect(route.cost).toBeGreaterThan(0);
+        expect(planCandidateRoute(connectorGraph(), { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 90, y: 0 }, revision: 0 } })).toEqual(route);
+    });
+
+    it('searches a farther destination connector when the nearest endpoint is isolated', () => {
+        const testGraph = connectorGraph({
+            agents: [{ id: 'agent', label: 'Agent', positionId: 'S1', roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room', point: { x: 500, y: 0 }, accessTier: 'standard', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
+            destinations: [{ id: 'target', label: 'Target', kind: 'waypoint', point: { x: 125, y: 0 }, roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room' }],
+        });
+        const route = planCandidateRoute(testGraph, { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 500, y: 0 }, revision: 0 } });
+        expect(route.status).toBe('valid');
+        expect(route.points).toContainEqual({ x: 500, y: 0 });
+        expect(route.points).toContainEqual({ x: 430, y: 0 });
+    });
+
+    it('rejects nearest colliding connectors and selects farther collision-free connectors', () => {
+        for (const kind of ['object', 'wall'] as const) {
+            const testGraph = connectorGraph({
+                agents: [{ id: 'agent', label: 'Agent', positionId: 'S1', roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room', point: { x: 0, y: 0 }, accessTier: 'standard', spriteAssetId: 'agent-sheet-01', provisionalSpriteAssignment: true }],
+                destinations: [{ id: 'target', label: 'Target', kind: 'waypoint', point: { x: 0, y: 310 }, roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room' }],
+                colliders: [{ id: `${kind}:block-nearest`, kind, points: [{ x: 40, y: -20 }, { x: 60, y: -20 }, { x: 60, y: 20 }, { x: 40, y: 20 }], closed: true, thickness: 8 }],
+                walkSegments: [
+                    { id: 'blocked-nearest', a: { x: 100, y: 0 }, b: { x: 180, y: 0 }, pathId: 'blocked' },
+                    { id: 'safe-a', a: { x: 0, y: 120 }, b: { x: 0, y: 220 }, pathId: 'safe' },
+                    { id: 'safe-b', a: { x: 0, y: 220 }, b: { x: 0, y: 300 }, pathId: 'safe' },
+                ],
+            });
+            expect(candidateWalkEndpointConnectors(testGraph, { x: 0, y: 0 }, ['ROOM']).map(item => item.point)).not.toContainEqual({ x: 100, y: 0 });
+            const route = planCandidateRoute(testGraph, { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 0, y: 0 }, revision: 0 } });
+            expect(route.status).toBe('valid');
+            expect(route.points).toContainEqual({ x: 0, y: 120 });
+        }
+    });
+
+    it('bounds connector candidates and fails closed when no component connects candidates', () => {
+        const manySegments = Array.from({ length: 30 }, (_, index) => ({ id: `segment-${String(index).padStart(2, '0')}`, a: { x: 100 + index, y: 100 }, b: { x: 100 + index, y: 110 }, pathId: `path-${index}` }));
+        const boundedGraph = connectorGraph({ walkSegments: manySegments });
+        expect(candidateWalkEndpointConnectors(boundedGraph, { x: 100, y: 100 }, ['ROOM'])).toHaveLength(18);
+
+        const disconnected = connectorGraph({
+            walkSegments: [
+                { id: 'start-only', a: { x: 100, y: 0 }, b: { x: 120, y: 0 }, pathId: 'start' },
+                { id: 'end-only', a: { x: 550, y: 0 }, b: { x: 570, y: 0 }, pathId: 'end' },
+            ],
+            destinations: [{ id: 'target', label: 'Target', kind: 'waypoint', point: { x: 580, y: 0 }, roomId: 'ROOM', roomIds: ['ROOM'], roomName: 'Room' }],
+        });
+        const route = planCandidateRoute(disconnected, { destinationId: 'target', agent: { id: 'agent', currentPoint: { x: 90, y: 0 }, revision: 0 } });
+        expect(route.status).toBe('blocked');
+        expect(route.failureCategory).toBe('walk_network_disconnected');
+    });
+});
 
 describe('candidate door runtime and destination anchor regressions', () => {
     it('rejects routes whose endpoint remains inside final-door clearance', () => {
