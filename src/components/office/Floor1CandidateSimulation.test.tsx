@@ -3,6 +3,15 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
+import rooms from '../../office/data/floor1/provisional/rooms.json';
+import positions from '../../office/data/floor1/provisional/positions.json';
+import doors from '../../office/data/floor1/provisional/doors.json';
+import computers from '../../office/data/floor1/provisional/computers.json';
+import interactiveObjects from '../../office/data/floor1/provisional/interactive-objects.json';
+import walls from '../../office/data/floor1/provisional/walls.json';
+import objects from '../../office/data/floor1/provisional/objects.json';
+import walkPaths from '../../office/data/floor1/provisional/walk-paths.json';
+import { buildCandidateNavigationGraph } from '../../office/floor1/navigation/candidateNavigation';
 import { Floor1CandidateSimulation } from './Floor1CandidateSimulation';
 
 
@@ -83,6 +92,39 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         await screen.findByLabelText('Candidate navigation review controls');
         fireEvent.click(screen.getByLabelText('Walk-path and door graph nodes'));
         await waitFor(() => expect(container.querySelectorAll('.floor1-candidate-debug--graph circle:not(.door)').length).toBeGreaterThan(1000));
+    });
+
+
+    it('renders collider debug geometry at modeled collision thickness', async () => {
+        const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
+        const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
+        await screen.findByLabelText('Candidate navigation review controls');
+        fireEvent.click(screen.getByLabelText('Wall/object colliders'));
+        const openCollider = graph.colliders.find(collider => !collider.closed && collider.kind === 'wall') ?? graph.colliders.find(collider => !collider.closed)!;
+        const closedCollider = graph.colliders.find(collider => collider.closed && collider.kind === 'object') ?? graph.colliders.find(collider => collider.closed)!;
+        const differentOpenCollider = graph.colliders.find(collider => !collider.closed && collider.thickness !== openCollider.thickness);
+        await waitFor(() => expect(container.querySelector('.floor1-candidate-debug--colliders')).toBeTruthy());
+        const polylines = [...container.querySelectorAll<SVGPolylineElement>('.floor1-candidate-debug--colliders polyline')];
+        const polygons = [...container.querySelectorAll<SVGPolygonElement>('.floor1-candidate-debug--colliders polygon')];
+        const openElement = polylines.find(element => element.getAttribute('points') === openCollider.points.map(point => `${point.x},${point.y}`).join(' '));
+        const closedElement = polygons.find(element => element.getAttribute('points') === closedCollider.points.map(point => `${point.x},${point.y}`).join(' '));
+        expect(openElement?.getAttribute('stroke-width')).toBe(String(openCollider.thickness));
+        expect(openElement?.getAttribute('fill')).toBe('none');
+        expect(openElement?.getAttribute('stroke-linecap')).toBe('round');
+        expect(openElement?.getAttribute('stroke-linejoin')).toBe('round');
+        expect(closedElement?.getAttribute('stroke-width')).toBe(String(closedCollider.thickness));
+        expect(closedElement?.tagName.toLowerCase()).toBe('polygon');
+        expect(openElement?.tagName.toLowerCase()).toBe('polyline');
+        expect(openElement?.getAttribute('vector-effect')).toBeNull();
+        expect(container.querySelector('.floor1-candidate-debug--colliders')?.getAttribute('aria-hidden')).toBe('true');
+        if (differentOpenCollider) {
+            const differentElement = polylines.find(element => element.getAttribute('points') === differentOpenCollider.points.map(point => `${point.x},${point.y}`).join(' '));
+            expect(differentElement?.getAttribute('stroke-width')).toBe(String(differentOpenCollider.thickness));
+            expect(differentElement?.getAttribute('stroke-width')).not.toBe(openElement?.getAttribute('stroke-width'));
+        }
+        const css = readFileSync('src/components/office/floor1-candidate-simulation.css', 'utf8');
+        expect(css).not.toMatch(/floor1-candidate-debug--colliders[^}]*stroke-width\s*:/);
+        expect(css).not.toContain('non-scaling-stroke');
     });
 
     it('exposes all destination categories through accessible controls', async () => {

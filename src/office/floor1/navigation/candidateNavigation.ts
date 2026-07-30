@@ -30,7 +30,9 @@ export type CandidateDestination = Readonly<{
     markerPoint?: Point;
     approachPositionId?: string;
     approachAccessTier?: 'standard' | 'priority';
-    approachResolution?: 'position-anchor';
+    approachResolution?: 'position-anchor' | 'walk-node' | 'walk-segment';
+    approachAnchorId?: string;
+    approachDistance?: number;
     availability?: 'available' | 'unavailable';
     unavailableReason?: string;
     roomAnchorResolution?: 'position-anchor' | 'walk-node' | 'walk-segment' | 'polygon-interior';
@@ -190,6 +192,7 @@ const CONNECTOR_INGRESS_DISTANCE = 180;
 const WALK_SUPPORT_RADIUS = 260;
 const WALK_SAMPLE_INTERVAL = 96;
 const MAX_FRAME_DELTA_MS = 100;
+export const INTERACTIVE_APPROACH_MAX_DISTANCE = CONNECTOR_MAX_DISTANCE;
 const REGISTRATION_RESIDUAL_EPSILON_PX = 0.001;
 const ROUTE_PROGRESS_EPSILON = 0.001;
 
@@ -790,33 +793,89 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         };
     });
 
+    const resolveInteractiveApproachAnchor = (markerPoint: Point, markerRooms: readonly CandidateRoom[]) => {
+        if (markerRooms.length === 0) return null;
+        const markerRoomIds = markerRooms.map(room => room.id);
+        const markerRoomSet = new Set(markerRoomIds);
+        const insideMarkerRoom = (pointValue: Point) => markerRooms.some(room => pointInPolygon(pointValue, room.polygon));
+        const doorClearanceSafe = (pointValue: Point) => !doors.some(door => candidateAgentOccupiesDoor(pointValue, door));
+        const positionCandidates = markerRoomIds
+            .flatMap(roomId => positionsByRoomId.get(roomId) ?? [])
+            .filter((position, index, all) => all.findIndex(item => item.id === position.id) === index)
+            .map(position => positionEvaluations.get(position.id))
+            .filter((evaluation): evaluation is CandidatePositionEvaluation => !!evaluation)
+            .filter(evaluation => evaluation.bounded && evaluation.collisionFree && evaluation.connectorSupported)
+            .filter(evaluation => evaluation.position.roomIds.some(roomId => markerRoomSet.has(roomId)))
+            .filter(evaluation => distance(markerPoint, evaluation.position.point) <= INTERACTIVE_APPROACH_MAX_DISTANCE)
+            .filter(evaluation => insideMarkerRoom(evaluation.position.point) && doorClearanceSafe(evaluation.position.point))
+            .sort((a, b) => distance(a.position.point, markerPoint) - distance(b.position.point, markerPoint)
+                || (a.position.tier === 'standard' ? 0 : 1) - (b.position.tier === 'standard' ? 0 : 1)
+                || (a.directWalkSupport === b.directWalkSupport ? 0 : a.directWalkSupport ? -1 : 1)
+                || a.position.id.localeCompare(b.position.id));
+        const position = positionCandidates[0];
+        if (position) return {
+            point: position.position.point,
+            room: position.position.room,
+            roomIds: position.position.roomIds,
+            accessTier: position.position.tier,
+            approachPositionId: position.position.id,
+            approachAccessTier: position.position.tier,
+            approachResolution: 'position-anchor' as const,
+            approachAnchorId: position.position.id,
+            approachDistance: distance(markerPoint, position.position.point),
+        };
+        const walkNode = walkNodes
+            .filter(node => node.roomIds.some(roomId => markerRoomSet.has(roomId)))
+            .filter(node => distance(markerPoint, node.point) <= INTERACTIVE_APPROACH_MAX_DISTANCE)
+            .filter(node => insideMarkerRoom(node.point) && !colliders.some(collider => pointOverlapsColliderFootprint(node.point, collider)) && doorClearanceSafe(node.point))
+            .filter(node => isWalkSupported(graphForApproach, node.point))
+            .sort((a, b) => distance(a.point, markerPoint) - distance(b.point, markerPoint) || a.id.localeCompare(b.id))[0];
+        if (walkNode) {
+            const room = markerRooms.find(item => walkNode.roomIds.includes(item.id)) ?? markerRooms[0];
+            return { point: walkNode.point, room, roomIds: walkNode.roomIds.filter(roomId => markerRoomSet.has(roomId)), approachResolution: 'walk-node' as const, approachAnchorId: walkNode.id, approachDistance: distance(markerPoint, walkNode.point) };
+        }
+        const walkSegment = walkSegments
+            .map(segment => ({ segment, point: closestPointOnSegment(markerPoint, segment.a, segment.b) }))
+            .filter(candidate => distance(markerPoint, candidate.point) <= INTERACTIVE_APPROACH_MAX_DISTANCE)
+            .filter(candidate => insideMarkerRoom(candidate.point) && membershipIds(rooms, candidate.point).some(roomId => markerRoomSet.has(roomId)))
+            .filter(candidate => !colliders.some(collider => pointOverlapsColliderFootprint(candidate.point, collider)) && doorClearanceSafe(candidate.point))
+            .filter(candidate => isWalkSupported(graphForApproach, candidate.point))
+            .sort((a, b) => distance(a.point, markerPoint) - distance(b.point, markerPoint) || a.segment.id.localeCompare(b.segment.id))[0];
+        if (walkSegment) {
+            const segmentRoomIds = membershipIds(rooms, walkSegment.point).filter(roomId => markerRoomSet.has(roomId));
+            const room = markerRooms.find(item => segmentRoomIds.includes(item.id)) ?? markerRooms[0];
+            return { point: walkSegment.point, room, roomIds: segmentRoomIds, approachResolution: 'walk-segment' as const, approachAnchorId: walkSegment.segment.id, approachDistance: distance(markerPoint, walkSegment.point) };
+        }
+        return null;
+    };
+
     const interactiveDestinations = interactiveRecords.map((value, index): CandidateDestination => {
         const item = record(value, `interactive[${index}]`);
         const polygon = transformMarkupPoints(points(item.pdfPolygon, `interactive[${index}].pdfPolygon`), registration);
         const markerPoint = centroid(polygon);
-        const memberships = roomMembershipsForPoint(rooms, markerPoint);
-        const approach = (memberships.length > 0 ? resolvePositionApproachAnchor(markerPoint, memberships.map(room => room.id), 0) : null)
-            ?? resolvePositionApproachAnchor(markerPoint, rooms.map(room => room.id), 0)
-            ?? [...positionEvaluations.values()]
-                .filter(evaluation => evaluation.collisionFree)
-                .sort((a, b) => (a.position.tier === 'standard' ? 0 : 1) - (b.position.tier === 'standard' ? 0 : 1) || distance(a.position.point, markerPoint) - distance(b.position.point, markerPoint) || a.position.id.localeCompare(b.position.id))[0]
-            ?? null;
-        const room = approach?.position.room ?? memberships[0] ?? { id: 'candidate-zone-unresolved', name: 'Unresolved candidate zone', polygon: [], center: markerPoint };
+        const markerMemberships = roomMembershipsForPoint(rooms, markerPoint);
+        const polygonMemberships = polygon.flatMap(pointValue => roomMembershipsForPoint(rooms, pointValue));
+        const memberships = (markerMemberships.length > 0 ? markerMemberships : polygonMemberships)
+            .filter((room, roomIndex, allRooms) => allRooms.findIndex(itemRoom => itemRoom.id === room.id) === roomIndex);
+        const approach = resolveInteractiveApproachAnchor(markerPoint, memberships);
+        const room = approach?.room ?? memberships[0] ?? { id: 'candidate-zone-unresolved', name: 'Unresolved candidate zone', polygon: [], center: markerPoint };
         return {
             id: `interactive:${text(item.id, `INTERACTIVE_${index + 1}`)}`,
             label: text(item.name, `Interactive object ${index + 1}`),
             kind: 'interactive-object',
-            point: approach?.position.point ?? markerPoint,
+            point: approach?.point ?? markerPoint,
             roomId: room.id,
-            roomIds: approach?.position.roomIds ?? memberships.map(itemRoom => itemRoom.id),
+            roomIds: approach?.roomIds ?? memberships.map(itemRoom => itemRoom.id),
             roomName: room.name,
-            accessTier: approach?.position.tier,
+            accessTier: approach?.accessTier,
             markerPoint,
-            approachPositionId: approach?.position.id,
-            approachAccessTier: approach?.position.tier,
-            approachResolution: approach ? 'position-anchor' : undefined,
+            approachPositionId: approach?.approachPositionId,
+            approachAccessTier: approach?.approachAccessTier,
+            approachResolution: approach?.approachResolution,
+            approachAnchorId: approach?.approachAnchorId,
+            approachDistance: approach?.approachDistance,
             availability: approach ? 'available' : 'unavailable',
-            unavailableReason: approach ? undefined : 'No safe candidate interactive-object approach anchor is available.',
+            unavailableReason: approach ? undefined : 'No local candidate interactive-object approach anchor is available.',
         };
     }).filter(item => bounded(item.point));
 

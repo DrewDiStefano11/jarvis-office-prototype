@@ -341,8 +341,8 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                     {graph.colliders.slice(0, 260).map(collider => {
                         const points = collider.points.map(point => `${point.x},${point.y}`).join(' ');
                         return collider.closed
-                            ? <polygon key={collider.id} points={points} />
-                            : <polyline key={collider.id} points={points} />;
+                            ? <polygon key={collider.id} points={points} strokeWidth={collider.thickness} strokeLinejoin="round" data-collider-layer="modeled-geometry" />
+                            : <polyline key={collider.id} points={points} strokeWidth={collider.thickness} fill="none" strokeLinecap="round" strokeLinejoin="round" data-collider-layer="modeled-geometry" />;
                     })}
                 </svg>
             )}

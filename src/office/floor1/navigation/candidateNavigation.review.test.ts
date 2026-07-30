@@ -9,7 +9,8 @@ import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
 import type { MarkupRegistration } from './candidateNavigation';
 import { activeCandidateDoorRequestIds,
-    candidateWalkEndpointConnectors, advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, computeCandidateRegistrationResiduals, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateCandidateReviewRegistration, validateMarkupRegistration, validateCandidateRouteDoorClearance, validateCandidateRouteSegments } from './candidateNavigation';
+    candidateWalkEndpointConnectors,
+    INTERACTIVE_APPROACH_MAX_DISTANCE, advanceCandidateAgents, advanceCandidateDoorRuntimes, buildCandidateNavigationGraph, CandidateNavigationGraph, CANDIDATE_DOOR_OPEN_MS, computeCandidateRegistrationResiduals, planCandidateRoute, pointInPolygon, transformMarkupPoint, validateCandidateReviewRegistration, validateMarkupRegistration, validateCandidateRouteDoorClearance, validateCandidateRouteSegments } from './candidateNavigation';
 
 
 const TEST_REGISTRATION = {
@@ -707,6 +708,36 @@ describe('candidate door runtime and destination anchor regressions', () => {
             expect(validateCandidateRouteSegments(graph, [destination!.point, destination!.point], [])).toBeNull();
             expect(rebuilt.destinations.find(item => item.id === id)).toEqual(destination);
         }
+    });
+
+
+    it('keeps interactive-object approaches local and avoids repository-wide workstation fallbacks', () => {
+        const rebuilt = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
+        for (const destination of graph.destinations.filter(item => item.kind === 'interactive-object')) {
+            expect(destination.markerPoint).toBeTruthy();
+            if (destination.availability === 'available') {
+                expect(destination.approachDistance).toBeGreaterThanOrEqual(0);
+                expect(destination.approachDistance).toBeLessThanOrEqual(INTERACTIVE_APPROACH_MAX_DISTANCE);
+                expect(destination.point).not.toEqual(destination.markerPoint);
+                expect(validateCandidateRouteSegments(graph, [destination.point, destination.point], [])).toBeNull();
+                expect(destination.approachAnchorId).toBeTruthy();
+                if (destination.approachResolution === 'position-anchor') expect(destination.approachPositionId).toBe(destination.approachAnchorId);
+                if (destination.approachResolution !== 'position-anchor') expect(destination.approachPositionId).toBeUndefined();
+            } else {
+                expect(destination.unavailableReason).toBe('No local candidate interactive-object approach anchor is available.');
+            }
+            expect(rebuilt.destinations.find(item => item.id === destination.id)).toEqual(destination);
+        }
+        const stairs1 = graph.destinations.find(item => item.id === 'interactive:INTERACTIVE_STAIRS1');
+        const stairs2 = graph.destinations.find(item => item.id === 'interactive:INTERACTIVE_STAIRS2');
+        expect(stairs1?.approachPositionId).not.toBe('POSITION_114');
+        expect(stairs2?.approachPositionId).not.toBe('POSITION_005');
+        expect(stairs1?.approachDistance).toBeLessThanOrEqual(INTERACTIVE_APPROACH_MAX_DISTANCE);
+        expect(stairs2?.approachDistance).toBeLessThanOrEqual(INTERACTIVE_APPROACH_MAX_DISTANCE);
+        expect(stairs1?.approachResolution).toBe('walk-node');
+        expect(stairs2?.approachResolution).toBe('walk-node');
+        expect(stairs1?.approachAnchorId).toMatch(/^walk:/);
+        expect(stairs2?.approachAnchorId).toMatch(/^walk:/);
     });
 
     it('RM4 and RM7 room destinations use valid interior anchors instead of exterior vertex averages', () => {

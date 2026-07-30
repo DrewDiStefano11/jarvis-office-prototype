@@ -55,7 +55,6 @@
 .floor1-candidate-debug--colliders polygon {
     fill: rgba(255, 78, 95, .18);
     stroke: rgba(255, 78, 95, .72);
-    stroke-width: 8;
 }
 
 .floor1-candidate-agent {
@@ -227,11 +226,7 @@
 }
 
 .floor1-candidate-debug--colliders polyline {
-    fill: none;
     stroke: rgba(255, 78, 95, .72);
-    stroke-width: 12;
-    stroke-linecap: round;
-    stroke-linejoin: round;
 }
 
 .floor1-candidate-debug--graph circle.door {
