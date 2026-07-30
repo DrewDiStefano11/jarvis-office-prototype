@@ -44,6 +44,13 @@ export function resolveSpriteClip(
     return null;
 }
 
+export function spriteFrameSequence(frames: readonly number[], yoyo: boolean, loop: boolean): number[] {
+    if (!yoyo || frames.length <= 1) return [...frames];
+    if (!loop) return [...frames, ...frames.slice(0, -1).reverse()];
+    if (frames.length <= 2) return [...frames];
+    return [...frames, ...frames.slice(1, -1).reverse()];
+}
+
 export function frameAtElapsedTime(
     resolved: ResolvedSpriteClip,
     elapsedMs: number,
@@ -51,10 +58,8 @@ export function frameAtElapsedTime(
 ): number {
     if (resolved.staticFrame !== null) return resolved.staticFrame;
     const { clip } = resolved;
-    if (clip.frames.length === 1) return clip.frames[0];
-    const sequence = clip.yoyo && clip.frames.length > 2
-        ? [...clip.frames, ...clip.frames.slice(1, -1).reverse()]
-        : clip.frames;
+    const sequence = spriteFrameSequence(clip.frames, clip.yoyo, clip.loop);
+    if (sequence.length === 1) return sequence[0];
     const frameDuration = 1000 / (clip.framesPerSecond * Math.max(0.1, speed));
     const playbackDuration = sequence.length * frameDuration;
     const cycleDuration = playbackDuration + clip.repeatDelayMs;

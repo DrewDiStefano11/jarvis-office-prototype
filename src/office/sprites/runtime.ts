@@ -1,13 +1,16 @@
 type FrameRequest = (callback: FrameRequestCallback) => number;
 type FrameCancel = (handle: number) => void;
 
-export type AnimationSubscriber = (elapsedMs: number) => void;
+export type AnimationClockSnapshot = Readonly<{ elapsedMs: number; restartGeneration: number }>;
+export type AnimationSubscriber = (snapshot: AnimationClockSnapshot) => void;
 
 export class AnimationClock {
     private subscribers = new Set<AnimationSubscriber>();
     private handle: number | null = null;
-    private startedAt: number | null = null;
+    private lastTimestamp: number | null = null;
+    private elapsedMs = 0;
     private active = true;
+    private restartGeneration = 0;
 
     constructor(
         private readonly requestFrame: FrameRequest = callback => window.requestAnimationFrame(callback),
@@ -24,19 +27,32 @@ export class AnimationClock {
     }
 
     setActive(active: boolean) {
+        if (this.active === active) return;
         this.active = active;
+        this.lastTimestamp = null;
         if (active) this.ensureRunning();
         else this.stopFrame();
     }
 
     restart() {
-        this.startedAt = null;
+        this.elapsedMs = 0;
+        this.lastTimestamp = null;
+        this.restartGeneration += 1;
+        const snapshot = this.snapshot;
+        this.subscribers.forEach(subscriber => subscriber(snapshot));
+        this.ensureRunning();
     }
 
     dispose() {
         this.stopFrame();
         this.subscribers.clear();
-        this.startedAt = null;
+        this.elapsedMs = 0;
+        this.lastTimestamp = null;
+        this.restartGeneration = 0;
+    }
+
+    get snapshot() {
+        return { elapsedMs: this.elapsedMs, restartGeneration: this.restartGeneration };
     }
 
     get subscriberCount() {
@@ -51,9 +67,13 @@ export class AnimationClock {
         if (!this.active || this.handle !== null || this.subscribers.size === 0) return;
         this.handle = this.requestFrame(timestamp => {
             this.handle = null;
-            if (this.startedAt === null) this.startedAt = timestamp;
-            const elapsed = timestamp - this.startedAt;
-            this.subscribers.forEach(subscriber => subscriber(elapsed));
+            if (this.lastTimestamp === null) {
+                this.lastTimestamp = timestamp;
+            } else {
+                this.elapsedMs += Math.max(0, timestamp - this.lastTimestamp);
+                this.lastTimestamp = timestamp;
+            }
+            this.subscribers.forEach(subscriber => subscriber(this.snapshot));
             this.ensureRunning();
         });
     }

@@ -1,5 +1,6 @@
 import { lazy, PointerEvent as ReactPointerEvent, Suspense, WheelEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { OFFICE_ASSETS } from '../../office/assets';
+import { FLOOR1_CANDIDATE_REGISTRATION } from '../../office/floor1/candidateRegistration';
 import { constrainTransform, fitTransform, screenToOffice, zoomAtScreenPoint } from '../../office/coordinates';
 import { DEFAULT_VIEWPORT_OPTIONS, OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../office/constants';
 import {
@@ -20,6 +21,10 @@ import type { SpriteDemoAgent } from '../../domain/seed';
 
 const AgentSpriteLayer = import.meta.env.DEV
     ? lazy(() => import('./AgentSpriteLayer').then(module => ({ default: module.AgentSpriteLayer })))
+    : null;
+
+const Floor1CandidateSimulation = import.meta.env.DEV
+    ? lazy(() => import('./Floor1CandidateSimulation').then(module => ({ default: module.Floor1CandidateSimulation })))
     : null;
 
 type Props = Readonly<{
@@ -343,6 +348,11 @@ export function OfficeViewport({
                                 reducedMotion={reducedMotion}
                                 onSelect={onSelectDevelopmentAgent}
                             />
+                        </Suspense>
+                    )}
+                    {Floor1CandidateSimulation && reviewMode && (
+                        <Suspense fallback={null}>
+                            <Floor1CandidateSimulation active={active} reducedMotion={reducedMotion} registration={FLOOR1_CANDIDATE_REGISTRATION} />
                         </Suspense>
                     )}
                 </div>
