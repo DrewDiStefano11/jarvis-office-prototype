@@ -308,4 +308,19 @@ describe('OfficeViewport pointer interactions', () => {
         fireEvent.click(container.querySelector('[aria-label="Zoom out"]') as HTMLButtonElement);
         expect(surface.style.transform).toBe(fittedTransform);
     });
+
+    it('preserves a user-zoomed transform through resize and does not refit', () => {
+        const { container } = renderViewport();
+        const surface = container.querySelector('.office-surface') as HTMLDivElement;
+        fireEvent.click(container.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement);
+        const userTransform = surface.style.transform;
+        expect(userTransform).not.toContain('scale(0.');
+    });
+
+    it('ignores zero-sized measurements and does not reset initialization', () => {
+        observedViewportSize = { width: 0, height: 0 };
+        const { container } = renderViewport();
+        const surface = container.querySelector('.office-surface') as HTMLDivElement;
+        expect(surface.style.transform).toContain('scale');
+    });
 });

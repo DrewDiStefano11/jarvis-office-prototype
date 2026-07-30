@@ -16,6 +16,7 @@ import {
 import { panTransform, resolveFocusRequest } from '../../office/interaction';
 import { LAYER_ORDER } from '../../office/layers';
 import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform, ViewportSize } from '../../office/types';
+import { EPSILON } from '../../office/viewport';
 import { OverlayRenderer } from './OverlayRenderer';
 import type { SpriteDemoAgent } from '../../domain/seed';
 
@@ -83,6 +84,11 @@ export function OfficeViewport({
         fitTransform(viewport).scale,
     );
 
+    const getFittedScale = useCallback((v: ViewportSize) => {
+        if (v.width <= 1 || v.height <= 1) return DEFAULT_VIEWPORT_OPTIONS.minimumZoom;
+        return Math.min(v.width / OFFICE_SOURCE_WIDTH, v.height / OFFICE_SOURCE_HEIGHT);
+    }, []);
+
     const commitTransform = useCallback((next: ViewTransform) => {
         const constrained = constrainTransform(next, viewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
         transformRef.current = constrained;
@@ -95,32 +101,67 @@ export function OfficeViewport({
         commitTransform(fitTransform(viewport));
     }, [commitTransform, viewport]);
 
+    const hasValidMeasurementRef = useRef(false);
+    const lastValidViewportRef = useRef<ViewportSize>({ width: 1, height: 1 });
+
     useLayoutEffect(() => {
         const element = viewportRef.current;
         if (!element) return;
-        let firstMeasurement = true;
         const observer = new ResizeObserver(entries => {
             const rect = entries[0]?.contentRect;
             if (!rect) return;
-            if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height) || rect.width <= 0 || rect.height <= 0) return;
-            const nextViewport = { width: rect.width, height: rect.height };
-            setViewport(nextViewport);
-            if (firstMeasurement) {
-                const next = fitTransform(nextViewport);
-                transformRef.current = next;
-                setTransform(next);
-                onTransformChange(next);
-                firstMeasurement = false;
+            if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height) || rect.width <= 0 || rect.height <= 0) {
+                return; // ignore invalid/zero measurements
+            }
+            const nextViewport: ViewportSize = { width: rect.width, height: rect.height };
+            const prevViewport = lastValidViewportRef.current;
+            // Only process if dimensions changed meaningfully
+            if (Math.abs(nextViewport.width - prevViewport.width) < EPSILON && Math.abs(nextViewport.height - prevViewport.height) < EPSILON) {
+                return; // unchanged measurement, no update
+            }
+            lastValidViewportRef.current = nextViewport;
+            const fittedScale = getFittedScale(nextViewport);
+            const newMinZoom = Math.min(DEFAULT_VIEWPORT_OPTIONS.minimumZoom, fittedScale);
+            const previousScale = Math.max(transformRef.current.scale, EPSILON);
+            const worldCenterX = (prevViewport.width / 2 - transformRef.current.x) / previousScale;
+            const worldCenterY = (prevViewport.height / 2 - transformRef.current.y) / previousScale;
+            const clampedScale = Math.max(newMinZoom, Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, previousScale));
+            const scaleChanged = Math.abs(clampedScale - previousScale) > EPSILON;
+            const fittedScalePrev = getFittedScale(prevViewport);
+            const wasFitted = Math.abs(previousScale - fittedScalePrev) < 0.001 && Math.abs(transformRef.current.x - fitTransform(prevViewport).x) < 10 && Math.abs(transformRef.current.y - fitTransform(prevViewport).y) < 10;
+            let nextTransform: ViewTransform;
+            if (!hasValidMeasurementRef.current) {
+                nextTransform = fitTransform(nextViewport);
             } else {
-                const next = constrainTransform(transformRef.current, nextViewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
-                transformRef.current = next;
-                setTransform(next);
-                onTransformChange(next);
+                if (scaleChanged || wasFitted) {
+                    nextTransform = {
+                        scale: clampedScale,
+                        x: nextViewport.width / 2 - worldCenterX * clampedScale,
+                        y: nextViewport.height / 2 - worldCenterY * clampedScale,
+                    };
+                } else {
+                    nextTransform = {
+                        scale: clampedScale,
+                        x: transformRef.current.x,
+                        y: transformRef.current.y,
+                    };
+                }
+            }
+            const constrained = constrainTransform(nextTransform, nextViewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
+            // Check for meaningful change before updating
+            const currentStateTransform = transformRef.current;
+            const hasRealChange = Math.abs(constrained.scale - currentStateTransform.scale) > EPSILON || Math.abs(constrained.x - currentStateTransform.x) > EPSILON || Math.abs(constrained.y - currentStateTransform.y) > EPSILON;
+            if (hasRealChange || !hasValidMeasurementRef.current) {
+                hasValidMeasurementRef.current = true;
+                transformRef.current = constrained;
+                setViewport(nextViewport); // safe: observer no longer depends on viewport
+                setTransform(constrained);
+                onTransformChange(constrained);
             }
         });
         observer.observe(element);
         return () => observer.disconnect();
-    }, [onTransformChange]);
+    }, [getFittedScale, onTransformChange]);
 
     useEffect(() => () => {
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
