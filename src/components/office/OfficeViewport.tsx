@@ -16,6 +16,7 @@ import {
 import { panTransform, resolveFocusRequest } from '../../office/interaction';
 import { LAYER_ORDER } from '../../office/layers';
 import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform, ViewportSize } from '../../office/types';
+import { EPSILON } from '../../office/viewport';
 import { OverlayRenderer } from './OverlayRenderer';
 import type { SpriteDemoAgent } from '../../domain/seed';
 
@@ -83,6 +84,11 @@ export function OfficeViewport({
         fitTransform(viewport).scale,
     );
 
+    const getFittedScale = useCallback((v: ViewportSize) => {
+        if (v.width <= 1 || v.height <= 1) return DEFAULT_VIEWPORT_OPTIONS.minimumZoom;
+        return Math.min(v.width / OFFICE_SOURCE_WIDTH, v.height / OFFICE_SOURCE_HEIGHT);
+    }, []);
+
     const commitTransform = useCallback((next: ViewTransform) => {
         const constrained = constrainTransform(next, viewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
         transformRef.current = constrained;
@@ -106,21 +112,42 @@ export function OfficeViewport({
             const nextViewport = { width: rect.width, height: rect.height };
             setViewport(nextViewport);
             if (firstMeasurement) {
-                const next = fitTransform(nextViewport);
-                transformRef.current = next;
-                setTransform(next);
-                onTransformChange(next);
+                const fitted = fitTransform(nextViewport);
+                transformRef.current = fitted;
+                setTransform(fitted);
+                onTransformChange(fitted);
                 firstMeasurement = false;
             } else {
-                const next = constrainTransform(transformRef.current, nextViewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
-                transformRef.current = next;
-                setTransform(next);
-                onTransformChange(next);
+                const fittedScale = getFittedScale(nextViewport);
+                const newMinZoom = Math.min(DEFAULT_VIEWPORT_OPTIONS.minimumZoom, fittedScale);
+                const previousScale = Math.max(transformRef.current.scale, EPSILON);
+                const previousViewport = viewport;
+                // Preserve world-space center
+                const worldCenterX = (previousViewport.width / 2 - transformRef.current.x) / previousScale;
+                const worldCenterY = (previousViewport.height / 2 - transformRef.current.y) / previousScale;
+                const clampedScale = Math.max(newMinZoom, Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, previousScale));
+                // Preserve world-space center when viewport changes
+                // If scale unchanged and previous state was not fitted, keep exact translation to avoid jumps
+                const scaleChanged = Math.abs(clampedScale - previousScale) > EPSILON;
+                const wasFitted = Math.abs(previousScale - fittedScale) < 0.001 && Math.abs(transformRef.current.x - fitTransform(previousViewport).x) < 10 && Math.abs(transformRef.current.y - fitTransform(previousViewport).y) < 10;
+                const nextTransform: ViewTransform = scaleChanged || wasFitted ? {
+                    scale: clampedScale,
+                    x: nextViewport.width / 2 - worldCenterX * clampedScale,
+                    y: nextViewport.height / 2 - worldCenterY * clampedScale,
+                } : {
+                    scale: clampedScale,
+                    x: transformRef.current.x,
+                    y: transformRef.current.y,
+                };
+                const constrained = constrainTransform(nextTransform, nextViewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
+                transformRef.current = constrained;
+                setTransform(constrained);
+                onTransformChange(constrained);
             }
         });
         observer.observe(element);
         return () => observer.disconnect();
-    }, [onTransformChange]);
+    }, [onTransformChange, getFittedScale, viewport]);
 
     useEffect(() => () => {
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
