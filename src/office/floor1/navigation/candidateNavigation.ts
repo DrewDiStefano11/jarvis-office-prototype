@@ -78,9 +78,12 @@ export type MarkupRegistration = Readonly<{
     }>;
 }>;
 
+export type CandidateVerificationMode = 'strict-review' | 'unverified-sandbox';
+
 export type CandidateNavigationBuildOptions = Readonly<{
     registration?: MarkupRegistration | null;
     instrumentation?: CandidateGraphBuildInstrumentation;
+    verificationMode?: CandidateVerificationMode;
 }>;
 
 export type CandidateDoorPermission = 'general' | 'restricted' | 'reserved' | 'blocked' | 'elevator' | 'manual_review_required' | 'malformed';
@@ -145,6 +148,7 @@ export type CandidateNavigationGraph = Readonly<{
     edgeCount: number;
     navigationAvailable: boolean;
     unavailableReason?: string;
+    verificationMode: CandidateVerificationMode;
 }>;
 
 export type CandidateRouteResult = Readonly<{
@@ -325,8 +329,17 @@ function transformMarkupWidth(width: number, registration: MarkupRegistration): 
     return registration.storedCoordinateSpace === 'registered_candidate_source' ? width : width * registration.scale;
 }
 
-function unavailableGraph(reason: string): CandidateNavigationGraph {
-    return { rooms: [], doors: [], agents: [], destinations: [], colliders: [], walkNodes: [], walkSegments: [], roomDiagnostics: [reason], nodeCount: 0, edgeCount: 0, navigationAvailable: false, unavailableReason: reason };
+export function validateCandidateSandboxRegistration(registration: MarkupRegistration | null | undefined): string | null {
+    const shapeFailure = validateRegistrationShape(registration);
+    if (shapeFailure) return shapeFailure;
+    if (!registration) return 'Candidate navigation unavailable: Floor 1 markup registration is missing.';
+    if (registration.productionApproved !== false) return 'Candidate navigation unavailable: Floor 1 candidate registration crossed the production boundary.';
+    if (!registration.provenance?.generator || !registration.provenance.generatedArtifact || registration.provenance.sourceEvidence.length === 0) return 'Candidate navigation unavailable: Floor 1 candidate registration provenance is missing.';
+    return null;
+}
+
+function unavailableGraph(reason: string, verificationMode: CandidateVerificationMode = 'strict-review'): CandidateNavigationGraph {
+    return { rooms: [], doors: [], agents: [], destinations: [], colliders: [], walkNodes: [], walkSegments: [], roomDiagnostics: [reason], nodeCount: 0, edgeCount: 0, navigationAvailable: false, unavailableReason: reason, verificationMode };
 }
 
 function record(value: unknown, context: string): UnknownRecord {
@@ -604,8 +617,12 @@ function buildCandidateAgents(selectedPositions: readonly CandidatePositionRecor
 
 export function buildCandidateNavigationGraph(documents: CandidateDocuments, options: CandidateNavigationBuildOptions = {}): CandidateNavigationGraph {
     const registration = options.registration ?? DEFAULT_CANDIDATE_REGISTRATION;
-    const registrationFailure = validateCandidateReviewRegistration(registration);
-    if (registrationFailure) return unavailableGraph(registrationFailure);
+    const verificationMode: CandidateVerificationMode = options.verificationMode ?? 'strict-review';
+    const validateRegistration = verificationMode === 'unverified-sandbox'
+        ? validateCandidateSandboxRegistration
+        : validateCandidateReviewRegistration;
+    const registrationFailure = validateRegistration(registration);
+    if (registrationFailure) return unavailableGraph(registrationFailure, verificationMode);
     const roomData = wrapperData(documents.rooms, 'rooms');
     const positionData = wrapperData(documents.positions, 'positions');
     const doorData = wrapperData(documents.doors, 'doors');
@@ -722,6 +739,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         nodeCount: 0,
         edgeCount: 0,
         navigationAvailable: true,
+        verificationMode,
     } satisfies CandidateNavigationGraph;
 
     const positionEvaluations = new Map<string, CandidatePositionEvaluation>();
@@ -916,6 +934,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
         nodeCount: rooms.length + doors.length + positionDestinations.length + computerDestinations.length + interactiveDestinations.length + walkNodes.length,
         edgeCount: doors.length + walkSegments.length,
         navigationAvailable: true,
+        verificationMode,
     };
 }
 

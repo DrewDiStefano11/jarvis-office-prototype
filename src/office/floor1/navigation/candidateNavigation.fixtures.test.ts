@@ -41,6 +41,7 @@ function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {
         nodeCount: 8,
         edgeCount: 2,
         navigationAvailable: true,
+        verificationMode: 'strict-review' as const,
     } as CandidateNavigationGraph;
 }
 
