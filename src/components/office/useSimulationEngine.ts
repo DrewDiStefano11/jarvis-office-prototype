@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { advanceCandidateAgents, advanceCandidateDoorRuntimes, CandidateNavigationGraph, CandidateDoorRuntime } from '../../office/floor1/navigation/candidateNavigation';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';

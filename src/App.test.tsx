@@ -6,6 +6,6 @@ import App from './App';
 describe('App routing', () => {
     it('mounts the office engine by default', () => {
         render(<App />);
-
+        expect(screen.getByText('Interactive office engine')).toBeDefined();
     });
 });

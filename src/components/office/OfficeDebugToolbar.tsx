@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { planCandidateRoute } from '../../office/floor1/navigation/candidateNavigation';

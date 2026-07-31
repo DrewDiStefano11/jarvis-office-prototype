@@ -602,8 +602,8 @@ function buildCandidateAgents(selectedPositions: readonly CandidatePositionRecor
     }));
 }
 
-export function buildCandidateSandboxGraph(documents: any, registration: any) {
-    return buildCandidateNavigationGraph(documents, { registration, verificationMode: 'unverified-sandbox' } as any);
+export function buildCandidateSandboxGraph(documents: unknown, registration: unknown) {
+    return buildCandidateNavigationGraph(documents, { registration, verificationMode: 'unverified-sandbox' } as unknown as CandidateNavigationBuildOptions);
 }
 export function buildCandidateNavigationGraph(documents: CandidateDocuments, options: CandidateNavigationBuildOptions = {}): CandidateNavigationGraph {
     const registration = options.registration ?? DEFAULT_CANDIDATE_REGISTRATION;
