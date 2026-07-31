@@ -115,6 +115,7 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
         nodeCount: 6,
         edgeCount: 3,
         navigationAvailable: true,
+        verificationMode: 'strict-review' as const,
     };
 }
 
@@ -209,6 +210,7 @@ describe('current merge-blocker regressions', () => {
             nodeCount: 1,
             edgeCount: 1,
             navigationAvailable: true,
+        verificationMode: 'strict-review' as const,
         };
     }
 
@@ -271,6 +273,7 @@ describe('current merge-blocker regressions', () => {
             nodeCount: 3,
             edgeCount: 2,
         navigationAvailable: true,
+        verificationMode: 'strict-review' as const,
         };
         const route = testRoute(overlapGraph, { x: 100, y: 100 }, 'target');
         expect(route.status).toBe('valid');
@@ -494,6 +497,7 @@ describe('room destination access tiers and walk connector candidate search', ()
             nodeCount: 11,
             edgeCount: 3,
             navigationAvailable: true,
+        verificationMode: 'strict-review' as const,
         };
     }
 
@@ -514,6 +518,7 @@ describe('room destination access tiers and walk connector candidate search', ()
             nodeCount: 6,
             edgeCount: 3,
             navigationAvailable: true,
+        verificationMode: 'strict-review' as const,
         };
         return { ...base, ...overrides };
     }
