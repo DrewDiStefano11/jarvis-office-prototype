@@ -1,15 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { loadVerifiedProductionOverlay } from '../../office/floor1/runtime';
 import { loadFloor1CandidateOverlay } from '../../office/floor1/candidateReview';
-import { OfficeOverlayDocument, OfficeLayer, ViewTransform } from '../../office/types';
+import { OfficeOverlayDocument, OfficeLayer, ViewTransform, Point } from '../../office/types';
 import { EntityInspector } from './EntityInspector';
 import { OfficeViewport } from './OfficeViewport';
 import './office-engine.css';
-
-const OfficeDebugEnvironment = import.meta.env.DEV
-    ? lazy(() => import('./OfficeDebugEnvironment').then(m => ({ default: m.OfficeDebugEnvironment })))
-    : null;
+import { useSimulationEngine } from './useSimulationEngine';
+import { OfficeDebugToolbar } from './OfficeDebugToolbar';
+import { buildCandidateSandboxGraph } from '../../office/floor1/navigation/candidateNavigation';
+import { FLOOR1_CANDIDATE_REGISTRATION } from '../../office/floor1/candidateRegistration';
+import roomsJson from '../../office/data/floor1/provisional/rooms.json';
+import positionsJson from '../../office/data/floor1/provisional/positions.json';
+import doorsJson from '../../office/data/floor1/provisional/doors.json';
+import computersJson from '../../office/data/floor1/provisional/computers.json';
+import interactiveObjectsJson from '../../office/data/floor1/provisional/interactive-objects.json';
+import wallsJson from '../../office/data/floor1/provisional/walls.json';
+import walkPathsJson from '../../office/data/floor1/provisional/walk-paths.json';
+import doorLightsJson from '../../office/data/floor1/provisional/door-lights.json';
+import { createPortal } from 'react-dom';
+import { SpritePlayer } from './SpritePlayer';
+import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 
 interface OfficeEngineProps {
     active: boolean;
@@ -25,13 +36,13 @@ export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
     // Viewport state
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-
     const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
     const [focusRequest, setFocusRequest] = useState(0);
 
     // Overlays driven by debug
     const [visibleLayers, setVisibleLayers] = useState<Set<string>>(new Set());
-
+    const [opacity, setOpacity] = useState(1.0);
+    const [placementModeActive, setPlacementModeActive] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -64,6 +75,47 @@ export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
         return () => { cancelled = true; };
     }, [candidateLoader, debug]);
 
+    const graph = useMemo(() => {
+        if (!debug && dataSource !== 'candidate-review') return null;
+        try {
+            return buildCandidateSandboxGraph({
+                rooms: roomsJson, positions: positionsJson, doors: doorsJson, doorLights: doorLightsJson,
+                computers: computersJson, interactiveObjects: interactiveObjectsJson, walls: wallsJson, walkPaths: walkPathsJson, objects: []
+            } as any, FLOOR1_CANDIDATE_REGISTRATION);
+        } catch { return null; }
+    }, [debug, dataSource]);
+
+    const sim = useSimulationEngine(active && (debug || dataSource === 'candidate-review'), graph as any);
+
+    const handleViewportClick = (point: Point | null) => {
+        if (!point) return;
+        if (!placementModeActive || !graph) return;
+
+        let nearest = graph.walkNodes[0];
+        let minDist = Infinity;
+        for (const n of graph.walkNodes) {
+            const d = Math.hypot(n.point.x - point.x, n.point.y - point.y);
+            if (d < minDist) { minDist = d; nearest = n; }
+        }
+
+        if (nearest && minDist < 200) {
+            if (sim.agents.length >= 25) {
+                sim.addEvent('Capacity reached', 'error');
+                return;
+            }
+            const newAgent = {
+                fixture: { id: `test-${Date.now()}`, label: `Agent ${sim.agents.length+1}`, spriteAssetId: 'c_agent_1' },
+                point: nearest.point, status: 'idle', route: null, progress: 0, revision: 0
+            };
+            sim.setAgents([...sim.agents, newAgent as any]);
+            setSelectedId(newAgent.fixture.id);
+            sim.addEvent(`Placed agent at ${Math.round(nearest.point.x)}, ${Math.round(nearest.point.y)}`);
+            setPlacementModeActive(false);
+        } else {
+            sim.addEvent('Invalid placement: Too far from walk paths', 'error');
+        }
+    };
+
     const statusLabel = dataSource === 'approved-production'
         ? 'Approved production Floor 1'
         : dataSource === 'candidate-review'
@@ -76,10 +128,60 @@ export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
         setDebug(checked);
         if (!checked) {
             setVisibleLayers(new Set());
-
+            sim.setAgents([]);
             setSelectedId(null);
+            setPlacementModeActive(false);
         }
     }
+
+    const [portal, setPortal] = useState<HTMLElement | null>(null);
+    useEffect(() => {
+        setPortal(window.document.querySelector<HTMLElement>('.office-viewport'));
+    }, [document]);
+
+    const overlaySvg = (
+        <svg
+            className="office-debug-overlays"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`, transformOrigin: '0 0' }}
+            aria-hidden="true"
+        >
+            {graph && visibleLayers.has('colliders') && graph.colliders.map((c: any) => (
+                <polygon key={c.id} points={c.points.map((p: any) => `${p.x},${p.y}`).join(' ')} stroke="red" strokeWidth={c.thickness || 2} fill="none" opacity={opacity} />
+            ))}
+            {graph && visibleLayers.has('graph-nodes') && graph.walkNodes.map((n: any) => (
+                <circle key={n.id} cx={n.point.x} cy={n.point.y} r="14" fill="rgba(0, 0, 255, 0.5)" opacity={opacity} />
+            ))}
+            {graph && visibleLayers.has('doors') && graph.doors.map((d: any) => (
+                <circle key={d.id} cx={d.point.x} cy={d.point.y} r="24" fill="rgba(255, 165, 0, 0.5)" opacity={opacity} />
+            ))}
+            {visibleLayers.has('destination-markers') && graph?.destinations.map((d: any) => (
+                <rect key={d.id} x={d.point.x - 10} y={d.point.y - 10} width={20} height={20} fill="magenta" opacity={opacity} />
+            ))}
+            {visibleLayers.has('candidate-route') && sim.preview?.result.status === 'valid' && (
+                <polyline points={sim.preview.result.points.map((p: any) => `${p.x},${p.y}`).join(' ')} stroke="blue" strokeWidth="4" fill="none" opacity={opacity} />
+            )}
+            <g className="floor1-candidate-agent-layer" style={{ pointerEvents: 'auto' }}>
+                {sim.agents.map((agent: any) => (
+                    <g key={agent.fixture.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedId(agent.fixture.id)} transform={`translate(${agent.point.x}, ${agent.point.y})`}>
+                        {selectedId === agent.fixture.id && <circle r="45" fill="rgba(0,0,255,0.3)" />}
+                        <foreignObject x="-30" y="-80" width="60" height="120" style={{ pointerEvents: 'none' }}>
+                            <SpritePlayer
+                                manifest={AGENT_SPRITE_MANIFEST}
+                                runtime={sim.runtime}
+                                assetId={agent.fixture.spriteAssetId}
+                                state={['walking', 'waiting_for_door', 'crossing_door'].includes(agent.status) ? 'walking' : agent.status === 'blocked' ? 'offline' : 'idle'}
+                                reducedMotion={false}
+                                scale={0.52}
+                            />
+                        </foreignObject>
+                        {visibleLayers.has('agent-labels') && (
+                            <text y="-90" textAnchor="middle" fill="black" fontSize="32" fontWeight="bold" opacity={opacity}>{agent.fixture.label}</text>
+                        )}
+                    </g>
+                ))}
+            </g>
+        </svg>
+    );
 
     return (
         <main className="office-engine">
@@ -117,25 +219,26 @@ export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
                     visibleLayers={visibleLayers as unknown as ReadonlySet<OfficeLayer>}
                     onSelect={setSelectedId}
                     onHover={setHoveredId}
-
+                    onPointerOfficePoint={handleViewportClick}
                     onTransformChange={setTransform}
-                    onPointerOfficePoint={() => {}}
                     focusRequest={focusRequest}
                 />
 
-                {debug && OfficeDebugEnvironment && document && (
+                {debug && portal && createPortal(overlaySvg, portal)}
+
+                {debug && graph && (
                     <Suspense fallback={null}>
-                        <OfficeDebugEnvironment
-                            active={active}
-
-                            transform={transform}
-
-                            selectedId={selectedId}
-                            onSelectId={setSelectedId}
-                            visibleLayers={visibleLayers}
-                            setVisibleLayers={setVisibleLayers}
-
-
+                        <OfficeDebugToolbar
+                            active={active} graph={graph}
+                            agents={sim.agents} setAgents={sim.setAgents}
+                            eventLog={sim.eventLog} addEvent={sim.addEvent}
+                            doorRuntimes={sim.doorRuntimes} setDoorRuntimes={sim.setDoorRuntimes}
+                            preview={sim.preview} setPreview={sim.setPreview}
+                            playbackSpeed={sim.playbackSpeed} setPlaybackSpeed={sim.setPlaybackSpeed}
+                            visibleLayers={visibleLayers} setVisibleLayers={setVisibleLayers}
+                            opacity={opacity} setOpacity={setOpacity}
+                            selectedId={selectedId} onSelectId={setSelectedId}
+                            placementModeActive={placementModeActive} onPlacementModeToggle={setPlacementModeActive}
                         />
                     </Suspense>
                 )}
