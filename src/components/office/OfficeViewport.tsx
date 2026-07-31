@@ -1,6 +1,5 @@
 import { lazy, PointerEvent as ReactPointerEvent, Suspense, WheelEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { OFFICE_ASSETS } from '../../office/assets';
-import { FLOOR1_CANDIDATE_REGISTRATION } from '../../office/floor1/candidateRegistration';
 import { constrainTransform, fitTransform, screenToOffice, zoomAtScreenPoint } from '../../office/coordinates';
 import { DEFAULT_VIEWPORT_OPTIONS, OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../office/constants';
 import {
@@ -23,9 +22,6 @@ const AgentSpriteLayer = import.meta.env.DEV
     ? lazy(() => import('./AgentSpriteLayer').then(module => ({ default: module.AgentSpriteLayer })))
     : null;
 
-const Floor1CandidateSimulation = import.meta.env.DEV
-    ? lazy(() => import('./Floor1CandidateSimulation').then(module => ({ default: module.Floor1CandidateSimulation })))
-    : null;
 
 type Props = Readonly<{
     active: boolean;
@@ -145,7 +141,7 @@ export function OfficeViewport({
     }, [active, onSelect]);
 
     useEffect(() => {
-        const entity = selectedId ? document.entities.find(item => item.id === selectedId) : undefined;
+        const entity = selectedId ? document?.entities.find(item => item.id === selectedId) : undefined;
         const resolution = resolveFocusRequest(
             focusRequest,
             lastHandledFocusRequestRef.current,
@@ -157,7 +153,7 @@ export function OfficeViewport({
         if (!resolution) return;
         commitTransform(resolution.transform);
         lastHandledFocusRequestRef.current = resolution.request;
-    }, [commitTransform, document.entities, focusRequest, selectedId, viewport]);
+    }, [commitTransform, document?.entities, focusRequest, selectedId, viewport]);
 
     const localPoint = (clientX: number, clientY: number): Point => {
         const rect = viewportRef.current?.getBoundingClientRect();
@@ -329,7 +325,7 @@ export function OfficeViewport({
                     )}
                     {backgroundState !== 'ready' && <div className="office-background-fallback" aria-hidden="true" />}
                     <OverlayRenderer
-                        entities={document.entities}
+                        entities={document?.entities || []}
                         visibleLayers={visibleLayers}
                         debug={debug}
                         reviewMode={reviewMode}
@@ -350,11 +346,7 @@ export function OfficeViewport({
                             />
                         </Suspense>
                     )}
-                    {Floor1CandidateSimulation && reviewMode && (
-                        <Suspense fallback={null}>
-                            <Floor1CandidateSimulation active={active} reducedMotion={reducedMotion} registration={FLOOR1_CANDIDATE_REGISTRATION} />
-                        </Suspense>
-                    )}
+
                 </div>
                 {backgroundState === 'loading' && <div className="asset-status" role="status">Loading 8K office image…</div>}
                 {backgroundState === 'error' && (

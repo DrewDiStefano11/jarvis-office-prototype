@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../constants';
 import type { Point } from '../../types';
 
@@ -602,6 +603,9 @@ function buildCandidateAgents(selectedPositions: readonly CandidatePositionRecor
     }));
 }
 
+export function buildCandidateSandboxGraph(documents: any, registration: any): CandidateNavigationGraph {
+    return buildCandidateNavigationGraph(documents, { registration, verificationMode: 'unverified-sandbox' } as any);
+}
 export function buildCandidateNavigationGraph(documents: CandidateDocuments, options: CandidateNavigationBuildOptions = {}): CandidateNavigationGraph {
     const registration = options.registration ?? DEFAULT_CANDIDATE_REGISTRATION;
     const registrationFailure = validateCandidateReviewRegistration(registration);
