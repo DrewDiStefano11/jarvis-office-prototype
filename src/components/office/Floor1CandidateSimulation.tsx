@@ -185,7 +185,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             frameRef.current = null;
             lastTimestampRef.current = null;
         };
-    }, [active, anyWalking]);
+    }, [active, anyWalking, graph.doors]);
 
     useEffect(() => {
         if (!destinationsForFilter.some(destination => destination.id === destinationId)) {
