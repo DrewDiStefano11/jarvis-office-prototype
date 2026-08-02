@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { LegacyAgentSimulation } from './components/LegacyAgentSimulation';
 import { OfficeEngine } from './components/office/OfficeEngine';
 import { Floor1VisualLab } from './components/office/Floor1VisualLab';
 import { isAgentSpriteVisualLabRequested } from './office/sprites/routes';
@@ -32,7 +33,13 @@ function App() {
                 >
                     Office engine
                 </button>
-
+                <button
+                    type="button"
+                    aria-pressed={view === 'agent-simulation'}
+                    onClick={() => setView('agent-simulation')}
+                >
+                    Agent simulation
+                </button>
             </nav>
             <div className="application-view">
                 <div
@@ -43,7 +50,14 @@ function App() {
                 >
                     <OfficeEngine active={view === 'office-engine'} />
                 </div>
-
+                <div
+                    className="application-view__panel"
+                    hidden={view !== 'agent-simulation'}
+                    aria-hidden={view !== 'agent-simulation'}
+                    inert={view !== 'agent-simulation'}
+                >
+                    <LegacyAgentSimulation active={view === 'agent-simulation'} />
+                </div>
             </div>
         </div>
     );
