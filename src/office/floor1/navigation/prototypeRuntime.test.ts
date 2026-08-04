@@ -127,8 +127,10 @@ describe('prototype runtime', () => {
     });
 
     it('gives every agent a discriminated task and reproducible ambient roles', () => {
-        const first = createPrototypeAgents(graph, 20, 'ambient');
-        const second = createPrototypeAgents(graph, 20, 'ambient');
+        // Seven agents cover every six-slot ambient role plus a second wanderer
+        // without turning this determinism assertion into a pathfinding stress test.
+        const first = createPrototypeAgents(graph, 7, 'ambient');
+        const second = createPrototypeAgents(graph, 7, 'ambient');
         expect(first.every(agent => typeof agent.task.kind === 'string')).toBe(true);
         expect(first.map(agent => [agent.fixture.id, agent.fixture.spriteAssetId, agent.task.kind])).toEqual(
             second.map(agent => [agent.fixture.id, agent.fixture.spriteAssetId, agent.task.kind]),

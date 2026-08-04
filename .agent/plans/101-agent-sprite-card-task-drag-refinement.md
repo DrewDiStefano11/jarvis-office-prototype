@@ -99,6 +99,7 @@ Use a discriminated `PrototypeTask` union with task-specific fields and phases. 
 - 2026-08-04: expanded focused coverage to 45 tests; full suite passes 443 tests across 40 files.
 - 2026-08-04: completed Chromium QA at 1920×1080 and 1366×768 with 20/25 visible real sprites, zero visible fallbacks, and 42px minimum sprite bounds.
 - 2026-08-04: completed the final callback-stability cleanup and reran every requested validation command successfully.
+- 2026-08-04: the first pushed matrix exposed a Node 18 timeout in an ambient determinism test; reduced that assertion to the minimum seven-agent role coverage and reran the full requested validation gate successfully.
 
 ## Remaining work
 
