@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { LegacyAgentSimulation } from './components/LegacyAgentSimulation';
+import { PrototypeErrorBoundary } from './components/PrototypeErrorBoundary';
 import { OfficeEngine } from './components/office/OfficeEngine';
 import { Floor1VisualLab } from './components/office/Floor1VisualLab';
 import { isAgentSpriteVisualLabRequested } from './office/sprites/routes';
@@ -42,22 +42,9 @@ function App() {
                 </button>
             </nav>
             <div className="application-view">
-                <div
-                    className="application-view__panel"
-                    hidden={view !== 'office-engine'}
-                    aria-hidden={view !== 'office-engine'}
-                    inert={view !== 'office-engine'}
-                >
-                    <OfficeEngine active={view === 'office-engine'} />
-                </div>
-                <div
-                    className="application-view__panel"
-                    hidden={view !== 'agent-simulation'}
-                    aria-hidden={view !== 'agent-simulation'}
-                    inert={view !== 'agent-simulation'}
-                >
-                    <LegacyAgentSimulation active={view === 'agent-simulation'} />
-                </div>
+                <PrototypeErrorBoundary surface={view === 'office-engine' ? 'Office engine' : 'Agent simulation'}>
+                    <OfficeEngine active presentation={view === 'office-engine' ? 'inspection' : 'simulation'} />
+                </PrototypeErrorBoundary>
             </div>
         </div>
     );

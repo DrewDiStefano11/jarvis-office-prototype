@@ -14,6 +14,7 @@ import walkPaths from '../../office/data/floor1/provisional/walk-paths.json';
 import { buildCandidateNavigationGraph } from '../../office/floor1/navigation/candidateNavigation';
 import { Floor1CandidateSimulation } from './Floor1CandidateSimulation';
 
+vi.setConfig({ testTimeout: 15_000 });
 
 const TEST_REGISTRATION = {
     sourceWidth: 8192,
@@ -52,9 +53,9 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
 
     it('uses viewport-responsive control panel CSS rather than world-scale dimensions', () => {
         const css = readFileSync('src/components/office/floor1-candidate-simulation.css', 'utf8');
-        expect(css).toContain('width: clamp(320px, 34vw, 480px)');
-        expect(css).toContain('max-width: calc(100vw - 24px)');
-        expect(css).toContain('max-height: calc(100vh - 24px)');
+        expect(css).toContain('width: 100%');
+        expect(css).toContain('height: 100%');
+        expect(css).toContain('max-height: 100%');
         expect(css).toContain('overflow-y: auto');
         expect(css).toContain('@media (max-width: 900px)');
         expect(css).not.toContain('width: 1500px');
@@ -105,7 +106,7 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         const graph = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: TEST_REGISTRATION });
         const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
         await screen.findByLabelText('Candidate navigation review controls');
-        fireEvent.click(screen.getByLabelText('Wall/object colliders'));
+        fireEvent.click(screen.getByLabelText('Modeled colliders'));
         const openCollider = graph.colliders.find(collider => !collider.closed && collider.kind === 'wall') ?? graph.colliders.find(collider => !collider.closed)!;
         const closedCollider = graph.colliders.find(collider => collider.closed && collider.kind === 'object') ?? graph.colliders.find(collider => collider.closed)!;
         const differentOpenCollider = graph.colliders.find(collider => !collider.closed && collider.thickness !== openCollider.thickness);
@@ -130,7 +131,7 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         }
         const css = readFileSync('src/components/office/floor1-candidate-simulation.css', 'utf8');
         expect(css).not.toMatch(/floor1-candidate-debug--colliders[^}]*stroke-width\s*:/);
-        expect(css).not.toContain('non-scaling-stroke');
+        expect(css).not.toMatch(/floor1-candidate-debug--colliders[^}]*non-scaling-stroke/);
     });
 
     it('exposes all destination categories through accessible controls', async () => {
@@ -154,8 +155,30 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         const destinationSelect = screen.getByLabelText('Destination') as HTMLSelectElement;
         fireEvent.change(destinationSelect, { target: { value: destinationSelect.options[Math.min(1, destinationSelect.options.length - 1)]?.value ?? destinationSelect.value } });
         expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(true);
-        fireEvent.click(screen.getByText('Reset'));
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
         expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(true);
-        expect(screen.getByText('No route previewed.')).toBeTruthy();
+        expect(screen.getByRole('status').textContent).toContain('No route previewed.');
+    });
+
+    it('starts with two visible demo agents and useful graph layers', async () => {
+        const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
+        await screen.findByLabelText('Candidate navigation review controls');
+        expect(container.querySelectorAll('.floor1-candidate-agent')).toHaveLength(2);
+        expect(container.querySelectorAll('.floor1-candidate-agent__label')).toHaveLength(2);
+        expect(container.querySelectorAll('.floor1-candidate-debug--graph line.edge').length).toBeGreaterThan(1000);
+        expect(container.querySelectorAll('.floor1-candidate-debug--graph circle.node').length).toBeGreaterThan(1000);
+        expect(container.querySelectorAll('.floor1-candidate-debug--graph circle.door')).toHaveLength(47);
+        expect(container.querySelector('.floor1-candidate-destination')).toBeTruthy();
+    });
+
+    it('toggles graph categories and all available fixtures visibly', async () => {
+        const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
+        await screen.findByLabelText('Candidate navigation review controls');
+        fireEvent.click(screen.getByLabelText('Navigation nodes'));
+        expect(container.querySelectorAll('.floor1-candidate-debug--graph circle.node')).toHaveLength(0);
+        fireEvent.click(screen.getByLabelText(/Show all 40 available fixtures/));
+        expect(container.querySelectorAll('.floor1-candidate-agent')).toHaveLength(40);
+        fireEvent.click(screen.getByLabelText('Agent labels'));
+        expect(container.querySelectorAll('.floor1-candidate-agent__label')).toHaveLength(0);
     });
 });

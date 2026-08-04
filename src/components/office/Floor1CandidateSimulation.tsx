@@ -10,6 +10,7 @@ import objects from '../../office/data/floor1/provisional/objects.json';
 import walkPaths from '../../office/data/floor1/provisional/walk-paths.json';
 import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
+import { FLOOR1_CANDIDATE_LAYER_CONTROLS } from '../../office/floor1/candidateReview';
 import {
     activeCandidateDoorRequestIds,
     activeCandidateDoorStep,
@@ -22,11 +23,12 @@ import {
     CandidateAgentFixture,
     CandidateDestinationKind,
     CandidateDoorRuntime,
+    CandidateNavigationGraph,
     CandidateRouteResult,
     MarkupRegistration,
     planCandidateRoute,
 } from '../../office/floor1/navigation/candidateNavigation';
-import type { Point } from '../../office/types';
+import type { OfficeLayer, Point, ViewTransform, ViewportSize } from '../../office/types';
 import { SpritePlayer } from './SpritePlayer';
 import './floor1-candidate-simulation.css';
 
@@ -35,6 +37,14 @@ type Props = Readonly<{
     reducedMotion: boolean;
     registration?: MarkupRegistration;
     controlHost?: HTMLElement | null;
+    presentation?: 'inspection' | 'simulation';
+    visibleLayers?: ReadonlySet<OfficeLayer>;
+    transform?: ViewTransform;
+    viewport?: ViewportSize;
+    pointer?: Point | null;
+    onToggleLayer?: (layer: OfficeLayer) => void;
+    onFitOffice?: () => void;
+    onFocusPoint?: (point: Point) => void;
 }>;
 
 type AgentRuntime = Readonly<{
@@ -55,8 +65,19 @@ type RoutePreview = Readonly<{
     result: CandidateRouteResult;
 }>;
 
-const REVIEW_SPEED_PX_PER_SECOND = 420;
+const REVIEW_SPEED_PX_PER_SECOND = 120;
 const PREVIEW_START_TOLERANCE = 0.5;
+const CANDIDATE_DOCUMENTS = { rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths } as const;
+const SANDBOX_GRAPH_CACHE = new WeakMap<object, CandidateNavigationGraph>();
+
+function candidateGraph(registration?: MarkupRegistration): CandidateNavigationGraph {
+    if (!registration) return buildCandidateNavigationGraph(CANDIDATE_DOCUMENTS);
+    const cached = SANDBOX_GRAPH_CACHE.get(registration);
+    if (cached) return cached;
+    const graph = buildCandidateSandboxGraph(CANDIDATE_DOCUMENTS, registration);
+    SANDBOX_GRAPH_CACHE.set(registration, graph);
+    return graph;
+}
 const DESTINATION_KIND_LABELS: Readonly<Record<CandidateDestinationKind | 'standard-position' | 'priority-position', string>> = {
     room: 'Rooms',
     computer: 'Computers',
@@ -88,11 +109,21 @@ function previewIsStartValid(agent: AgentRuntime | null, preview: RoutePreview |
         && distance(preview.startPoint, agent.point) <= PREVIEW_START_TOLERANCE;
 }
 
-export function Floor1CandidateSimulation({ active, reducedMotion, registration, controlHost = null }: Props) {
-    const documents = useMemo(() => ({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }), []);
-    const graph = useMemo(() => registration
-        ? buildCandidateSandboxGraph(documents, registration)
-        : buildCandidateNavigationGraph(documents), [documents, registration]);
+export function Floor1CandidateSimulation({
+    active,
+    reducedMotion,
+    registration,
+    controlHost = null,
+    presentation = 'inspection',
+    visibleLayers = new Set<OfficeLayer>(),
+    transform = { x: 0, y: 0, scale: 1 },
+    viewport = { width: 0, height: 0 },
+    pointer = null,
+    onToggleLayer = () => undefined,
+    onFitOffice = () => undefined,
+    onFocusPoint = () => undefined,
+}: Props) {
+    const graph = useMemo(() => candidateGraph(registration), [registration]);
     const [runtime] = useState(() => new SpriteSurfaceRuntime());
     const [agents, setAgents] = useState<readonly AgentRuntime[]>(() => graph.agents.map(fixture => ({
         fixture,
@@ -110,40 +141,68 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
     }])));
     const agentsRef = useRef<readonly AgentRuntime[]>(agents);
     const doorRuntimesRef = useRef<Readonly<Record<string, CandidateDoorRuntime>>>(doorRuntimes);
+    const initialFixture = graph.agents[0];
+    const initialSelection = useMemo(() => {
+        if (!initialFixture || !graph.navigationAvailable) return null;
+        for (const destination of graph.destinations) {
+            if (destination.id === `position:${initialFixture.positionId}`) continue;
+            const result = planCandidateRoute(graph, { destinationId: destination.id, agent: { id: initialFixture.id, currentPoint: initialFixture.point, revision: 0 } });
+            if (result.status === 'valid' && result.length > 180) return { destination, result };
+        }
+        const destination = graph.destinations.find(item => item.id === `position:${initialFixture.positionId}`) ?? graph.destinations[0];
+        if (!destination) return null;
+        return { destination, result: planCandidateRoute(graph, { destinationId: destination.id, agent: { id: initialFixture.id, currentPoint: initialFixture.point, revision: 0 } }) };
+    }, [graph, initialFixture]);
     const [selectedAgentId, setSelectedAgentId] = useState(graph.agents[0]?.id ?? null);
-    const [destinationFilter, setDestinationFilter] = useState<DestinationFilter>('position');
+    const [destinationFilter, setDestinationFilter] = useState<DestinationFilter>((initialSelection?.destination.kind ?? 'position') as DestinationFilter);
     const [destinationSearch, setDestinationSearch] = useState('');
     const destinationsForFilter = useMemo(() => graph.destinations.filter(destination => {
         if (destinationFilter === 'standard-position') return destination.kind === 'position' && destination.accessTier === 'standard';
         if (destinationFilter === 'priority-position') return destination.kind === 'position' && destination.accessTier === 'priority';
         return destination.kind === destinationFilter;
     }).filter(destination => `${destination.label} ${destination.roomName} ${destination.id}`.toLowerCase().includes(destinationSearch.toLowerCase())).slice(0, 240), [destinationFilter, destinationSearch, graph.destinations]);
-    const initialFixture = graph.agents[0];
-    const initialDestinationId = graph.destinations.find(destination => destination.id === `position:${initialFixture?.positionId}`)?.id
-        ?? graph.destinations.find(destination => destination.kind === 'room' && destination.roomId === initialFixture?.roomId)?.id
-        ?? graph.destinations.find(destination => destination.kind === 'room')?.id
-        ?? graph.destinations[0]?.id
-        ?? '';
+    const initialDestinationId = initialSelection?.destination.id ?? '';
     const [destinationId, setDestinationId] = useState(initialDestinationId);
     const [preview, setPreview] = useState<RoutePreview | null>(() => {
         const fixture = initialFixture;
         if (!fixture || !initialDestinationId || !graph.navigationAvailable) return null;
-        const result = planCandidateRoute(graph, { destinationId: initialDestinationId, agent: { id: fixture.id, currentPoint: fixture.point, revision: 0 } });
-        return { agentId: fixture.id, destinationId: initialDestinationId, startPoint: fixture.point, agentRevision: 0, result };
+        return { agentId: fixture.id, destinationId: initialDestinationId, startPoint: fixture.point, agentRevision: 0, result: initialSelection!.result };
     });
-    const [showGraph, setShowGraph] = useState(true);
+    const [showNodes, setShowNodes] = useState(true);
+    const [showEdges, setShowEdges] = useState(true);
+    const [showDoors, setShowDoors] = useState(true);
     const [showColliders, setShowColliders] = useState(false);
     const [showRoute, setShowRoute] = useState(true);
+    const [showDestination, setShowDestination] = useState(true);
+    const [showAgentLabels, setShowAgentLabels] = useState(true);
+    const [showAgentBounds, setShowAgentBounds] = useState(false);
+    const [showAllFixtures, setShowAllFixtures] = useState(false);
+    const [selectedDoorId, setSelectedDoorId] = useState(graph.doors[0]?.id ?? '');
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const frameRef = useRef<number | null>(null);
     const lastTimestampRef = useRef<number | null>(null);
+    const controlsRef = useRef<HTMLElement>(null);
 
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? agents[0] ?? null;
+    const defaultDemoAgentIds = useMemo(() => {
+        const first = graph.agents[0];
+        if (!first) return new Set<string>();
+        const distant = graph.agents.reduce((best, candidate) => distance(first.point, candidate.point) > distance(first.point, best.point) ? candidate : best, first);
+        return new Set([first.id, distant.id]);
+    }, [graph.agents]);
+    const renderedAgents = showAllFixtures
+        ? agents
+        : agents.filter(agent => defaultDemoAgentIds.has(agent.fixture.id) || agent.fixture.id === selectedAgentId);
+    const selectedDestination = graph.destinations.find(destination => destination.id === destinationId) ?? null;
+    const selectedDoor = graph.doors.find(door => door.id === selectedDoorId) ?? null;
     const anyWalking = agents.some(agent => agent.status === 'walking' || agent.status === 'waiting_for_door' || agent.status === 'crossing_door');
     const beginEnabled = previewIsStartValid(selectedAgent, preview, destinationId);
 
     useEffect(() => { agentsRef.current = agents; }, [agents]);
     useEffect(() => { doorRuntimesRef.current = doorRuntimes; }, [doorRuntimes]);
+    useEffect(() => {
+        if (controlsRef.current) controlsRef.current.scrollTop = 0;
+    }, [presentation]);
 
     useEffect(() => {
         runtime.setActive(active && !document.hidden);
@@ -274,6 +333,11 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
     };
 
     const route = preview?.result ?? selectedAgent?.route ?? null;
+    const routeStatus = selectedAgent?.status === 'walking' ? 'Moving'
+        : selectedAgent?.status === 'paused' ? 'Paused'
+            : selectedAgent?.status === 'arrived' ? 'Arrived'
+                : route?.status === 'valid' ? 'Route ready'
+                    : route ? 'No route available' : 'Reset';
 
     const unavailableNotice = !graph.navigationAvailable ? (
         <div className="floor1-candidate-unavailable" role="status">
@@ -283,6 +347,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
 
     const controls = (
         <section
+            ref={controlsRef}
             className="floor1-candidate-controls"
             aria-label="Candidate navigation review controls"
             onWheelCapture={event => event.stopPropagation()}
@@ -292,9 +357,15 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
             onTouchStartCapture={event => event.stopPropagation()}
             onTouchMoveCapture={event => event.stopPropagation()}
         >
-                <h2>Candidate navigation</h2>
+                <div className="floor1-candidate-panel-heading">
+                    <div>
+                        <p className="eyebrow">{presentation === 'inspection' ? 'Office inspector' : 'Route lab'}</p>
+                        <h2>{presentation === 'inspection' ? 'Floor 1 debugger' : 'Agent simulation'}</h2>
+                    </div>
+                    <button type="button" onClick={onFitOffice}>Fit office</button>
+                </div>
                 <p className="floor1-candidate-verification">Unverified sandbox: provisional geometry and routing are not production approved.</p>
-                <p role="status" aria-live="polite">{selectedRouteLabel(preview)}</p>
+                <p className="floor1-candidate-route-status" role="status" aria-live="polite"><strong>{routeStatus}</strong> - {selectedRouteLabel(preview)}</p>
                 <label>
                     Agent
                     <select value={selectedAgentId ?? ''} onChange={event => updateSelectedAgent(event.target.value)}>
@@ -326,6 +397,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
                     <button type="button" onClick={pauseSelected}>Pause</button>
                     <button type="button" onClick={resumeSelected}>Resume</button>
                     <button type="button" onClick={resetSelected}>Reset</button>
+                    <button type="button" onClick={() => selectedDestination && onFocusPoint(selectedDestination.markerPoint ?? selectedDestination.point)} disabled={!selectedDestination}>Focus destination</button>
                 </div>
                 <label>
                     Playback speed: {playbackSpeed}×
@@ -335,9 +407,19 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
                 </label>
                 <fieldset>
                     <legend>Debug overlays</legend>
-                    <label><input type="checkbox" checked={showRoute} onChange={event => setShowRoute(event.target.checked)} /> Route segments</label>
-                    <label><input type="checkbox" checked={showGraph} onChange={event => setShowGraph(event.target.checked)} /> Walk-path and door graph nodes</label>
-                    <label><input type="checkbox" checked={showColliders} onChange={event => setShowColliders(event.target.checked)} /> Wall/object colliders</label>
+                    <div className="floor1-candidate-layer-grid">
+                        {FLOOR1_CANDIDATE_LAYER_CONTROLS.map(control => (
+                            <label key={control.category}><input type="checkbox" checked={visibleLayers.has(control.layer)} onChange={() => onToggleLayer(control.layer)} /> {control.label}</label>
+                        ))}
+                        <label><input type="checkbox" checked={showNodes} onChange={event => setShowNodes(event.target.checked)} /> Navigation nodes</label>
+                        <label><input type="checkbox" checked={showEdges} onChange={event => setShowEdges(event.target.checked)} /> Navigation edges</label>
+                        <label><input type="checkbox" checked={showDoors} onChange={event => setShowDoors(event.target.checked)} /> Graph doors</label>
+                        <label><input type="checkbox" checked={showRoute} onChange={event => setShowRoute(event.target.checked)} /> Agent routes</label>
+                        <label><input type="checkbox" checked={showDestination} onChange={event => setShowDestination(event.target.checked)} /> Destination markers</label>
+                        <label><input type="checkbox" checked={showAgentLabels} onChange={event => setShowAgentLabels(event.target.checked)} /> Agent labels</label>
+                        <label><input type="checkbox" checked={showAgentBounds} onChange={event => setShowAgentBounds(event.target.checked)} /> Agent collision bounds</label>
+                        <label><input type="checkbox" checked={showColliders} onChange={event => setShowColliders(event.target.checked)} /> Modeled colliders</label>
+                    </div>
                 </fieldset>
                 <fieldset>
                     <legend>Door runtime</legend>
@@ -364,15 +446,47 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
                         </label>
                     ))}
                 </fieldset>
+                <fieldset>
+                    <legend>Inspect any door</legend>
+                    <label>Door
+                        <select aria-label="Inspect door" value={selectedDoorId} onChange={event => setSelectedDoorId(event.target.value)}>
+                            {graph.doors.map(door => <option key={door.id} value={door.id}>{door.id} - {door.permission}</option>)}
+                        </select>
+                    </label>
+                    {selectedDoor && (
+                        <dl>
+                            <dt>ID</dt><dd>{selectedDoor.id}</dd>
+                            <dt>Access</dt><dd>{selectedDoor.permission}</dd>
+                            <dt>Default</dt><dd>{selectedDoor.defaultState ?? 'unknown'}</dd>
+                            <dt>Current</dt><dd>{doorRuntimes[selectedDoor.id]?.state ?? selectedDoor.currentState ?? 'unknown'}</dd>
+                            <dt>Linked zones</dt><dd>{selectedDoor.zones.join(', ') || 'unknown'}</dd>
+                            <dt>On route</dt><dd>{route?.crossedDoorIds.includes(selectedDoor.id) ? 'yes' : 'no'}</dd>
+                            <dt>Traversal</dt><dd>{selectedDoor.malformedReason ?? selectedDoor.openRule ?? selectedDoor.permission ?? 'unknown'}</dd>
+                        </dl>
+                    )}
+                </fieldset>
+                <label className="floor1-candidate-fixtures"><input type="checkbox" checked={showAllFixtures} onChange={event => setShowAllFixtures(event.target.checked)} /> Show all {agents.length} available fixtures (two active by default)</label>
                 {selectedAgent && (
                     <dl>
+                        <dt>Agent ID</dt><dd>{selectedAgent.fixture.id}</dd>
+                        <dt>Agent name</dt><dd>{selectedAgent.fixture.label}</dd>
                         <dt>Verification</dt><dd>{graph.verificationMode}</dd>
                         <dt>Current agent state</dt><dd>{selectedAgent.status}</dd>
+                        <dt>Current node</dt><dd>{route?.nodeSequence[Math.min(Math.floor(selectedAgent.progress), Math.max(0, route.nodeSequence.length - 1))] ?? selectedAgent.fixture.positionId}</dd>
+                        <dt>Route status</dt><dd>{routeStatus}</dd>
+                        <dt>Destination</dt><dd>{selectedDestination?.label ?? 'none'}</dd>
+                        <dt>Movement speed</dt><dd>{REVIEW_SPEED_PX_PER_SECOND * playbackSpeed}px/s</dd>
+                        <dt>Blocked / waiting</dt><dd>{selectedAgent.status === 'waiting_for_door' || selectedAgent.status === 'blocked' ? route?.reason ?? selectedAgent.status : 'none'}</dd>
                         <dt>Current sprite clip</dt><dd>{!reducedMotion && isCandidateAdvancingStatus(selectedAgent.status) ? 'walking' : selectedAgent.status === 'blocked' ? 'offline' : 'idle'}</dd>
                         <dt>Current world coordinate</dt><dd>{Math.round(selectedAgent.point.x)}, {Math.round(selectedAgent.point.y)}</dd>
                         <dt>Route cost</dt><dd>{route?.cost ?? 0}px · {route?.nodeSequence.join(' → ') ?? 'none'}</dd>
                         <dt>Door runtime</dt><dd>{route?.doorSteps.map(step => `${step.doorId}:${doorRuntimes[step.doorId]?.state ?? step.initialPhysicalState}:${step.requiredAction}`).join(', ') || 'none'}</dd>
                         <dt>Performance bounds</dt><dd>{graph.nodeCount} nodes · {graph.edgeCount} edges · {runtime.clock.subscriberCount} sprite subscribers · {runtime.textures.size} cached textures</dd>
+                        <dt>Diagnostics</dt><dd>{graph.rooms.length} rooms / {graph.doors.length} doors / {graph.destinations.length} destinations / {renderedAgents.length} visible agents</dd>
+                        <dt>Viewport</dt><dd>{Math.round(viewport.width)} x {Math.round(viewport.height)} / zoom {transform.scale.toFixed(3)} / pan {Math.round(transform.x)}, {Math.round(transform.y)}</dd>
+                        <dt>Pointer</dt><dd>{pointer ? `${Math.round(pointer.x)}, ${Math.round(pointer.y)}` : 'outside map'}</dd>
+                        <dt>Last error</dt><dd>{route && route.status !== 'valid' ? route.reason : 'none'}</dd>
+                        <dt>Initialization</dt><dd>background: ready / candidate data: ready / overlay: ready / graph: ready / agents: ready / viewport: ready</dd>
                         <dt>Limitations</dt><dd>Candidate routes validate static world collisions only; dynamic agent-to-agent avoidance is not implemented.</dd>
                     </dl>
                 )}
@@ -391,11 +505,12 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
                     })}
                 </svg>
             )}
-            {showGraph && (
+            {(showNodes || showEdges || showDoors) && (
                 <svg className="floor1-candidate-debug floor1-candidate-debug--graph" aria-hidden="true">
-                    {graph.walkNodes.map(node => <circle key={node.id} cx={node.point.x} cy={node.point.y} r="14" />)}
-                    {graph.doors.map(door => <circle key={door.id} className="door" cx={door.point.x} cy={door.point.y} r="24" />)}
-                    {graph.doors.map(door => <text key={`${door.id}-label`} x={door.point.x + 28} y={door.point.y}>{door.id}</text>)}
+                    {showEdges && graph.walkSegments.map(segment => <line key={segment.id} className="edge" x1={segment.a.x} y1={segment.a.y} x2={segment.b.x} y2={segment.b.y} />)}
+                    {showNodes && graph.walkNodes.map(node => <circle key={node.id} className="node" cx={node.point.x} cy={node.point.y} r="18" />)}
+                    {showDoors && graph.doors.map(door => <circle key={door.id} className={`door door--${door.permission}`} cx={door.point.x} cy={door.point.y} r="32" />)}
+                    {showDoors && graph.doors.map(door => <text key={`${door.id}-label`} x={door.point.x + 38} y={door.point.y}>{door.id}</text>)}
                 </svg>
             )}
             {showRoute && route?.points && route.points.length > 0 && selectedAgent && (
@@ -409,7 +524,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
                     })}
                 </svg>
             )}
-            {destinationId && (() => {
+            {showDestination && destinationId && (() => {
                 const destination = graph.destinations.find(item => item.id === destinationId);
                 return destination ? (
                     <svg className="floor1-candidate-destination" aria-label={`Destination marker: ${destination.label}`}>
@@ -418,11 +533,11 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
                 ) : null;
             })()}
             <div className="floor1-candidate-agent-layer">
-                {agents.map(agent => (
+                {renderedAgents.map(agent => (
                     <button
                         key={agent.fixture.id}
                         type="button"
-                        className={`floor1-candidate-agent ${selectedAgentId === agent.fixture.id ? 'floor1-candidate-agent--selected' : ''}`}
+                        className={`floor1-candidate-agent ${selectedAgentId === agent.fixture.id ? 'floor1-candidate-agent--selected' : ''} ${showAgentBounds ? 'floor1-candidate-agent--debug-bounds' : ''}`}
                         style={{ left: agent.point.x, top: agent.point.y }}
                         onClick={event => {
                             event.stopPropagation();
@@ -439,7 +554,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration,
                             reducedMotion={reducedMotion}
                             scale={0.52}
                         />
-                        <span className="floor1-candidate-agent__label">{agent.fixture.label}</span>
+                        {showAgentLabels && <span className="floor1-candidate-agent__label">{agent.fixture.label}</span>}
                     </button>
                 ))}
             </div>

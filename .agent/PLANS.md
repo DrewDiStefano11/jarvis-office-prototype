@@ -2126,3 +2126,132 @@ generated data or registration evidence.
 - 2026-08-04: Repaired the deterministic generated-manifest line-ending drift;
   all required gates passed. Publication and post-commit smoke are the only
   external handoff steps.
+
+---
+
+# Floor 1 Visible Debugger Repair (2026-08-04)
+
+## Goal and current repository state
+
+Continue draft PR #26 from exact head
+`5c672eede1faeed0ea8b20c4084c3bba41939761` and turn the development-only
+Floor 1 candidate route into a visibly usable office debugger. Real-browser
+reproduction at 1920 x 1080 found 2,066 visible overlay labels, all 40 fixture
+agents rendered simultaneously, and a 480 px control panel taller than the
+viewport. The separate legacy simulation renders a Phaser canvas with a valid
+1024 x 768 backing store but a computed CSS box of 0 x 0, producing the reported
+black screen.
+
+## Scope
+
+- Consolidate both navigation views on the same candidate office document,
+  viewport transform, route planner, runtime agents, doors, and animation loop.
+- Preserve two clearly differentiated presentations: Office engine for overlay
+  inspection and Agent simulation for focused route/movement testing.
+- Provide useful default layers, individually operable overlay controls,
+  readable non-scaling debug styles, two active demo agents by default, agent
+  and door inspection, grouped destinations, explicit route states, camera
+  controls, diagnostics, and visible terminal error recovery.
+- Validate actual on-screen geometry and interactions at 1920 x 1080 and
+  1366 x 768, then run the complete required npm and CI matrices.
+
+## Out of scope
+
+- Changing or approving candidate registration evidence or source geometry.
+- Enabling candidate navigation in production builds.
+- Adding new office artwork, inferred coordinates, or fabricated review proof.
+- Modifying another branch, opening another PR, or marking PR #26 ready.
+
+## Source files and assumptions
+
+Primary files are `src/App.tsx`, `src/components/office/OfficeEngine.tsx`,
+`OfficeEngineCore.tsx`, `OfficeViewport.tsx`, `OverlayRenderer.tsx`,
+`Floor1CandidateSimulation.tsx`, their CSS/tests, and the existing candidate
+navigation/runtime modules. The clean 8192 x 5460 office remains authoritative;
+candidate registration remains `unverified-sandbox`. Existing candidate graph,
+destination, door, sprite, and movement functions remain the data source.
+
+## Architecture decision and data model
+
+Mount only one `OfficeEngine` for the selected application view and pass an
+explicit debugger presentation (`inspection` or `simulation`). Keep authoritative
+candidate state inside that shared React runtime instead of retaining the
+disconnected Phaser implementation. Move layer visibility into mutable engine
+state and pass controls/camera telemetry through typed props. Candidate controls
+render in a dedicated workspace column adjacent to the viewport, while all map
+graphics remain children of the single transformed 8192 x 5460 office surface.
+Limit the initially active fixture set to two without removing the remaining
+fixture data. One requestAnimationFrame effect owns movement and cleans up on
+pause, view switch, and unmount.
+
+## Milestones and per-milestone acceptance
+
+1. Layout and rendering: office, warning, adjacent scrollable panel, two agents,
+   labels, nodes/edges, doors, destination, and route are visibly readable at
+   both target viewports with nonzero in-viewport boxes.
+2. Debug controls: every required category has a visible toggle and changes the
+   rendered count; initial defaults emphasize useful navigation data rather than
+   every entity label.
+3. Interaction: map/panel agent selection, grouped destination selection, route
+   preview, begin, pause, resume, reset, speed, door inspection/state override,
+   fit, wheel zoom, and pan all provide visible status and diagnostics.
+4. Consolidation and resilience: Agent simulation uses the same office runtime,
+   shows a focused simulation dashboard instead of black Phaser output, view
+   switching leaves no duplicate loop, fallback markers and a React error
+   boundary keep failures visible.
+5. Verification: focused tests cover visible defaults and interactions; complete
+   npm gates pass; exact-final-commit browser QA and the manual workflow pass at
+   both required viewport sizes; pushed CI is green on Node 18 and Node 20.
+
+## Test and visual-validation strategy
+
+Use Vitest for component/state contracts and an actual Vite browser for computed
+boxes, styles, rendered counts, movement deltas, layer count changes, canvas/SVG
+dimensions, refresh, and view switching. Capture before/after screenshots outside
+the repository. Check console errors and failed resource state during every
+browser pass. Run `npm ci`, typecheck, lint, all tests, both generated checks,
+build, and production-bundle check before and after the final commit as needed.
+
+## Risks, known unknowns, and rollback
+
+The unverified graph may still contain unreachable destinations; the UI must
+explain those failures without weakening strict reviewed validation. Thousands
+of source entities make all-layers-at-once inherently noisy, so defaults and
+labels are curated while preserving opt-in access to every category. Candidate
+code remains development-only. The repair is isolated to presentation/runtime
+components and can be reverted as one commit without changing generated or
+registration artifacts.
+
+## Decision and progress log
+
+- 2026-08-04: Reproduced candidate overload and measured the office viewport at
+  1920 x 973, background at 1459.86 x 973, 40 visible agents, 40 labels, one
+  route, one destination, and 2,066 visible text labels.
+- 2026-08-04: Reproduced Agent simulation black output; its canvas backing store
+  is 1024 x 768 but its computed CSS size is 0 x 0 inside the legacy grid.
+- Remaining: implement consolidation and visible debugger, add focused tests,
+  complete two-size browser/manual QA, run all gates, commit, push, and monitor
+  every PR matrix job.
+- 2026-08-04: Consolidated both navigation tabs on one OfficeEngine and removed
+  the disconnected legacy Phaser canvas, control panel, event bus, and scenes.
+- 2026-08-04: Candidate defaults now show paths, rooms, doors, lights, navigation
+  nodes/edges, route, destination, and two labeled agents. Generic entity labels
+  and vertex markers no longer flood the fitted map; every requested debug
+  category is independently toggleable from the adjacent scrollable panel.
+- 2026-08-04: Added grouped destinations, route state/reason, agent telemetry,
+  all-door inspection, runtime door controls, camera focus/fit, responsive refit,
+  initialization diagnostics, and a visible React recovery boundary.
+- 2026-08-04: Real browser interaction proved 34 room and 167 path entities
+  toggle, marker movement changes screen coordinates, pause holds position,
+  resume reaches arrival, reset restores origin, and Agent Simulation shows the
+  same nonzero office/agents/controls rather than a zero-size canvas.
+- 2026-08-04: Clean-install validation passes typecheck, lint, 417 tests across
+  39 files, both generated checks, production build, and production-bundle
+  exclusion. Remaining: commit, exact-commit two-size browser QA, push, and wait
+  for every Node 18/20 CI job.
+- 2026-08-04: CI run 30924774282 reached all assertions but the slower Linux
+  runner exceeded Vitest's five-second default while repeatedly rebuilding and
+  rendering the 10,000-element candidate graph in six component tests. Cache the
+  immutable graph by registration identity and give this intentionally heavy
+  visual component suite a bounded 15-second file-local timeout; retain every
+  visibility assertion and rerun the complete matrix.

@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadVerifiedProductionOverlay } from '../../office/floor1/runtime';
-import {
-    FLOOR1_CANDIDATE_LAYERS,
-    loadFloor1CandidateOverlay,
-} from '../../office/floor1/candidateReview';
+import { loadFloor1CandidateOverlay } from '../../office/floor1/candidateReview';
 import { NON_PRODUCTION_OVERLAY } from '../../office/sampleOverlay';
 import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform } from '../../office/types';
 import { OfficeEngineCore } from './OfficeEngineCore';
@@ -17,8 +14,11 @@ type OfficeLoadState =
 
 interface OfficeEngineProps {
     active: boolean;
+    presentation?: 'inspection' | 'simulation';
     candidateLoader?: () => Promise<OfficeOverlayDocument>;
 }
+
+const USEFUL_CANDIDATE_LAYERS: readonly OfficeLayer[] = ['paths', 'rooms', 'doors', 'lights'];
 
 function candidateModeRequested(): boolean {
     return import.meta.env.DEV && new URLSearchParams(window.location.search).get('floor1Review') === 'candidate';
@@ -38,18 +38,22 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
     });
 }
 
-export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
-    const candidateRequested = candidateModeRequested();
+export function OfficeEngine({ active, presentation = 'inspection', candidateLoader }: OfficeEngineProps) {
+    const candidateRequested = presentation === 'simulation' || candidateModeRequested();
     const [loadState, setLoadState] = useState<OfficeLoadState>({ status: 'loading', stage: candidateRequested ? 'candidate-data' : 'production-data' });
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-    const [, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
-    const [, setPointer] = useState<Point | null>(null);
+    const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
+    const [pointer, setPointer] = useState<Point | null>(null);
     const [focusRequest, setFocusRequest] = useState(0);
-    const visibleLayers = useMemo<ReadonlySet<OfficeLayer>>(
-        () => candidateRequested ? new Set(FLOOR1_CANDIDATE_LAYERS) : new Set<OfficeLayer>(),
-        [candidateRequested],
+    const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<OfficeLayer>>(
+        () => candidateRequested ? new Set(USEFUL_CANDIDATE_LAYERS) : new Set<OfficeLayer>(),
     );
+    const [loadAttempt, setLoadAttempt] = useState(0);
+
+    useEffect(() => {
+        setVisibleLayers(candidateRequested ? new Set(USEFUL_CANDIDATE_LAYERS) : new Set<OfficeLayer>());
+    }, [candidateRequested]);
 
     useEffect(() => {
         let stale = false;
@@ -84,7 +88,7 @@ export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
         }
 
         return () => { stale = true; };
-    }, [candidateLoader, candidateRequested]);
+    }, [candidateLoader, candidateRequested, loadAttempt]);
 
     const dataSource = loadState.status === 'loaded' ? loadState.dataSource : candidateRequested ? 'candidate-review' : 'sample-fallback';
     const statusLabel = dataSource === 'approved-production'
@@ -96,6 +100,7 @@ export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
     return (
         <OfficeEngineCore
             active={active}
+            presentation={presentation}
             loadState={loadState}
             statusLabel={statusLabel}
             dataSource={dataSource}
@@ -103,11 +108,20 @@ export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
             hoveredId={hoveredId}
             focusRequest={focusRequest}
             visibleLayers={visibleLayers}
+            transform={transform}
+            pointer={pointer}
             onSelectId={setSelectedId}
             onHoverId={setHoveredId}
             onPointerOfficePoint={setPointer}
             onTransformChange={setTransform}
+            onToggleLayer={layer => setVisibleLayers(previous => {
+                const next = new Set(previous);
+                if (next.has(layer)) next.delete(layer);
+                else next.add(layer);
+                return next;
+            })}
             onFocusRequest={() => setFocusRequest(value => value + 1)}
+            onRetry={() => setLoadAttempt(value => value + 1)}
         />
     );
 }
