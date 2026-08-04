@@ -49,7 +49,7 @@ describe('OfficeEngine candidate loading lifecycle', () => {
         render(<OfficeEngine active candidateLoader={() => pending.promise} />);
         await act(async () => pending.resolve(NON_PRODUCTION_OVERLAY));
         expect(screen.getByTestId('office-viewport-stub')).toBeTruthy();
-        expect(screen.getByText(/Provisional, unverified Floor 1 geometry/)).toBeTruthy();
+        expect(screen.getByText(/Candidate sandbox — unverified/)).toBeTruthy();
     });
 
     it('transitions a rejected candidate load to a stage-specific visible error', async () => {

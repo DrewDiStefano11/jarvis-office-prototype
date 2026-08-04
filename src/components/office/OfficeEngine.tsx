@@ -16,12 +16,11 @@ interface OfficeEngineProps {
     active: boolean;
     presentation?: 'inspection' | 'simulation';
     candidateLoader?: () => Promise<OfficeOverlayDocument>;
+    onOpenDebugger?: () => void;
 }
 
-const USEFUL_CANDIDATE_LAYERS: readonly OfficeLayer[] = ['paths', 'rooms', 'doors', 'lights'];
-
 function candidateModeRequested(): boolean {
-    return import.meta.env.DEV && new URLSearchParams(window.location.search).get('floor1Review') === 'candidate';
+    return import.meta.env.DEV;
 }
 
 function messageFrom(error: unknown, fallback: string): string {
@@ -38,7 +37,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
     });
 }
 
-export function OfficeEngine({ active, presentation = 'inspection', candidateLoader }: OfficeEngineProps) {
+export function OfficeEngine({ active, presentation = 'inspection', candidateLoader, onOpenDebugger }: OfficeEngineProps) {
     const candidateRequested = presentation === 'simulation' || candidateModeRequested();
     const [loadState, setLoadState] = useState<OfficeLoadState>({ status: 'loading', stage: candidateRequested ? 'candidate-data' : 'production-data' });
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -47,12 +46,12 @@ export function OfficeEngine({ active, presentation = 'inspection', candidateLoa
     const [pointer, setPointer] = useState<Point | null>(null);
     const [focusRequest, setFocusRequest] = useState(0);
     const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<OfficeLayer>>(
-        () => candidateRequested ? new Set(USEFUL_CANDIDATE_LAYERS) : new Set<OfficeLayer>(),
+        () => new Set<OfficeLayer>(),
     );
     const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
-        setVisibleLayers(candidateRequested ? new Set(USEFUL_CANDIDATE_LAYERS) : new Set<OfficeLayer>());
+        setVisibleLayers(new Set<OfficeLayer>());
     }, [candidateRequested]);
 
     useEffect(() => {
@@ -114,14 +113,10 @@ export function OfficeEngine({ active, presentation = 'inspection', candidateLoa
             onHoverId={setHoveredId}
             onPointerOfficePoint={setPointer}
             onTransformChange={setTransform}
-            onToggleLayer={layer => setVisibleLayers(previous => {
-                const next = new Set(previous);
-                if (next.has(layer)) next.delete(layer);
-                else next.add(layer);
-                return next;
-            })}
+            onSetVisibleLayers={setVisibleLayers}
             onFocusRequest={() => setFocusRequest(value => value + 1)}
             onRetry={() => setLoadAttempt(value => value + 1)}
+            onOpenDebugger={onOpenDebugger}
         />
     );
 }

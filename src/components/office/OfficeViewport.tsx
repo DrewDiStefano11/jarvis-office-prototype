@@ -39,7 +39,7 @@ type Props = Readonly<{
     visibleLayers: ReadonlySet<OfficeLayer>;
     transformTelemetry?: ViewTransform;
     pointerTelemetry?: Point | null;
-    onToggleLayer?: (layer: OfficeLayer) => void;
+    onSetVisibleLayers?: (layers: ReadonlySet<OfficeLayer>) => void;
     onSelect: (id: string | null) => void;
     onHover: (id: string | null) => void;
     onPointerOfficePoint: (point: Point | null) => void;
@@ -48,6 +48,7 @@ type Props = Readonly<{
     developmentOverlayEnabled?: boolean;
     selectedDevelopmentAgentId?: string | null;
     onSelectDevelopmentAgent?: (agent: SpriteDemoAgent) => void;
+    onOpenDebugger?: () => void;
 }>;
 
 export function OfficeViewport({
@@ -61,7 +62,7 @@ export function OfficeViewport({
     visibleLayers,
     transformTelemetry,
     pointerTelemetry = null,
-    onToggleLayer = () => undefined,
+    onSetVisibleLayers = () => undefined,
     onSelect,
     onHover,
     onPointerOfficePoint,
@@ -70,6 +71,7 @@ export function OfficeViewport({
     developmentOverlayEnabled = false,
     selectedDevelopmentAgentId = null,
     onSelectDevelopmentAgent = () => undefined,
+    onOpenDebugger = () => undefined,
 }: Props) {
     const viewportRef = useRef<HTMLDivElement>(null);
     const transformRef = useRef<ViewTransform>({ scale: 0.1, x: 0, y: 0 });
@@ -296,7 +298,7 @@ export function OfficeViewport({
     }, [commitTransform, viewport]);
 
     return (
-        <div className={`office-viewport-shell ${reviewMode ? 'office-viewport-shell--candidate' : ''}`}>
+        <div className={`office-viewport-shell ${reviewMode ? 'office-viewport-shell--candidate' : ''} office-viewport-shell--${presentation}`}>
             <div className="viewport-controls" aria-label="Viewport controls">
                 <button type="button" onClick={() => zoomBy(DEFAULT_VIEWPORT_OPTIONS.zoomStep)} aria-label="Zoom in">+</button>
                 <button type="button" onClick={() => zoomBy(1 / DEFAULT_VIEWPORT_OPTIONS.zoomStep)} aria-label="Zoom out">−</button>
@@ -383,9 +385,10 @@ export function OfficeViewport({
                                 transform={transformTelemetry ?? transform}
                                 viewport={viewport}
                                 pointer={pointerTelemetry}
-                                onToggleLayer={onToggleLayer}
+                                onSetVisibleLayers={onSetVisibleLayers}
                                 onFitOffice={fit}
                                 onFocusPoint={focusPoint}
+                                onOpenDebugger={onOpenDebugger}
                             />
                         </Suspense>
                     )}

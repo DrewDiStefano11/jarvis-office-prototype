@@ -24,9 +24,10 @@ interface OfficeEngineCoreProps {
     onHoverId: (id: string | null) => void;
     onPointerOfficePoint: (point: Point | null) => void;
     onTransformChange: (transform: ViewTransform) => void;
-    onToggleLayer: (layer: OfficeLayer) => void;
+    onSetVisibleLayers: (layers: ReadonlySet<OfficeLayer>) => void;
     onFocusRequest: () => void;
     onRetry: () => void;
+    onOpenDebugger?: () => void;
 }
 
 export function OfficeEngineCore({
@@ -45,9 +46,10 @@ export function OfficeEngineCore({
     onHoverId,
     onPointerOfficePoint,
     onTransformChange,
-    onToggleLayer,
+    onSetVisibleLayers,
     onFocusRequest,
     onRetry,
+    onOpenDebugger,
 }: OfficeEngineCoreProps) {
     const document = loadState.status === 'loaded' ? loadState.document : null;
     const inspected = document?.entities.find(entity => entity.id === hoveredId)
@@ -60,18 +62,13 @@ export function OfficeEngineCore({
             <header className="engine-header">
                 <div>
                     <p className="eyebrow">Jarvis office prototype</p>
-                    <h1>{presentation === 'inspection' ? 'Interactive office engine' : 'Agent route laboratory'}</h1>
+                    <h1>{presentation === 'inspection' ? 'Office Engine - ambient simulation' : 'Agent Simulation - movement debugger'}</h1>
                 </div>
                 <div className="header-actions">
                     <span className={`sample-badge ${candidateMode ? 'sample-badge--candidate' : ''}`}>{statusLabel}</span>
                 </div>
             </header>
             <section className={`engine-workspace ${candidateMode ? 'engine-workspace--candidate' : ''}`}>
-                {candidateMode && (
-                    <p className="candidate-trust-warning" role="alert">
-                        Provisional, unverified Floor 1 geometry and routing — not production approved.
-                    </p>
-                )}
                 {loadState.status === 'loading' && (
                     <div className="office-load-state" role="status" data-load-stage={loadState.stage}>
                         Loading Floor 1 {candidateMode ? 'candidate data' : 'office data'}…
@@ -96,12 +93,13 @@ export function OfficeEngineCore({
                         visibleLayers={visibleLayers}
                         transformTelemetry={transform}
                         pointerTelemetry={pointer}
-                        onToggleLayer={onToggleLayer}
+                        onSetVisibleLayers={onSetVisibleLayers}
                         onSelect={onSelectId}
                         onHover={onHoverId}
                         onPointerOfficePoint={onPointerOfficePoint}
                         onTransformChange={onTransformChange}
                         focusRequest={focusRequest}
+                        onOpenDebugger={onOpenDebugger}
                     />
                 )}
                 {document && !candidateMode && (

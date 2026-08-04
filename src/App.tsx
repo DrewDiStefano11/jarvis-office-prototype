@@ -43,7 +43,11 @@ function App() {
             </nav>
             <div className="application-view">
                 <PrototypeErrorBoundary surface={view === 'office-engine' ? 'Office engine' : 'Agent simulation'}>
-                    <OfficeEngine active presentation={view === 'office-engine' ? 'inspection' : 'simulation'} />
+                    <OfficeEngine
+                        active
+                        presentation={view === 'office-engine' ? 'inspection' : 'simulation'}
+                        onOpenDebugger={() => setView('agent-simulation')}
+                    />
                 </PrototypeErrorBoundary>
             </div>
         </div>
