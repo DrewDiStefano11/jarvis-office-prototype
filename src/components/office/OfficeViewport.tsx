@@ -87,6 +87,7 @@ export function OfficeViewport({
     const [viewport, setViewport] = useState<ViewportSize>({ width: 1, height: 1 });
     const [backgroundState, setBackgroundState] = useState<'loading' | 'ready' | 'error'>('loading');
     const [candidateControlHost, setCandidateControlHost] = useState<HTMLDivElement | null>(null);
+    const [candidateOverlayHost, setCandidateOverlayHost] = useState<HTMLDivElement | null>(null);
     const [reducedMotion, setReducedMotion] = useState(
         () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     );
@@ -380,6 +381,7 @@ export function OfficeViewport({
                                 reducedMotion={reducedMotion}
                                 registration={FLOOR1_CANDIDATE_REGISTRATION}
                                 controlHost={candidateControlHost}
+                                overlayHost={candidateOverlayHost}
                                 presentation={presentation}
                                 visibleLayers={visibleLayers}
                                 transform={transformTelemetry ?? transform}
@@ -400,6 +402,7 @@ export function OfficeViewport({
                     </div>
                 )}
                 {debug && <div className="debug-layer-order">Layers: {LAYER_ORDER.join(' → ')}</div>}
+                {reviewMode && <div ref={setCandidateOverlayHost} className="floor1-candidate-overlay-host" data-testid="floor1-candidate-overlay-host" />}
             </div>
             {reviewMode && <div ref={setCandidateControlHost} className="floor1-candidate-control-host" data-testid="floor1-candidate-control-host" />}
         </div>

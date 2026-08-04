@@ -8,7 +8,24 @@ import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
 import { buildCandidateSandboxGraph } from './candidateNavigation';
-import { advancePrototypeAgents, createPrototypeAgents, distributedPrototypeSpawnNodes, planPrototypeRouteToPoint, prototypeDoorTraversalCoverage, prototypeOpenDoorRuntimes, prototypeOpenGraph, startPrototypeRoute } from './prototypeRuntime';
+import {
+    advancePrototypeAgents,
+    assignPrototypeIdle,
+    assignPrototypeTalk,
+    assignPrototypeWander,
+    assignPrototypeWork,
+    createPrototypeAgents,
+    distributedPrototypeSpawnNodes,
+    planPrototypeRouteToPoint,
+    prototypeDoorTraversalCoverage,
+    prototypeOpenDoorRuntimes,
+    prototypeOpenGraph,
+    prototypeRoomAtPoint,
+    prototypeSpriteState,
+    repositionPrototypeAgent,
+    snapPrototypePoint,
+    startPrototypeRoute,
+} from './prototypeRuntime';
 
 const registration = {
     sourceWidth: 8192, sourceHeight: 5460, markupWidth: 8192, markupHeight: 5460, scale: 1, offsetX: 0, offsetY: 0,
@@ -97,5 +114,104 @@ describe('prototype runtime', () => {
         expect(plan?.route.status).toBe('valid');
         expect(plan?.route.crossedDoorIds.length).toBeGreaterThanOrEqual(2);
         expect(plan?.route.doorSteps.every(step => step.requiredAction === 'none')).toBe(true);
+    });
+
+    it('assigns the sixteen real sprite variants deterministically and keeps identity through task changes', () => {
+        const first = createPrototypeAgents(graph, 25, 'debug');
+        const second = createPrototypeAgents(graph, 25, 'debug');
+        expect(first.map(agent => agent.fixture.spriteAssetId)).toEqual(second.map(agent => agent.fixture.spriteAssetId));
+        expect(new Set(first.map(agent => agent.fixture.spriteAssetId))).toHaveLength(16);
+        const changed = assignPrototypeIdle(first[0], 1000, true);
+        expect(changed.fixture).toBe(first[0].fixture);
+        expect(changed.fixture.spriteAssetId).toBe('agent-sheet-01');
+    });
+
+    it('gives every agent a discriminated task and reproducible ambient roles', () => {
+        const first = createPrototypeAgents(graph, 20, 'ambient');
+        const second = createPrototypeAgents(graph, 20, 'ambient');
+        expect(first.every(agent => typeof agent.task.kind === 'string')).toBe(true);
+        expect(first.map(agent => [agent.fixture.id, agent.fixture.spriteAssetId, agent.task.kind])).toEqual(
+            second.map(agent => [agent.fixture.id, agent.fixture.spriteAssetId, agent.task.kind]),
+        );
+        expect(first.some(agent => agent.task.kind === 'work')).toBe(true);
+        expect(first.some(agent => agent.task.kind === 'talk')).toBe(true);
+        expect(first.some(agent => agent.movementState === 'walking')).toBe(true);
+    });
+
+    it('routes a work task to a real workstation approach and enters working after arrival', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const assigned = assignPrototypeWork(graph, agent, 500);
+        expect(assigned?.task.kind).toBe('work');
+        expect(assigned?.workstationId).toMatch(/^(position:POSITION|computer:COMPUTER)_/);
+        if (!assigned) return;
+        let current = assigned;
+        for (let index = 0; index < 300 && current.movementState === 'walking'; index += 1) {
+            current = advancePrototypeAgents([current], 100, 1000, false, prototypeOpenDoorRuntimes(graph))[0];
+        }
+        expect(current.task.kind).toBe('work');
+        expect(current.activityState).toBe('working-at-desk');
+    });
+
+    it('routes talk partners toward distinct valid nodes and exposes reciprocal IDs', () => {
+        const [agent, partner] = createPrototypeAgents(graph, 2, 'debug');
+        const assigned = assignPrototypeTalk(graph, agent, partner, 900);
+        expect(assigned?.task.kind).toBe('talk');
+        if (!assigned || assigned.task.kind !== 'talk') return;
+        expect(assigned.task.partnerAgentId).toBe(partner.fixture.id);
+        expect(assigned.task.destination).not.toEqual(partner.point);
+        expect(assigned.task.nodeId).toBeTruthy();
+    });
+
+    it('creates a deterministic wander route without changing sprite identity', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const first = assignPrototypeWander(graph, agent, 7, 100);
+        const second = assignPrototypeWander(graph, agent, 7, 100);
+        expect(first?.targetPoint).toEqual(second?.targetPoint);
+        expect(first?.fixture.spriteAssetId).toBe(agent.fixture.spriteAssetId);
+        expect(first?.task.kind).toBe('wander');
+    });
+
+    it('stopping clears a route without moving or removing the agent', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const assigned = assignPrototypeWander(graph, agent, 3, 0);
+        expect(assigned).not.toBeNull();
+        if (!assigned) return;
+        const stopped = assignPrototypeIdle(assigned, 400, true);
+        expect(stopped.point).toEqual(assigned.point);
+        expect(stopped.route).toBeNull();
+        expect(stopped.fixture.id).toBe(agent.fixture.id);
+        expect(stopped.task.kind).toBe('stopped');
+    });
+
+    it('snaps away from occupied nodes and rejects out-of-office points', () => {
+        const [first, second] = createPrototypeAgents(graph, 2, 'debug');
+        const snap = snapPrototypePoint(graph, first.point, 1000, new Set([first.currentNodeId, second.currentNodeId]));
+        expect(snap?.nodeId).not.toBe(first.currentNodeId);
+        expect(snap?.nodeId).not.toBe(second.currentNodeId);
+        expect(snapPrototypePoint(graph, { x: -1, y: 20 })).toBeNull();
+    });
+
+    it('repositioning preserves identity and sprite while clearing route and task state', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const moving = assignPrototypeWander(graph, agent, 2, 0) ?? agent;
+        const targetNode = graph.walkNodes.find(node => node.id !== moving.currentNodeId)!;
+        const moved = repositionPrototypeAgent(moving, {
+            point: targetNode.point, nodeId: targetNode.id, roomId: targetNode.roomId, distance: 0,
+        }, 200);
+        expect(moved.fixture).toBe(agent.fixture);
+        expect(moved.currentNodeId).toBe(targetNode.id);
+        expect(moved.route).toBeNull();
+        expect(moved.task.kind).toBe('idle');
+        expect(moved.fixture.spriteAssetId).toBe(agent.fixture.spriteAssetId);
+    });
+
+    it('resolves current room and maps movement to the real sprite states', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        expect(prototypeRoomAtPoint(graph, agent.point).name).toBeTruthy();
+        expect(prototypeSpriteState(agent)).toBe('idle');
+        expect(prototypeSpriteState({ ...agent, movementState: 'walking' })).toBe('walking');
+        expect(prototypeSpriteState({ ...agent, activityState: 'working-at-desk', task: {
+            kind: 'work', phase: 'working', workstationId: 'POSITION_001', destination: agent.point, nodeId: agent.currentNodeId, startedAtMs: 0,
+        } })).toBe('working');
     });
 });

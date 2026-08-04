@@ -1,5 +1,6 @@
 import { OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../constants';
 import type { Point } from '../../types';
+import type { SpriteDirection, SpriteState } from '../../sprites/types';
 import {
     advanceCandidateAgents,
     pointInPolygon,
@@ -18,6 +19,16 @@ export const PROTOTYPE_DOOR_POLICY = 'prototype-open' as const;
 export type PrototypeActivityState = 'walking' | 'working-at-desk' | 'idle' | 'talking' | 'waiting' | 'moving-to-task';
 export type PrototypeMovementState = 'idle' | 'walking' | 'paused' | 'arrived' | 'stopped' | 'blocked';
 
+type TimedTask = Readonly<{ startedAtMs: number }>;
+export type PrototypeTask =
+    | (TimedTask & Readonly<{ kind: 'idle'; reason: 'spawned' | 'assigned' | 'ambient-break' | 'arrived' }>)
+    | (TimedTask & Readonly<{ kind: 'stopped'; reason: 'user' | 'reset' }>)
+    | (TimedTask & Readonly<{ kind: 'walk'; phase: 'traveling' | 'arrived'; destination: Point; nodeId: string }>)
+    | (TimedTask & Readonly<{ kind: 'work'; phase: 'traveling' | 'working'; workstationId: string; destination: Point; nodeId: string }>)
+    | (TimedTask & Readonly<{ kind: 'talk'; phase: 'traveling' | 'talking'; partnerAgentId: string; destination: Point; nodeId: string }>)
+    | (TimedTask & Readonly<{ kind: 'wander'; phase: 'traveling' | 'arrived'; destination: Point; nodeId: string; seed: number }>)
+    | (TimedTask & Readonly<{ kind: 'reposition'; origin: Point; preview: Point | null }>);
+
 export type PrototypeAgent = Readonly<{
     fixture: CandidateAgentFixture;
     point: Point;
@@ -34,7 +45,15 @@ export type PrototypeAgent = Readonly<{
     activityUntil: number;
     partnerAgentId?: string;
     workstationId?: string;
+    task: PrototypeTask;
     revision: number;
+}>;
+
+export type PrototypeSnapResult = Readonly<{
+    point: Point;
+    nodeId: string;
+    roomId: string;
+    distance: number;
 }>;
 
 export type PrototypeRoutePlan = Readonly<{
@@ -230,6 +249,57 @@ function roomLabel(roomId: string): string {
     return roomId.replace(/^zone:/, '').replace(/^ROOM_/, '').replace(/_/g, ' ');
 }
 
+export function prototypeRoomAtPoint(graph: CandidateNavigationGraph, point: Point) {
+    const room = graph.rooms.find(candidate => pointInPolygon(point, candidate.polygon));
+    if (room) return { id: room.id, name: room.name };
+    const node = graph.walkNodes.slice().sort((a, b) => distance(a.point, point) - distance(b.point, point) || a.id.localeCompare(b.id))[0];
+    const roomId = node?.roomIds[0] ?? node?.roomId ?? 'unknown';
+    return { id: roomId, name: graph.rooms.find(candidate => candidate.id === roomId)?.name ?? roomLabel(roomId) };
+}
+
+export function snapPrototypePoint(
+    graph: CandidateNavigationGraph,
+    point: Point,
+    maximumDistance = PROTOTYPE_CLICK_SNAP_LIMIT,
+    occupiedNodeIds: ReadonlySet<string> = new Set(),
+): PrototypeSnapResult | null {
+    if (point.x < 0 || point.y < 0 || point.x > OFFICE_SOURCE_WIDTH || point.y > OFFICE_SOURCE_HEIGHT) return null;
+    const node = graph.walkNodes
+        .filter(candidate => !occupiedNodeIds.has(candidate.id))
+        .map(candidate => ({ candidate, distance: distance(candidate.point, point) }))
+        .filter(candidate => candidate.distance <= maximumDistance)
+        .sort((a, b) => a.distance - b.distance || a.candidate.id.localeCompare(b.candidate.id))[0];
+    if (!node) return null;
+    return {
+        point: node.candidate.point,
+        nodeId: node.candidate.id,
+        roomId: node.candidate.roomIds[0] ?? node.candidate.roomId,
+        distance: node.distance,
+    };
+}
+
+export function prototypeSpriteState(agent: PrototypeAgent): SpriteState {
+    if (agent.movementState === 'walking') return 'walking';
+    if (agent.movementState === 'blocked') return 'blocked';
+    if (agent.task.kind === 'work' && agent.task.phase === 'working') return 'working';
+    if (agent.activityState === 'waiting') return 'waiting';
+    return 'idle';
+}
+
+export function prototypeSpriteDirection(agent: PrototypeAgent): SpriteDirection {
+    return agent.direction;
+}
+
+export function prototypeTaskSummary(task: PrototypeTask): string {
+    if (task.kind === 'idle') return task.reason === 'ambient-break' ? 'Taking an ambient break' : 'Idle';
+    if (task.kind === 'stopped') return 'Stopped';
+    if (task.kind === 'walk') return task.phase === 'traveling' ? 'Walking to assigned point' : 'Arrived at assigned point';
+    if (task.kind === 'work') return task.phase === 'traveling' ? `Heading to ${task.workstationId}` : `Working at ${task.workstationId}`;
+    if (task.kind === 'talk') return task.phase === 'traveling' ? `Heading to ${task.partnerAgentId}` : `Talking with ${task.partnerAgentId}`;
+    if (task.kind === 'wander') return task.phase === 'traveling' ? 'Wandering through current room' : 'Finished wandering';
+    return 'Choosing a valid reposition node';
+}
+
 export function prototypeOpenGraph(graph: CandidateNavigationGraph): CandidateNavigationGraph {
     return {
         ...graph,
@@ -310,12 +380,27 @@ export function createPrototypeAgents(
     const nodes = distributedPrototypeSpawnNodes(graph, count);
     const agents = nodes.map((node, index): PrototypeAgent => {
         const fixture = agentFixture(graph, node, index);
-        const varied = index % 5;
+        const varied = index % 6;
         const activityState: PrototypeActivityState = mode === 'debug'
             ? 'idle'
             : varied === 0 ? 'moving-to-task'
                 : varied === 1 || varied === 2 ? 'working-at-desk'
                     : varied === 3 ? 'idle' : 'talking';
+        const partnerIndex = varied === 4 ? index + 1 : varied === 5 ? index - 1 : -1;
+        const partnerAgentId = partnerIndex >= 0 && partnerIndex < nodes.length
+            ? `prototype-agent-${String(partnerIndex + 1).padStart(2, '0')}`
+            : undefined;
+        const workstation = graph.destinations
+            .filter(destination => (destination.kind === 'position' || destination.kind === 'computer') && destination.availability !== 'unavailable')
+            .slice()
+            .sort((a, b) => distance(a.point, node.point) - distance(b.point, node.point) || a.id.localeCompare(b.id))[0];
+        const task: PrototypeTask = mode === 'debug'
+            ? { kind: 'idle', reason: 'spawned', startedAtMs: 0 }
+            : activityState === 'working-at-desk' && workstation
+                ? { kind: 'work', phase: 'working', workstationId: workstation.id, destination: node.point, nodeId: node.id, startedAtMs: 0 }
+                : activityState === 'talking' && partnerAgentId
+                    ? { kind: 'talk', phase: 'talking', partnerAgentId, destination: node.point, nodeId: node.id, startedAtMs: 0 }
+                    : { kind: 'idle', reason: 'ambient-break', startedAtMs: 0 };
         return {
             fixture,
             point: node.point,
@@ -330,8 +415,9 @@ export function createPrototypeAgents(
             direction: index % 4 === 0 ? 'east' : index % 4 === 1 ? 'south' : index % 4 === 2 ? 'west' : 'north',
             speed: 1,
             activityUntil: 4_000 + (index % 7) * 1_100,
-            partnerAgentId: mode === 'ambient' && varied === 4 ? `prototype-agent-${String(Math.max(1, index)).padStart(2, '0')}` : undefined,
-            workstationId: mode === 'ambient' && (varied === 1 || varied === 2) ? node.id : undefined,
+            partnerAgentId,
+            workstationId: task.kind === 'work' ? task.workstationId : undefined,
+            task,
             revision: 0,
         };
     });
@@ -447,7 +533,7 @@ function directionBetween(from: Point, to: Point, fallback: PrototypeAgent['dire
     return Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'east' : 'west') : (dy >= 0 ? 'south' : 'north');
 }
 
-export function startPrototypeRoute(agent: PrototypeAgent, plan: PrototypeRoutePlan): PrototypeAgent {
+export function startPrototypeRoute(agent: PrototypeAgent, plan: PrototypeRoutePlan, task?: PrototypeTask): PrototypeAgent {
     return {
         ...agent,
         route: plan.route,
@@ -456,6 +542,116 @@ export function startPrototypeRoute(agent: PrototypeAgent, plan: PrototypeRouteP
         activityState: 'walking',
         targetPoint: plan.snappedPoint,
         clickedPoint: plan.clickedPoint,
+        partnerAgentId: task?.kind === 'talk' ? task.partnerAgentId : undefined,
+        workstationId: task?.kind === 'work' ? task.workstationId : undefined,
+        task: task ?? {
+            kind: 'walk', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs: agent.task.startedAtMs,
+        },
+        revision: agent.revision + 1,
+    };
+}
+
+export function assignPrototypeIdle(agent: PrototypeAgent, startedAtMs: number, stopped = false): PrototypeAgent {
+    return {
+        ...agent,
+        route: null,
+        progress: 0,
+        movementState: stopped ? 'stopped' : 'idle',
+        activityState: 'idle',
+        targetPoint: null,
+        clickedPoint: null,
+        partnerAgentId: undefined,
+        workstationId: undefined,
+        task: stopped
+            ? { kind: 'stopped', reason: 'user', startedAtMs }
+            : { kind: 'idle', reason: 'assigned', startedAtMs },
+        revision: agent.revision + 1,
+    };
+}
+
+export function assignPrototypeWork(
+    graph: CandidateNavigationGraph,
+    agent: PrototypeAgent,
+    startedAtMs: number,
+): PrototypeAgent | null {
+    const runtimeGraph = { ...graph, agents: [agent.fixture] };
+    const candidates = graph.destinations
+        .filter(destination => (destination.kind === 'position' || destination.kind === 'computer') && destination.availability !== 'unavailable')
+        .slice()
+        .sort((a, b) => distance(a.point, agent.point) - distance(b.point, agent.point) || a.id.localeCompare(b.id));
+    for (const destination of candidates) {
+        const plan = planPrototypeRouteToPoint(runtimeGraph, agent, destination.point);
+        if (!plan) continue;
+        return startPrototypeRoute(agent, plan, {
+            kind: 'work', phase: 'traveling', workstationId: destination.id, destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs,
+        });
+    }
+    return null;
+}
+
+export function assignPrototypeTalk(
+    graph: CandidateNavigationGraph,
+    agent: PrototypeAgent,
+    partner: PrototypeAgent,
+    startedAtMs: number,
+): PrototypeAgent | null {
+    const offset = agent.fixture.id.localeCompare(partner.fixture.id) < 0 ? -90 : 90;
+    const intended = { x: partner.point.x + offset, y: partner.point.y + 36 };
+    const distinctSnap = snapPrototypePoint(graph, intended, PROTOTYPE_CLICK_SNAP_LIMIT, new Set([partner.currentNodeId]));
+    const plan = distinctSnap
+        ? planPrototypeRouteToPoint({ ...graph, agents: [agent.fixture, partner.fixture] }, agent, distinctSnap.point)
+        : null;
+    if (!plan) return null;
+    return startPrototypeRoute(agent, plan, {
+        kind: 'talk', phase: 'traveling', partnerAgentId: partner.fixture.id, destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs,
+    });
+}
+
+export function assignPrototypeWander(
+    graph: CandidateNavigationGraph,
+    agent: PrototypeAgent,
+    seed: number,
+    startedAtMs: number,
+): PrototypeAgent | null {
+    const roomIds = new Set(prototypeRoomAtPoint(graph, agent.point).id ? [prototypeRoomAtPoint(graph, agent.point).id] : agent.fixture.roomIds);
+    const currentPathId = graph.walkNodes.find(node => node.id === agent.currentNodeId)?.pathId;
+    const candidates = graph.walkNodes
+        .filter(node => distance(node.point, agent.point) >= 180 && distance(node.point, agent.point) <= 1_600)
+        .slice()
+        .sort((a, b) => {
+            const aPath = a.pathId === currentPathId ? 0 : 1;
+            const bPath = b.pathId === currentPathId ? 0 : 1;
+            const aLocal = a.roomIds.some(roomId => roomIds.has(roomId)) ? 0 : 1;
+            const bLocal = b.roomIds.some(roomId => roomIds.has(roomId)) ? 0 : 1;
+            return aPath - bPath || aLocal - bLocal || a.id.localeCompare(b.id);
+        });
+    const preferred = currentPathId ? candidates.filter(node => node.pathId === currentPathId) : [];
+    const pool = preferred.length > 0 ? preferred : candidates;
+    const offset = pool.length > 0 ? Math.abs(seed * 17) % pool.length : 0;
+    const ordered = [...pool.slice(offset), ...pool.slice(0, offset), ...candidates.filter(node => !pool.includes(node))];
+    for (const target of ordered.slice(0, 12)) {
+        const plan = planPrototypeRouteToPoint({ ...graph, agents: [agent.fixture] }, agent, target.point);
+        if (!plan || plan.route.length <= 20) continue;
+        return startPrototypeRoute(agent, plan, {
+            kind: 'wander', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, seed, startedAtMs,
+        });
+    }
+    return null;
+}
+
+export function repositionPrototypeAgent(agent: PrototypeAgent, snap: PrototypeSnapResult, startedAtMs: number): PrototypeAgent {
+    return {
+        ...agent,
+        point: snap.point,
+        spawnPoint: snap.point,
+        currentNodeId: snap.nodeId,
+        route: null,
+        progress: 0,
+        movementState: 'idle',
+        activityState: 'idle',
+        targetPoint: null,
+        clickedPoint: null,
+        task: { kind: 'idle', reason: 'assigned', startedAtMs },
         revision: agent.revision + 1,
     };
 }
@@ -477,12 +673,24 @@ export function advancePrototypeAgents(
     return advanced.map((candidate, index) => {
         const previous = agents[index];
         const movementState = candidate.status as PrototypeMovementState;
+        const arrived = movementState === 'arrived' && previous.movementState === 'walking';
+        const task: PrototypeTask = !arrived ? previous.task
+            : previous.task.kind === 'work' ? { ...previous.task, phase: 'working' }
+                : previous.task.kind === 'talk' ? { ...previous.task, phase: 'talking' }
+                    : previous.task.kind === 'walk' ? { ...previous.task, phase: 'arrived' }
+                        : previous.task.kind === 'wander' ? { ...previous.task, phase: 'arrived' }
+                            : previous.task;
+        const activityState: PrototypeActivityState = movementState === 'walking' ? 'walking'
+            : task.kind === 'work' && task.phase === 'working' ? 'working-at-desk'
+                : task.kind === 'talk' && task.phase === 'talking' ? 'talking'
+                    : previous.activityState === 'walking' ? 'idle' : previous.activityState;
         return {
             ...previous,
             point: candidate.point,
             progress: candidate.progress,
             movementState,
-            activityState: movementState === 'walking' ? 'walking' : previous.activityState === 'walking' ? 'idle' : previous.activityState,
+            activityState,
+            task,
             direction: directionBetween(previous.point, candidate.point, previous.direction),
             currentNodeId: movementState === 'arrived' && previous.targetPoint
                 ? previous.route?.nodeSequence[previous.route.nodeSequence.length - 1] ?? previous.currentNodeId
@@ -494,14 +702,19 @@ export function advancePrototypeAgents(
 export function seedAmbientMovement(graph: CandidateNavigationGraph, input: readonly PrototypeAgent[]): readonly PrototypeAgent[] {
     let agents = input;
     for (let index = 0; index < agents.length; index += 1) {
-        if (index !== 0) continue;
+        if (index % 6 !== 0) continue;
         const agent = agents[index];
         const target = ambientPrototypeTarget(graph, agent, index);
         if (!target) continue;
         const plan = planPrototypeRouteToPoint({ ...graph, agents: agents.map(item => item.fixture) }, agent, target);
         if (!plan) continue;
         agents = agents.map(item => item.fixture.id === agent.fixture.id
-            ? { ...startPrototypeRoute(item, plan), activityState: 'walking', activityUntil: 0 }
+            ? {
+                ...startPrototypeRoute(item, plan, {
+                    kind: 'wander', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, seed: index, startedAtMs: 0,
+                }),
+                activityState: 'walking', activityUntil: 0,
+            }
             : item);
     }
     return agents;
@@ -509,8 +722,11 @@ export function seedAmbientMovement(graph: CandidateNavigationGraph, input: read
 
 export function ambientPrototypeTarget(graph: CandidateNavigationGraph, agent: PrototypeAgent, seed: number): Point | null {
     const roomIds = new Set(agent.fixture.roomIds);
-    const candidates = graph.walkNodes
+    const localCandidates = graph.walkNodes
         .filter(node => node.roomIds.some(roomId => roomIds.has(roomId)))
+        .filter(node => distance(node.point, agent.point) >= 180 && distance(node.point, agent.point) <= 1_200)
+        .sort((a, b) => a.id.localeCompare(b.id));
+    const candidates = localCandidates.length > 0 ? localCandidates : graph.walkNodes
         .filter(node => distance(node.point, agent.point) >= 180 && distance(node.point, agent.point) <= 1_200)
         .sort((a, b) => a.id.localeCompare(b.id));
     return candidates.length > 0 ? candidates[Math.abs(seed * 17) % candidates.length].point : null;
@@ -526,6 +742,9 @@ export function resetPrototypeAgent(agent: PrototypeAgent): PrototypeAgent {
         activityState: 'idle',
         targetPoint: null,
         clickedPoint: null,
+        partnerAgentId: undefined,
+        workstationId: undefined,
+        task: { kind: 'stopped', reason: 'reset', startedAtMs: 0 },
         revision: agent.revision + 1,
     };
 }

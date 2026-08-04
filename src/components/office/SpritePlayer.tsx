@@ -16,8 +16,11 @@ type Props = Readonly<{
     speed?: number;
     scale?: number;
     manualFrame?: number | null;
+    /** Drives playback without subscribing to SpriteSurfaceRuntime.clock. */
+    externalElapsedMs?: number | null;
     nearestNeighbor?: boolean;
     onFrameChange?: (frame: number) => void;
+    onAvailabilityChange?: (available: boolean, reason: string | null) => void;
     className?: string;
 }>;
 
@@ -32,11 +35,17 @@ export function SpritePlayer({
     speed = 1,
     scale = 1,
     manualFrame = null,
+    externalElapsedMs = null,
     nearestNeighbor = true,
     onFrameChange,
+    onAvailabilityChange,
     className = '',
 }: Props) {
     const frameRef = useRef<HTMLDivElement>(null);
+    const onFrameChangeRef = useRef(onFrameChange);
+    const onAvailabilityChangeRef = useRef(onAvailabilityChange);
+    onFrameChangeRef.current = onFrameChange;
+    onAvailabilityChangeRef.current = onAvailabilityChange;
     const lastFrameRef = useRef<number | null>(null);
     const lastClipKeyRef = useRef<string | null>(null);
     const lastRenderKeyRef = useRef<string | null>(null);
@@ -58,8 +67,10 @@ export function SpritePlayer({
         setLoadState('loading');
         setLoadFailure(null);
         if (!asset) {
+            const message = `No asset and clip fallback can satisfy sprite request: ${assetId}/${state}/${direction}.`;
             setLoadState('error');
-            setLoadFailure('No asset and clip fallback can satisfy this sprite request.');
+            setLoadFailure(message);
+            if (import.meta.env.DEV) console.error(message);
             return;
         }
         runtime.textures.load(url).then(image => {
@@ -83,7 +94,11 @@ export function SpritePlayer({
             if (import.meta.env.DEV) console.error(message);
         });
         return () => { cancelled = true; };
-    }, [asset, runtime.textures, url]);
+    }, [asset, assetId, direction, runtime.textures, state, url]);
+
+    useEffect(() => {
+        onAvailabilityChangeRef.current?.(loadState === 'ready' && resolved !== null, loadFailure);
+    }, [loadFailure, loadState, resolved]);
 
     useEffect(() => {
         if (!resolved || loadState !== 'ready') return;
@@ -108,11 +123,15 @@ export function SpritePlayer({
             }
             if (lastFrameRef.current !== frame) {
                 lastFrameRef.current = frame;
-                onFrameChange?.(frame);
+                onFrameChangeRef.current?.(frame);
             }
         };
         if (manualFrame !== null) {
             update(Math.max(0, Math.min(resolved.asset.frameCount - 1, manualFrame)));
+            return;
+        }
+        if (externalElapsedMs !== null) {
+            update(frameAtElapsedTime(resolved, Math.max(0, externalElapsedMs), speed));
             return;
         }
         if (reducedMotion) {
@@ -146,7 +165,7 @@ export function SpritePlayer({
             if (!resolved.clip.loop && clipElapsed >= playbackDuration) unsubscribe();
         });
         return unsubscribe;
-    }, [loadState, manualFrame, onFrameChange, paused, reducedMotion, resolved, runtime.clock, scale, speed]);
+    }, [externalElapsedMs, loadState, manualFrame, paused, reducedMotion, resolved, runtime.clock, scale, speed]);
 
     if (!resolved || loadState === 'error') {
         const label = `Sprite ${assetId} unavailable${loadFailure ? `: ${loadFailure}` : ''}`;

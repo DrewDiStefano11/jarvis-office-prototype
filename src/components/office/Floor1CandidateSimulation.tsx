@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import rooms from '../../office/data/floor1/provisional/rooms.json';
 import positions from '../../office/data/floor1/provisional/positions.json';
@@ -17,21 +17,35 @@ import {
 } from '../../office/floor1/navigation/candidateNavigation';
 import {
     advancePrototypeAgents,
-    ambientPrototypeTarget,
+    assignPrototypeIdle,
+    assignPrototypeTalk,
+    assignPrototypeWander,
+    assignPrototypeWork,
     createPrototypeAgents,
     planPrototypeRouteToPoint,
     PROTOTYPE_AGENT_LIMIT,
     PROTOTYPE_AMBIENT_COUNTS,
+    PROTOTYPE_CLICK_SNAP_LIMIT,
     PROTOTYPE_DOOR_POLICY,
     prototypeOpenDoorRuntimes,
     prototypeOpenGraph,
+    prototypeRoomAtPoint,
+    prototypeSpriteDirection,
+    prototypeSpriteState,
+    prototypeTaskSummary,
+    repositionPrototypeAgent,
     resetPrototypeAgent,
+    snapPrototypePoint,
     startPrototypeRoute,
     type PrototypeActivityState,
     type PrototypeAgent,
 } from '../../office/floor1/navigation/prototypeRuntime';
+import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
+import { frameAtElapsedTime, resolveSpriteClip } from '../../office/sprites/resolver';
+import { SpriteSurfaceRuntime } from '../../office/sprites/runtime';
 import type { OfficeLayer, Point, ViewTransform, ViewportSize } from '../../office/types';
 import { PrototypeAgentRenderer } from './PrototypeAgentRenderer';
+import { SpritePlayer } from './SpritePlayer';
 import './floor1-candidate-simulation.css';
 
 type Props = Readonly<{
@@ -39,6 +53,7 @@ type Props = Readonly<{
     reducedMotion: boolean;
     registration?: MarkupRegistration;
     controlHost?: HTMLElement | null;
+    overlayHost?: HTMLElement | null;
     presentation?: 'inspection' | 'simulation';
     visibleLayers?: ReadonlySet<OfficeLayer>;
     transform?: ViewTransform;
@@ -80,6 +95,18 @@ const ALL_LOCAL_OVERLAYS: LocalOverlays = {
     labels: true,
     agentBounds: true,
 };
+
+type CommandMode = 'walk' | 'talk' | 'reposition' | null;
+type DragState = Readonly<{
+    agentId: string;
+    pointerId: number;
+    startClient: Point;
+    origin: Point;
+    originalAgent: PrototypeAgent;
+    preview: Point;
+    active: boolean;
+    snap: ReturnType<typeof snapPrototypePoint>;
+}>;
 const NO_LOCAL_OVERLAYS: LocalOverlays = {
     nodes: false,
     edges: false,
@@ -113,12 +140,14 @@ function mergeAgentCount(graph: CandidateNavigationGraph, current: readonly Prot
 }
 
 function nextAmbientActivity(index: number, revision: number): PrototypeActivityState {
-    const phase = (index + revision) % 5;
+    const phase = (index + revision) % 6;
     return phase === 0 ? 'moving-to-task' : phase === 1 || phase === 2 ? 'working-at-desk' : phase === 3 ? 'idle' : 'talking';
 }
 
 function selectedStatus(agent: PrototypeAgent | null): string {
     if (!agent) return 'No agent selected';
+    if (agent.task.kind === 'work' && agent.task.phase === 'working') return 'Working';
+    if (agent.task.kind === 'talk' && agent.task.phase === 'talking') return 'Talking';
     if (agent.movementState === 'walking') return 'Walking';
     if (agent.movementState === 'paused') return 'Paused';
     if (agent.movementState === 'arrived') return 'Arrived';
@@ -134,6 +163,7 @@ export function Floor1CandidateSimulation({
     reducedMotion,
     registration,
     controlHost = null,
+    overlayHost = null,
     presentation = 'inspection',
     visibleLayers = new Set<OfficeLayer>(),
     transform = { x: 0, y: 0, scale: 1 },
@@ -150,12 +180,23 @@ export function Floor1CandidateSimulation({
     const [ambientCount, setAmbientCount] = useState(20);
     const [agents, setAgents] = useState<readonly PrototypeAgent[]>(() => createPrototypeAgents(graph, mode === 'ambient' ? 20 : 0, mode));
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(() => mode === 'ambient' ? 'prototype-agent-01' : null);
+    const [cardOpen, setCardOpen] = useState(mode === 'ambient');
     const [localOverlays, setLocalOverlays] = useState<LocalOverlays>(() => initialLocalOverlays(mode));
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const [paused, setPaused] = useState(false);
     const [autoMovement, setAutoMovement] = useState(false);
     const [feedback, setFeedback] = useState(mode === 'debug' ? 'Add an agent, then click the office to send it there.' : 'Ambient simulation running.');
     const [panelCollapsed, setPanelCollapsed] = useState(false);
+    const [commandMode, setCommandMode] = useState<CommandMode>(null);
+    const [dragState, setDragState] = useState<DragState | null>(null);
+    const dragRef = useRef<DragState | null>(null);
+    const suppressAgentClickRef = useRef(false);
+    const [simulationElapsedMs, setSimulationElapsedMs] = useState(0);
+    const simulationElapsedRef = useRef(0);
+    const [selectedSpriteFrame, setSelectedSpriteFrame] = useState(0);
+    const [selectedSpriteAvailability, setSelectedSpriteAvailability] = useState<Readonly<{ available: boolean; reason: string | null }>>({ available: true, reason: null });
+    const [removeConfirmation, setRemoveConfirmation] = useState(false);
+    const [spriteRuntime] = useState(() => new SpriteSurfaceRuntime());
     const agentsRef = useRef(agents);
     const lastTimestampRef = useRef<number | null>(null);
     const frameRef = useRef<number | null>(null);
@@ -170,12 +211,21 @@ export function Floor1CandidateSimulation({
 
     useEffect(() => { agentsRef.current = agents; }, [agents]);
 
+    useEffect(() => () => spriteRuntime.dispose(), [spriteRuntime]);
+
     useEffect(() => {
         const nextCount = mode === 'ambient' ? ambientCount : 0;
         setAgents(createPrototypeAgents(graph, nextCount, mode));
         setSelectedAgentId(mode === 'ambient' && nextCount > 0 ? 'prototype-agent-01' : null);
+        setCardOpen(mode === 'ambient' && nextCount > 0);
         setLocalOverlays(initialLocalOverlays(mode));
         setPaused(false);
+        simulationElapsedRef.current = 0;
+        setSimulationElapsedMs(0);
+        setCommandMode(null);
+        setDragState(null);
+        dragRef.current = null;
+        setRemoveConfirmation(false);
         setFeedback(mode === 'debug' ? 'Add an agent, then click the office to send it there.' : `Ambient team running with ${ambientCount} agents.`);
     }, [ambientCount, graph, mode]);
 
@@ -184,24 +234,38 @@ export function Floor1CandidateSimulation({
         const runtimeGraph = { ...graph, agents: current.map(agent => agent.fixture) };
         return current.map((agent, index) => {
             if (agent.movementState === 'walking' || agent.movementState === 'paused') return agent;
+            if (agent.movementState === 'arrived') {
+                const settledActivity = agent.task.kind === 'work' ? 'working-at-desk'
+                    : agent.task.kind === 'talk' ? 'talking' : 'idle';
+                return {
+                    ...agent,
+                    movementState: 'idle' as const,
+                    activityState: settledActivity as PrototypeActivityState,
+                    activityUntil: settledActivity === 'idle' ? 3_600 : 7_200 + (index % 4) * 900,
+                };
+            }
             const remaining = agent.activityUntil - deltaMs;
-            if (remaining > 0 && agent.movementState !== 'arrived') return { ...agent, activityUntil: remaining };
+            if (remaining > 0) return { ...agent, activityUntil: remaining };
             const activity = nextAmbientActivity(index, agent.revision + 1);
             if (activity === 'moving-to-task') {
-                const target = ambientPrototypeTarget(graph, agent, index + agent.revision);
-                const plan = target ? planPrototypeRouteToPoint(runtimeGraph, agent, target) : null;
-                if (plan && plan.route.length > 20) return { ...startPrototypeRoute(agent, plan), activityUntil: 0 };
+                const wander = assignPrototypeWander(runtimeGraph, agent, index + agent.revision, simulationElapsedRef.current);
+                if (wander && (wander.route?.length ?? 0) > 20) return { ...wander, activityUntil: 0 };
+            }
+            if (activity === 'working-at-desk') {
+                const working = assignPrototypeWork(runtimeGraph, agent, simulationElapsedRef.current);
+                if (working) return { ...working, activityUntil: 0 };
+            }
+            if (activity === 'talking') {
+                const partnerIndex = index % 2 === 0 ? Math.min(current.length - 1, index + 1) : index - 1;
+                const partner = current[partnerIndex];
+                const talking = partner && partner.fixture.id !== agent.fixture.id
+                    ? assignPrototypeTalk(runtimeGraph, agent, partner, simulationElapsedRef.current)
+                    : null;
+                if (talking) return { ...talking, activityUntil: 0 };
             }
             return {
-                ...agent,
-                route: null,
-                progress: 0,
-                movementState: 'idle' as const,
-                activityState: activity === 'moving-to-task' ? 'idle' : activity,
-                targetPoint: null,
-                clickedPoint: null,
+                ...assignPrototypeIdle(agent, simulationElapsedRef.current),
                 activityUntil: 4_500 + ((index + agent.revision) % 6) * 1_250,
-                revision: agent.revision + 1,
             };
         });
     }, [autoMovement, graph, mode]);
@@ -217,6 +281,8 @@ export function Floor1CandidateSimulation({
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
             const delta = last === null ? 0 : Math.min(100, timestamp - last);
+            simulationElapsedRef.current += delta;
+            setSimulationElapsedMs(simulationElapsedRef.current);
             setAgents(previous => scheduleAmbient(
                 advancePrototypeAgents(previous, delta, BASE_SPEED_PX_PER_SECOND * playbackSpeed, false, doorRuntimes),
                 delta,
@@ -235,14 +301,33 @@ export function Floor1CandidateSimulation({
         if (!active) return;
         const cancel = (event: KeyboardEvent) => {
             if (event.key !== 'Escape') return;
-            setFeedback('Command canceled. Click an agent to select it.');
-            setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId && agent.movementState !== 'walking'
-                ? { ...agent, clickedPoint: null, targetPoint: null }
-                : agent));
+            if (dragRef.current) {
+                const canceledDrag = dragRef.current;
+                if (canceledDrag.active) setAgents(previous => previous.map(agent => agent.fixture.id === canceledDrag.agentId ? canceledDrag.originalAgent : agent));
+                dragRef.current = null;
+                setDragState(null);
+                setFeedback('Reposition canceled. Agent returned to its original node.');
+                return;
+            }
+            if (commandMode) {
+                setCommandMode(null);
+                setFeedback('Task command canceled.');
+                return;
+            }
+            if (selectedAgentId) {
+                if (cardOpen) {
+                    setCardOpen(false);
+                    setFeedback('Command canceled. Agent card closed.');
+                    return;
+                }
+                setSelectedAgentId(null);
+                setRemoveConfirmation(false);
+                setFeedback('Command canceled. Agent selection cleared.');
+            }
         };
         window.addEventListener('keydown', cancel);
         return () => window.removeEventListener('keydown', cancel);
-    }, [active, selectedAgentId]);
+    }, [active, cardOpen, commandMode, selectedAgentId]);
 
     const setAgentCount = (count: number) => {
         const bounded = Math.max(0, Math.min(PROTOTYPE_AGENT_LIMIT, count));
@@ -257,6 +342,7 @@ export function Floor1CandidateSimulation({
         setAgentCount(nextCount);
         const addedId = `prototype-agent-${String(agents.length + 1).padStart(2, '0')}`;
         setSelectedAgentId(addedId);
+        setCardOpen(true);
         setFeedback(nextCount === PROTOTYPE_AGENT_LIMIT
             ? '25-agent limit reached.'
             : `${count === 1 ? `Agent ${String(agents.length + 1).padStart(2, '0')}` : `${nextCount - agents.length} agents`} added and selected. Click the office to move it.`);
@@ -267,12 +353,15 @@ export function Floor1CandidateSimulation({
         setAgents(previous => previous.filter(agent => agent.fixture.id !== selectedAgentId));
         const remaining = agents.filter(agent => agent.fixture.id !== selectedAgentId);
         setSelectedAgentId(remaining[0]?.fixture.id ?? null);
+        setCardOpen(false);
+        setRemoveConfirmation(false);
         setFeedback('Selected agent removed.');
     };
 
     const clearAgents = () => {
         setAgents([]);
         setSelectedAgentId(null);
+        setCardOpen(false);
         setFeedback('All agents removed.');
     };
 
@@ -280,6 +369,7 @@ export function Floor1CandidateSimulation({
         const count = mode === 'ambient' ? ambientCount : agents.length;
         setAgents(createPrototypeAgents(graph, count, mode));
         setSelectedAgentId(count > 0 ? 'prototype-agent-01' : null);
+        setCardOpen(count > 0);
         setPaused(false);
         setFeedback(mode === 'ambient' ? 'Ambient simulation reset deterministically.' : 'Agents reset to deterministic spawn nodes.');
     };
@@ -287,8 +377,9 @@ export function Floor1CandidateSimulation({
     const stopSelected = () => {
         if (!selectedAgentId) return;
         setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId
-            ? { ...agent, route: null, progress: 0, movementState: 'stopped', activityState: 'idle', targetPoint: null, clickedPoint: null, revision: agent.revision + 1 }
+            ? assignPrototypeIdle(agent, simulationElapsedRef.current, true)
             : agent));
+        setCommandMode(null);
         setFeedback('Selected agent stopped.');
     };
 
@@ -312,6 +403,14 @@ export function Floor1CandidateSimulation({
             setFeedback('Add or select an agent before choosing a destination.');
             return;
         }
+        if (commandMode === 'talk') {
+            setFeedback('Choose another agent sprite as the conversation partner, or press Escape.');
+            return;
+        }
+        if (commandMode === 'reposition') {
+            setFeedback(`Drag ${selectedAgent.fixture.label} to a valid navigation node, or press Escape.`);
+            return;
+        }
         const rect = event.currentTarget.getBoundingClientRect();
         const scale = rect.width / 8192;
         const clickedPoint = { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale };
@@ -321,7 +420,13 @@ export function Floor1CandidateSimulation({
             setFeedback('No reachable path near clicked location.');
             return;
         }
-        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id ? startPrototypeRoute(agent, plan) : agent));
+        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id
+            ? startPrototypeRoute(agent, plan, {
+                kind: 'walk', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs: simulationElapsedRef.current,
+            })
+            : agent));
+        setCommandMode(null);
+        setCardOpen(true);
         setFeedback(plan.snapDistance > 20
             ? `Walking now. Target snapped ${Math.round(plan.snapDistance)}px to reachable navigation.`
             : 'Walking now on the navigation graph.');
@@ -332,6 +437,251 @@ export function Floor1CandidateSimulation({
         setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId ? resetPrototypeAgent(agent) : agent));
         setFeedback('Selected agent returned to its deterministic spawn.');
     };
+
+    const selectAgent = (agentId: string) => {
+        if (suppressAgentClickRef.current) {
+            suppressAgentClickRef.current = false;
+            return;
+        }
+        if (commandMode === 'talk' && selectedAgent && agentId !== selectedAgent.fixture.id) {
+            const partner = agents.find(agent => agent.fixture.id === agentId);
+            if (!partner) return;
+            const assigned = assignPrototypeTalk(graph, selectedAgent, partner, simulationElapsedRef.current);
+            if (!assigned) {
+                setFeedback(`No reachable conversation approach near ${partner.fixture.label}.`);
+                return;
+            }
+            setAgents(previous => previous.map(agent => {
+                if (agent.fixture.id === selectedAgent.fixture.id) return assigned;
+                if (agent.fixture.id !== partner.fixture.id) return agent;
+                return {
+                    ...agent,
+                    partnerAgentId: selectedAgent.fixture.id,
+                    activityState: 'talking' as const,
+                    task: {
+                        kind: 'talk' as const,
+                        phase: 'talking' as const,
+                        partnerAgentId: selectedAgent.fixture.id,
+                        destination: agent.point,
+                        nodeId: agent.currentNodeId,
+                        startedAtMs: simulationElapsedRef.current,
+                    },
+                    activityUntil: 8_000,
+                    revision: agent.revision + 1,
+                };
+            }));
+            setCommandMode(null);
+            setCardOpen(true);
+            setFeedback(`${selectedAgent.fixture.label} is heading to talk with ${partner.fixture.label}.`);
+            return;
+        }
+        if (selectedAgentId === agentId) setCardOpen(value => !value);
+        else {
+            setSelectedAgentId(agentId);
+            setCardOpen(true);
+        }
+        setRemoveConfirmation(false);
+        setFeedback(`${agents.find(item => item.fixture.id === agentId)?.fixture.label ?? 'Agent'} selected.`);
+    };
+
+    const assignWork = () => {
+        if (!selectedAgent) return;
+        const assigned = assignPrototypeWork(graph, selectedAgent, simulationElapsedRef.current);
+        if (!assigned) {
+            setFeedback('No reachable workstation destination is available.');
+            return;
+        }
+        setAgents(previous => previous.map(agent => agent.fixture.id === assigned.fixture.id ? assigned : agent));
+        setCommandMode(null);
+        setFeedback(`${selectedAgent.fixture.label} is heading to ${assigned.workstationId}.`);
+    };
+
+    const assignWander = () => {
+        if (!selectedAgent) return;
+        const assigned = assignPrototypeWander(graph, selectedAgent, selectedAgent.revision + agents.length, simulationElapsedRef.current);
+        if (!assigned) {
+            setFeedback('No reachable wander target is available in the current room.');
+            return;
+        }
+        setAgents(previous => previous.map(agent => agent.fixture.id === assigned.fixture.id ? assigned : agent));
+        setCommandMode(null);
+        setFeedback(`${selectedAgent.fixture.label} is wandering on the navigation graph.`);
+    };
+
+    const beginDrag = (event: PointerEvent<HTMLButtonElement>, agentId: string) => {
+        if (mode !== 'debug' || event.button !== 0) return;
+        const agent = agentsRef.current.find(candidate => candidate.fixture.id === agentId);
+        if (!agent) return;
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const next: DragState = {
+            agentId,
+            pointerId: event.pointerId,
+            startClient: { x: event.clientX, y: event.clientY },
+            origin: agent.point,
+            originalAgent: agent,
+            preview: agent.point,
+            active: false,
+            snap: null,
+        };
+        dragRef.current = next;
+        setDragState(next);
+    };
+
+    const updateDrag = (event: PointerEvent<HTMLButtonElement>, agentId: string) => {
+        const current = dragRef.current;
+        if (!current || current.agentId !== agentId || current.pointerId !== event.pointerId) return;
+        const activeDrag = current.active || Math.hypot(event.clientX - current.startClient.x, event.clientY - current.startClient.y) >= 6;
+        if (!activeDrag) return;
+        event.preventDefault();
+        const rect = overlayHost?.getBoundingClientRect();
+        const local = { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) };
+        const preview = {
+            x: (local.x - transform.x) / Math.max(0.001, transform.scale),
+            y: (local.y - transform.y) / Math.max(0.001, transform.scale),
+        };
+        const occupiedNodeIds = new Set(agentsRef.current.filter(agent => agent.fixture.id !== agentId).map(agent => agent.currentNodeId));
+        const next: DragState = { ...current, active: true, preview, snap: snapPrototypePoint(graph, preview, PROTOTYPE_CLICK_SNAP_LIMIT, occupiedNodeIds) };
+        if (!current.active) {
+            setSelectedAgentId(agentId);
+            setCardOpen(false);
+            setRemoveConfirmation(false);
+            setAgents(previous => previous.map(agent => agent.fixture.id === agentId ? {
+                ...agent,
+                movementState: 'paused',
+                activityState: 'waiting',
+                task: { kind: 'reposition', origin: current.origin, preview, startedAtMs: simulationElapsedRef.current },
+            } : agent));
+        }
+        dragRef.current = next;
+        setDragState(next);
+        setFeedback(next.snap ? `Valid snap: ${next.snap.nodeId}. Release to reposition.` : 'Invalid location. Release to return to the original node.');
+    };
+
+    const finishDrag = (event: PointerEvent<HTMLButtonElement>, agentId: string, canceled = false) => {
+        const current = dragRef.current;
+        if (!current || current.agentId !== agentId || current.pointerId !== event.pointerId) return;
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        if (current.active) suppressAgentClickRef.current = true;
+        dragRef.current = null;
+        setDragState(null);
+        if (!canceled && current.active && current.snap) {
+            setAgents(previous => previous.map(agent => agent.fixture.id === agentId
+                ? repositionPrototypeAgent(agent, current.snap!, simulationElapsedRef.current)
+                : agent));
+            setCommandMode(null);
+            setCardOpen(true);
+            setFeedback(`${agentsRef.current.find(agent => agent.fixture.id === agentId)?.fixture.label ?? 'Agent'} repositioned to ${current.snap.nodeId}.`);
+            return;
+        }
+        if (current.active) {
+            setAgents(previous => previous.map(agent => agent.fixture.id === agentId ? current.originalAgent : agent));
+            setFeedback(canceled ? 'Reposition canceled.' : 'Invalid drop reverted to the original node.');
+        }
+    };
+
+    const currentRoom = selectedAgent ? prototypeRoomAtPoint(graph, selectedAgent.point) : null;
+    const requestedSpriteState = selectedAgent ? prototypeSpriteState(selectedAgent) : 'idle';
+    const requestedSpriteDirection = selectedAgent ? prototypeSpriteDirection(selectedAgent) : 'none';
+    const resolvedSprite = selectedAgent
+        ? resolveSpriteClip(AGENT_SPRITE_MANIFEST, selectedAgent.fixture.spriteAssetId, requestedSpriteState, requestedSpriteDirection, reducedMotion)
+        : null;
+    const computedSpriteFrame = resolvedSprite && selectedAgent
+        ? frameAtElapsedTime(resolvedSprite, Math.max(0, simulationElapsedMs - selectedAgent.task.startedAtMs), selectedAgent.speed)
+        : selectedSpriteFrame;
+    const cardWidth = 326;
+    const cardHeightEstimate = mode === 'debug' ? 560 : 300;
+    const agentScreenPoint = selectedAgent ? {
+        x: transform.x + selectedAgent.point.x * transform.scale,
+        y: transform.y + selectedAgent.point.y * transform.scale,
+    } : null;
+    const cardStyle: CSSProperties | undefined = agentScreenPoint ? {
+        left: Math.max(12, Math.min(viewport.width - cardWidth - 12, agentScreenPoint.x + cardWidth + 30 > viewport.width ? agentScreenPoint.x - cardWidth - 22 : agentScreenPoint.x + 22)),
+        top: Math.max(12, Math.min(Math.max(12, viewport.height - cardHeightEstimate - 12), agentScreenPoint.y - 150)),
+        width: cardWidth,
+    } : undefined;
+
+    const agentCard = selectedAgent && cardStyle && cardOpen && !commandMode && !dragState?.active ? (
+        <aside
+            className="prototype-agent-card"
+            style={cardStyle}
+            aria-label={`${selectedAgent.fixture.label} details`}
+            onClick={event => event.stopPropagation()}
+            onWheel={event => event.stopPropagation()}
+            onPointerDown={event => event.stopPropagation()}
+        >
+            <header className="prototype-agent-card__header">
+                <div className={`prototype-agent-card__avatar prototype-agent--facing-${selectedAgent.direction}`} aria-hidden="true">
+                    <SpritePlayer
+                        manifest={AGENT_SPRITE_MANIFEST}
+                        runtime={spriteRuntime}
+                        assetId={selectedAgent.fixture.spriteAssetId}
+                        state={requestedSpriteState}
+                        direction={requestedSpriteDirection}
+                        reducedMotion={reducedMotion}
+                        paused={paused}
+                        externalElapsedMs={Math.max(0, simulationElapsedMs - selectedAgent.task.startedAtMs)}
+                        scale={0.3}
+                    />
+                </div>
+                <div><strong>{selectedAgent.fixture.label}</strong><span>{selectedStatus(selectedAgent)}</span></div>
+                <button type="button" aria-label="Close agent card" onClick={() => { setCardOpen(false); setCommandMode(null); }}>×</button>
+            </header>
+            <div className="prototype-agent-card__facts">
+                <div><span>Current task</span><strong>{prototypeTaskSummary(selectedAgent.task)}</strong></div>
+                <div><span>Location</span><strong>{currentRoom?.name ?? selectedAgent.fixture.roomName}</strong>{selectedAgent.workstationId && <small>{selectedAgent.workstationId}</small>}</div>
+                <div><span>Movement</span><strong>{selectedAgent.movementState} · {(BASE_SPEED_PX_PER_SECOND * playbackSpeed * selectedAgent.speed).toFixed(0)} px/s</strong><small>{selectedAgent.route ? `${Math.max(0, Math.round(selectedAgent.route.length - selectedAgent.progress))}px remaining · ${Math.round(selectedAgent.progress / Math.max(1, selectedAgent.route.length) * 100)}%` : 'No active route'} · {Math.max(0, Math.floor((simulationElapsedMs - selectedAgent.task.startedAtMs) / 1000))}s</small></div>
+                {(selectedAgent.workstationId || selectedAgent.partnerAgentId) && <div><span>Relationship</span><strong>{selectedAgent.workstationId ?? `With ${agents.find(agent => agent.fixture.id === selectedAgent.partnerAgentId)?.fixture.label ?? selectedAgent.partnerAgentId}`}</strong></div>}
+            </div>
+            {mode === 'debug' ? (
+                <section className="prototype-agent-card__actions" aria-label="Assign task">
+                    <h3>Assign task</h3>
+                    <button type="button" className={commandMode === 'walk' ? 'is-active' : ''} onClick={() => { setCommandMode('walk'); setCardOpen(false); setFeedback('Click a reachable office location for this walk task.'); }}>Walk somewhere</button>
+                    <button type="button" onClick={assignWork}>Work at desk</button>
+                    <button type="button" className={commandMode === 'talk' ? 'is-active' : ''} onClick={() => { setCommandMode('talk'); setCardOpen(false); setFeedback('Choose another agent sprite as the conversation partner.'); }}>Talk to agent</button>
+                    <button type="button" onClick={assignWander}>Wander</button>
+                    <button type="button" onClick={() => {
+                        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id ? assignPrototypeIdle(agent, simulationElapsedRef.current) : agent));
+                        setFeedback(`${selectedAgent.fixture.label} is idle here.`);
+                    }}>Idle here</button>
+                    <button type="button" onClick={stopSelected}>Stop current task</button>
+                    <button type="button" className={commandMode === 'reposition' ? 'is-active' : ''} onClick={() => { setCommandMode('reposition'); setCardOpen(false); setFeedback(`Drag ${selectedAgent.fixture.label}; release over a valid navigation node.`); }}>Reposition agent</button>
+                    {!removeConfirmation ? (
+                        <button type="button" className="prototype-destructive" aria-label="Remove from agent card" onClick={() => setRemoveConfirmation(true)}>Remove</button>
+                    ) : (
+                        <div className="prototype-remove-confirm" role="alert">
+                            <span>Remove this agent?</span><button type="button" onClick={removeSelected}>Confirm</button><button type="button" onClick={() => setRemoveConfirmation(false)}>Cancel</button>
+                        </div>
+                    )}
+                </section>
+            ) : <p className="prototype-agent-card__readonly">Office Engine is ambient and read-only. Open Agent Simulation to assign tasks or reposition agents.</p>}
+            <details className="prototype-agent-card__advanced">
+                <summary>Advanced diagnostics</summary>
+                <dl>
+                    <dt>Sprite asset</dt><dd>{selectedAgent.fixture.spriteAssetId} · provisional</dd>
+                    <dt>Sprite URL</dt><dd>{resolvedSprite?.asset.generatedAssetUrl ?? 'unresolved'}</dd>
+                    <dt>Request</dt><dd>{requestedSpriteState} · {requestedSpriteDirection}</dd>
+                    <dt>Resolved</dt><dd>{resolvedSprite ? `${resolvedSprite.resolvedState} · ${resolvedSprite.resolvedDirection}` : 'unavailable'}</dd>
+                    <dt>Frame</dt><dd>{selectedSpriteFrame || computedSpriteFrame} / {resolvedSprite?.asset.frameCount ?? 0}</dd>
+                    <dt>Fallback</dt><dd>{!selectedSpriteAvailability.available ? selectedSpriteAvailability.reason ?? 'texture unavailable' : resolvedSprite?.fallbackChain.join(' → ') ?? 'unresolved'}</dd>
+                    <dt>Route</dt><dd>{selectedAgent.route ? `${selectedAgent.route.nodeSequence.length} nodes · ${selectedAgent.route.length}px` : 'none'}</dd>
+                    <dt>Node</dt><dd>{selectedAgent.currentNodeId}</dd>
+                    <dt>Coordinates</dt><dd>{coordinate(selectedAgent.point)}</dd>
+                    <dt>Doors</dt><dd>{selectedAgent.route?.crossedDoorIds.join(', ') || 'none'}</dd>
+                </dl>
+            </details>
+        </aside>
+    ) : null;
+    const interactionBanner = (mode === 'debug' || commandMode || dragState?.active) ? (
+        <div className={`prototype-command-banner ${dragState?.active && !dragState.snap ? 'is-invalid' : ''}`}>
+            {dragState?.active
+                ? `Reposition ${selectedAgent?.fixture.label ?? 'agent'} · ${dragState.snap ? 'release to snap' : 'invalid location'} · Esc cancels`
+                : commandMode === 'talk' ? 'Choose a conversation partner · Esc cancels'
+                    : commandMode === 'reposition' ? `Drag ${selectedAgent?.fixture.label ?? 'agent'} · Esc cancels`
+                        : commandMode === 'walk' ? 'Click a reachable destination · Esc cancels'
+                            : selectedAgent ? 'Agent click: inspect · map click: walk · agent drag: reposition · empty drag: pan' : 'Agent click: inspect · empty drag: pan'}
+        </div>
+    ) : null;
 
     const advancedDetails = (
         <details className="prototype-advanced">
@@ -489,25 +839,46 @@ export function Floor1CandidateSimulation({
                     {selectedAgent.targetPoint && <circle className="snapped" cx={selectedAgent.targetPoint.x} cy={selectedAgent.targetPoint.y} r="24" />}
                 </svg>
             )}
+            {dragState?.active && (
+                <svg className="floor1-candidate-drag-feedback" aria-label="Agent reposition preview">
+                    <circle className="origin" cx={dragState.origin.x} cy={dragState.origin.y} r="58" />
+                    <line x1={dragState.origin.x} y1={dragState.origin.y} x2={dragState.preview.x} y2={dragState.preview.y} />
+                    {dragState.snap && <circle className="snap" cx={dragState.snap.point.x} cy={dragState.snap.point.y} r="48" />}
+                </svg>
+            )}
             <div className="prototype-agent-layer">
-                {agents.map((agent, index) => (
-                    <PrototypeAgentRenderer
-                        key={agent.fixture.id}
-                        agent={agent}
-                        selected={selectedAgentId === agent.fixture.id}
-                        transformScale={transform.scale}
-                        showLabel={mode === 'debug' ? localOverlays.labels : false}
-                        showBounds={localOverlays.agentBounds}
-                        visualOffsetIndex={index % 3 === 0 ? 0 : index % 3}
-                        onSelect={agentId => {
-                            setSelectedAgentId(agentId);
-                            setFeedback(`${agents.find(item => item.fixture.id === agentId)?.fixture.label ?? 'Agent'} selected.`);
-                        }}
-                    />
-                ))}
+                {agents.map(agent => {
+                    const dragging = dragState?.active && dragState.agentId === agent.fixture.id;
+                    const displayAgent = dragging ? { ...agent, point: dragState.preview } : agent;
+                    return (
+                        <PrototypeAgentRenderer
+                            key={agent.fixture.id}
+                            agent={displayAgent}
+                            runtime={spriteRuntime}
+                            elapsedMs={simulationElapsedMs}
+                            selected={selectedAgentId === agent.fixture.id}
+                            transformScale={transform.scale}
+                            reducedMotion={reducedMotion}
+                            paused={paused}
+                            showLabel={mode === 'debug' ? localOverlays.labels : selectedAgentId === agent.fixture.id}
+                            showBounds={localOverlays.agentBounds}
+                            dragging={Boolean(dragging)}
+                            onSelect={selectAgent}
+                            onPointerDown={beginDrag}
+                            onPointerMove={updateDrag}
+                            onPointerUp={(event, agentId) => finishDrag(event, agentId)}
+                            onPointerCancel={(event, agentId) => finishDrag(event, agentId, true)}
+                            onFrameChange={selectedAgentId === agent.fixture.id ? (_agentId, frame) => setSelectedSpriteFrame(frame) : undefined}
+                            onAvailabilityChange={selectedAgentId === agent.fixture.id ? (_agentId, available, reason) => setSelectedSpriteAvailability(previous => previous.available === available && previous.reason === reason ? previous : { available, reason }) : undefined}
+                        />
+                    );
+                })}
             </div>
             {!graph.navigationAvailable && <div className="floor1-candidate-unavailable" role="alert">{graph.unavailableReason ?? 'Candidate navigation unavailable.'}</div>}
             {controlHost ? createPortal(mode === 'ambient' ? ambientControls : debugControls, controlHost) : mode === 'ambient' ? ambientControls : debugControls}
+            {overlayHost
+                ? createPortal(<>{interactionBanner}{agentCard}</>, overlayHost)
+                : <>{interactionBanner}{agentCard}</>}
         </div>
     );
 }
