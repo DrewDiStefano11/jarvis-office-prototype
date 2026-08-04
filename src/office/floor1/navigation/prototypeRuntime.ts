@@ -706,7 +706,10 @@ export function seedAmbientMovement(graph: CandidateNavigationGraph, input: read
         const agent = agents[index];
         const target = ambientPrototypeTarget(graph, agent, index);
         if (!target) continue;
-        const plan = planPrototypeRouteToPoint({ ...graph, agents: agents.map(item => item.fixture) }, agent, target);
+        // Routing does not depend on the mutable prototype-agent roster. Keep the
+        // stable graph identity so prototypeWalkNetwork can reuse its WeakMap cache
+        // for every ambient seed instead of rebuilding the full office network.
+        const plan = planPrototypeRouteToPoint(graph, agent, target);
         if (!plan) continue;
         agents = agents.map(item => item.fixture.id === agent.fixture.id
             ? {
