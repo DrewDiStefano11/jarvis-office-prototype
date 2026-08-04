@@ -2097,6 +2097,15 @@ generated data or registration evidence.
   validation passes typecheck, lint, 417 tests across 38 files, both generated
   checks, production build, and production-bundle exclusion. Remaining: verify
   the committed blobs in a clean LF checkout, push, and monitor both CI jobs.
+- 2026-08-04: CI run 30918791554 proved the Floor 1 generated check passes on
+  Ubuntu/Node 20. Node 18 exposed a fake-timer teardown race in the existing
+  OfficeEngine timeout test, while the new newline tests passed. Restore real
+  timers before Testing Library cleanup and unmount the timeout case explicitly,
+  then rerun the complete matrix and monitor the replacement CI run.
+- 2026-08-04: The timeout suite passes five repeated local runs and a direct
+  Node 18 run. The complete clean-install validation matrix passes again with
+  417 tests across 38 files. Remaining: commit/push the teardown fix and monitor
+  the replacement Node 18 and Node 20 jobs until both are green.
 
 - 2026-08-04: Started clean independent branch at required SHA.
 - 2026-08-04: Reproduced uncaught null-document crash in real Chromium.

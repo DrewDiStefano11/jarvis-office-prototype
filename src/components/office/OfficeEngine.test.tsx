@@ -32,8 +32,8 @@ describe('OfficeEngine candidate loading lifecycle', () => {
     });
 
     afterEach(() => {
-        cleanup();
         vi.useRealTimers();
+        cleanup();
         vi.restoreAllMocks();
     });
 
@@ -61,11 +61,14 @@ describe('OfficeEngine candidate loading lifecycle', () => {
 
     it('uses a bounded terminal timeout instead of loading forever', async () => {
         vi.useFakeTimers();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const pending = deferred<OfficeOverlayDocument>();
-        render(<OfficeEngine active candidateLoader={() => pending.promise} />);
+        const view = render(<OfficeEngine active candidateLoader={() => pending.promise} />);
         await act(async () => { await vi.advanceTimersByTimeAsync(10_001); });
         expect(screen.getByText(/timed out after 10 seconds/)).toBeTruthy();
         expect(screen.queryByRole('status')).toBeNull();
+        vi.useRealTimers();
+        view.unmount();
     });
 
     it('ignores stale async completion after unmount', async () => {
