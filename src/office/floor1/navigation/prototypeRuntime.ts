@@ -154,6 +154,20 @@ function nearestNetworkKey(network: PrototypeWalkNetwork, point: Point): string 
     return best;
 }
 
+function reachableKeys(network: PrototypeWalkNetwork, start: string): ReadonlySet<string> {
+    const reached = new Set([start]);
+    const queue = [start];
+    while (queue.length > 0) {
+        const current = queue.shift()!;
+        for (const edge of network.adjacency.get(current) ?? []) {
+            if (reached.has(edge.to)) continue;
+            reached.add(edge.to);
+            queue.push(edge.to);
+        }
+    }
+    return reached;
+}
+
 function shortestNetworkPath(network: PrototypeWalkNetwork, start: string, end: string) {
     const queue = [{ key: start, cost: 0 }];
     const best = new Map([[start, 0]]);
@@ -334,10 +348,12 @@ export function planPrototypeRouteToPoint(
     const network = prototypeWalkNetwork(graph);
     const startKey = nearestNetworkKey(network, agent.point);
     if (!startKey) return null;
-    const target = [...network.points]
+    const candidates = [...network.points]
         .map(([key, point]) => ({ key, point, snapDistance: distance(point, clickedPoint) }))
         .filter(candidate => candidate.snapDistance <= PROTOTYPE_CLICK_SNAP_LIMIT)
-        .sort((a, b) => a.snapDistance - b.snapDistance || a.key.localeCompare(b.key))[0];
+        .sort((a, b) => a.snapDistance - b.snapDistance || a.key.localeCompare(b.key));
+    const reached = reachableKeys(network, startKey);
+    const target = candidates.find(candidate => reached.has(candidate.key)) ?? candidates[0];
     if (!target) return null;
     const path = shortestNetworkPath(network, startKey, target.key);
     const startRoomIds = graph.rooms.filter(room => pointInPolygon(agent.point, room.polygon)).map(room => room.id);
@@ -478,7 +494,7 @@ export function advancePrototypeAgents(
 export function seedAmbientMovement(graph: CandidateNavigationGraph, input: readonly PrototypeAgent[]): readonly PrototypeAgent[] {
     let agents = input;
     for (let index = 0; index < agents.length; index += 1) {
-        if (index % 5 !== 0) continue;
+        if (index !== 0) continue;
         const agent = agents[index];
         const target = ambientPrototypeTarget(graph, agent, index);
         if (!target) continue;
