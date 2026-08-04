@@ -17,6 +17,7 @@ import {
     isCandidateAdvancingStatus,
     advanceCandidateAgents,
     advanceCandidateDoorRuntimes,
+    buildCandidateSandboxGraph,
     buildCandidateNavigationGraph,
     CandidateAgentFixture,
     CandidateDestinationKind,
@@ -33,6 +34,7 @@ type Props = Readonly<{
     active: boolean;
     reducedMotion: boolean;
     registration?: MarkupRegistration;
+    controlHost?: HTMLElement | null;
 }>;
 
 type AgentRuntime = Readonly<{
@@ -86,8 +88,11 @@ function previewIsStartValid(agent: AgentRuntime | null, preview: RoutePreview |
         && distance(preview.startPoint, agent.point) <= PREVIEW_START_TOLERANCE;
 }
 
-export function Floor1CandidateSimulation({ active, reducedMotion, registration }: Props) {
-    const graph = useMemo(() => buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration }), [registration]);
+export function Floor1CandidateSimulation({ active, reducedMotion, registration, controlHost = null }: Props) {
+    const documents = useMemo(() => ({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }), []);
+    const graph = useMemo(() => registration
+        ? buildCandidateSandboxGraph(documents, registration)
+        : buildCandidateNavigationGraph(documents), [documents, registration]);
     const [runtime] = useState(() => new SpriteSurfaceRuntime());
     const [agents, setAgents] = useState<readonly AgentRuntime[]>(() => graph.agents.map(fixture => ({
         fixture,
@@ -106,19 +111,30 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
     const agentsRef = useRef<readonly AgentRuntime[]>(agents);
     const doorRuntimesRef = useRef<Readonly<Record<string, CandidateDoorRuntime>>>(doorRuntimes);
     const [selectedAgentId, setSelectedAgentId] = useState(graph.agents[0]?.id ?? null);
-    const [destinationFilter, setDestinationFilter] = useState<DestinationFilter>('room');
+    const [destinationFilter, setDestinationFilter] = useState<DestinationFilter>('position');
     const [destinationSearch, setDestinationSearch] = useState('');
     const destinationsForFilter = useMemo(() => graph.destinations.filter(destination => {
         if (destinationFilter === 'standard-position') return destination.kind === 'position' && destination.accessTier === 'standard';
         if (destinationFilter === 'priority-position') return destination.kind === 'position' && destination.accessTier === 'priority';
         return destination.kind === destinationFilter;
     }).filter(destination => `${destination.label} ${destination.roomName} ${destination.id}`.toLowerCase().includes(destinationSearch.toLowerCase())).slice(0, 240), [destinationFilter, destinationSearch, graph.destinations]);
-    const [destinationId, setDestinationId] = useState(() => graph.destinations.find(destination => destination.kind === 'room')?.id ?? graph.destinations[0]?.id ?? '');
-    const [preview, setPreview] = useState<RoutePreview | null>(null);
-    const [showGraph, setShowGraph] = useState(false);
+    const initialFixture = graph.agents[0];
+    const initialDestinationId = graph.destinations.find(destination => destination.id === `position:${initialFixture?.positionId}`)?.id
+        ?? graph.destinations.find(destination => destination.kind === 'room' && destination.roomId === initialFixture?.roomId)?.id
+        ?? graph.destinations.find(destination => destination.kind === 'room')?.id
+        ?? graph.destinations[0]?.id
+        ?? '';
+    const [destinationId, setDestinationId] = useState(initialDestinationId);
+    const [preview, setPreview] = useState<RoutePreview | null>(() => {
+        const fixture = initialFixture;
+        if (!fixture || !initialDestinationId || !graph.navigationAvailable) return null;
+        const result = planCandidateRoute(graph, { destinationId: initialDestinationId, agent: { id: fixture.id, currentPoint: fixture.point, revision: 0 } });
+        return { agentId: fixture.id, destinationId: initialDestinationId, startPoint: fixture.point, agentRevision: 0, result };
+    });
+    const [showGraph, setShowGraph] = useState(true);
     const [showColliders, setShowColliders] = useState(false);
     const [showRoute, setShowRoute] = useState(true);
-    const [controlPortal, setControlPortal] = useState<HTMLElement | null>(null);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const frameRef = useRef<number | null>(null);
     const lastTimestampRef = useRef<number | null>(null);
 
@@ -128,10 +144,6 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
 
     useEffect(() => { agentsRef.current = agents; }, [agents]);
     useEffect(() => { doorRuntimesRef.current = doorRuntimes; }, [doorRuntimes]);
-
-    useEffect(() => {
-        setControlPortal(document.querySelector<HTMLElement>('.office-viewport'));
-    }, []);
 
     useEffect(() => {
         runtime.setActive(active && !document.hidden);
@@ -158,7 +170,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
         const tick = (timestamp: number) => {
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
-            const delta = last === null ? 0 : timestamp - last;
+            const delta = last === null ? 0 : (timestamp - last) * playbackSpeed;
             const requestingDoorIds = activeCandidateDoorRequestIds(agentsRef.current, graph.doors);
             setDoorRuntimes(previous => {
                 const nextDoorRuntimes = advanceCandidateDoorRuntimes(previous, requestingDoorIds, delta);
@@ -185,7 +197,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             frameRef.current = null;
             lastTimestampRef.current = null;
         };
-    }, [active, anyWalking, graph.doors]);
+    }, [active, anyWalking, graph.doors, playbackSpeed]);
 
     useEffect(() => {
         if (!destinationsForFilter.some(destination => destination.id === destinationId)) {
@@ -254,9 +266,9 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
         }));
     };
 
-    const cancelSelected = () => {
+    const resetSelected = () => {
         setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId
-            ? { ...agent, status: 'idle', route: null, progress: 0, revision: agent.revision + 1 }
+            ? { ...agent, point: agent.fixture.point, status: 'idle', route: null, progress: 0, revision: agent.revision + 1 }
             : agent));
         setPreview(null);
     };
@@ -281,6 +293,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
             onTouchMoveCapture={event => event.stopPropagation()}
         >
                 <h2>Candidate navigation</h2>
+                <p className="floor1-candidate-verification">Unverified sandbox: provisional geometry and routing are not production approved.</p>
                 <p role="status" aria-live="polite">{selectedRouteLabel(preview)}</p>
                 <label>
                     Agent
@@ -312,16 +325,48 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                     <button type="button" onClick={startMovement} disabled={!beginEnabled}>Begin movement</button>
                     <button type="button" onClick={pauseSelected}>Pause</button>
                     <button type="button" onClick={resumeSelected}>Resume</button>
-                    <button type="button" onClick={cancelSelected}>Cancel</button>
+                    <button type="button" onClick={resetSelected}>Reset</button>
                 </div>
+                <label>
+                    Playback speed: {playbackSpeed}×
+                    <select aria-label="Playback speed" value={playbackSpeed} onChange={event => setPlaybackSpeed(Number(event.target.value))}>
+                        {[0.25, 0.5, 1, 2, 4].map(speed => <option key={speed} value={speed}>{speed}×</option>)}
+                    </select>
+                </label>
                 <fieldset>
                     <legend>Debug overlays</legend>
                     <label><input type="checkbox" checked={showRoute} onChange={event => setShowRoute(event.target.checked)} /> Route segments</label>
                     <label><input type="checkbox" checked={showGraph} onChange={event => setShowGraph(event.target.checked)} /> Walk-path and door graph nodes</label>
                     <label><input type="checkbox" checked={showColliders} onChange={event => setShowColliders(event.target.checked)} /> Wall/object colliders</label>
                 </fieldset>
+                <fieldset>
+                    <legend>Door runtime</legend>
+                    {graph.doors.slice(0, 5).map(door => (
+                        <label key={door.id}>
+                            {door.id} · {door.permission}
+                            <select
+                                aria-label={`${door.id} runtime state`}
+                                value={doorRuntimes[door.id]?.state ?? door.currentState ?? 'closed'}
+                                onChange={event => setDoorRuntimes(previous => ({
+                                    ...previous,
+                                    [door.id]: {
+                                        doorId: door.id,
+                                        state: event.target.value as CandidateDoorRuntime['state'],
+                                        stateElapsedMs: 0,
+                                        revision: (previous[door.id]?.revision ?? 0) + 1,
+                                    },
+                                }))}
+                            >
+                                <option value="closed">Closed</option>
+                                <option value="open">Open</option>
+                                <option value="unavailable">Unavailable</option>
+                            </select>
+                        </label>
+                    ))}
+                </fieldset>
                 {selectedAgent && (
                     <dl>
+                        <dt>Verification</dt><dd>{graph.verificationMode}</dd>
                         <dt>Current agent state</dt><dd>{selectedAgent.status}</dd>
                         <dt>Current sprite clip</dt><dd>{!reducedMotion && isCandidateAdvancingStatus(selectedAgent.status) ? 'walking' : selectedAgent.status === 'blocked' ? 'offline' : 'idle'}</dd>
                         <dt>Current world coordinate</dt><dd>{Math.round(selectedAgent.point.x)}, {Math.round(selectedAgent.point.y)}</dd>
@@ -364,6 +409,14 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                     })}
                 </svg>
             )}
+            {destinationId && (() => {
+                const destination = graph.destinations.find(item => item.id === destinationId);
+                return destination ? (
+                    <svg className="floor1-candidate-destination" aria-label={`Destination marker: ${destination.label}`}>
+                        <circle cx={destination.markerPoint?.x ?? destination.point.x} cy={destination.markerPoint?.y ?? destination.point.y} r="42" />
+                    </svg>
+                ) : null;
+            })()}
             <div className="floor1-candidate-agent-layer">
                 {agents.map(agent => (
                     <button
@@ -390,7 +443,7 @@ export function Floor1CandidateSimulation({ active, reducedMotion, registration 
                     </button>
                 ))}
             </div>
-            {controlPortal ? createPortal(<>{unavailableNotice}{controls}</>, controlPortal) : <>{unavailableNotice}{controls}</>}
+            {controlHost ? createPortal(<>{unavailableNotice}{controls}</>, controlHost) : <>{unavailableNotice}{controls}</>}
 
         </div>
     );

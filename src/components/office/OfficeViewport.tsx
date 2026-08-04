@@ -75,6 +75,7 @@ export function OfficeViewport({
     const [transform, setTransform] = useState(transformRef.current);
     const [viewport, setViewport] = useState<ViewportSize>({ width: 1, height: 1 });
     const [backgroundState, setBackgroundState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [candidateControlHost, setCandidateControlHost] = useState<HTMLDivElement | null>(null);
     const [reducedMotion, setReducedMotion] = useState(
         () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     );
@@ -352,10 +353,16 @@ export function OfficeViewport({
                     )}
                     {Floor1CandidateSimulation && reviewMode && (
                         <Suspense fallback={null}>
-                            <Floor1CandidateSimulation active={active} reducedMotion={reducedMotion} registration={FLOOR1_CANDIDATE_REGISTRATION} />
+                            <Floor1CandidateSimulation
+                                active={active}
+                                reducedMotion={reducedMotion}
+                                registration={FLOOR1_CANDIDATE_REGISTRATION}
+                                controlHost={candidateControlHost}
+                            />
                         </Suspense>
                     )}
                 </div>
+                {reviewMode && <div ref={setCandidateControlHost} className="floor1-candidate-control-host" data-testid="floor1-candidate-control-host" />}
                 {backgroundState === 'loading' && <div className="asset-status" role="status">Loading 8K office image…</div>}
                 {backgroundState === 'error' && (
                     <div className="asset-status asset-status--error" role="alert">

@@ -7,7 +7,8 @@
 
 .floor1-candidate-agent-layer,
 .floor1-candidate-route,
-.floor1-candidate-debug {
+.floor1-candidate-debug,
+.floor1-candidate-destination {
     position: absolute;
     inset: 0;
     width: 8192px;
@@ -16,7 +17,8 @@
 }
 
 .floor1-candidate-route,
-.floor1-candidate-debug {
+.floor1-candidate-debug,
+.floor1-candidate-destination {
     pointer-events: none;
 }
 
@@ -36,6 +38,11 @@
 
 .floor1-candidate-route .start { stroke: #42d77d; }
 .floor1-candidate-route .destination { stroke: #ffd44d; }
+.floor1-candidate-destination circle {
+    fill: rgba(255, 212, 77, .28);
+    stroke: #ffd44d;
+    stroke-width: 14;
+}
 .floor1-candidate-route text,
 .floor1-candidate-debug text {
     fill: #f5fbff;
@@ -134,6 +141,7 @@
     font-size: clamp(1rem, 1.35vw, 1.35rem);
     line-height: 1.2;
 }
+.floor1-candidate-verification { color: #ffd44d; font-weight: 800; }
 
 .floor1-candidate-controls p,
 .floor1-candidate-controls label,
@@ -151,6 +159,15 @@
 }
 
 .floor1-candidate-controls select,
+.floor1-candidate-controls input {
+    width: 100%;
+    min-height: 36px;
+    color: #eef4f8;
+    background: #111c24;
+    border: 1px solid #38566a;
+    border-radius: 7px;
+    padding: 6px 8px;
+}
 
 .floor1-candidate-actions {
     display: flex;

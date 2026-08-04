@@ -1990,3 +1990,112 @@ the build passes,
 the plan reflects reality,
 and remaining limitations are reported honestly.
 ```
+
+---
+
+# Floor 1 Candidate Runtime Repair (2026-08-04)
+
+## Goal and current state
+
+Repair the development-only `?floor1Review=candidate` flow from starting commit
+`98d1389074daab604ce06cf28e5204716d116616`. Browser reproduction shows an empty
+DOM caused by `OfficeViewport` reading `document.entities` while the candidate
+document is still `null`. All nine candidate middleware endpoints return HTTP
+200, so loading must be modeled explicitly and bounded rather than hidden behind
+a nullable document.
+
+## Scope
+
+- Direct-refresh candidate loading, terminal errors, and stale-load cleanup.
+- An explicit unverified-sandbox graph builder that preserves the original
+  registration and shares construction with the strict reviewed builder.
+- One candidate simulation mounted inside the authoritative office surface,
+  with an explicit control host supplied by `OfficeViewport`.
+- Useful initial route, agent, destination, graph/door visibility, movement
+  controls, reset and playback speed.
+- Regression, trust-boundary, lifecycle, viewport, and production-exclusion
+  tests plus real Chromium QA at 1920x1080 and 1366x768.
+
+## Out of scope
+
+- Approving registration evidence or changing candidate geometry.
+- Production navigation activation, new candidate records, or sprite artwork.
+- Changes to PR #24 or its branch.
+
+## Architecture decision
+
+Use a discriminated `idle | loading | loaded | error` load state in
+`OfficeEngine`. Only a loaded document may mount `OfficeViewport`. Candidate URL
+mode automatically enables the existing candidate simulation; manual debug mode
+remains separate. Split navigation building into shared structural validation,
+strict reviewed validation, explicit sandbox validation, and shared construction.
+Both graph results carry a verification mode. Render simulation world graphics
+as children of `.office-surface` so the background and overlays share one CSS
+transform. Pass a concrete toolbar host element from `OfficeViewport`; do not
+query the DOM opportunistically.
+
+## Data model and trust boundary
+
+- Strict public builder defaults to reviewed validation and returns only
+  `verificationMode: 'reviewed'`.
+- Development-only sandbox builder accepts the original unmodified provisional
+  registration after shape, provenance, coordinate-space, dimensions, transform,
+  bounds and dataset-wrapper checks, then returns
+  `verificationMode: 'unverified-sandbox'`.
+- No registration field is synthesized, cloned into an approved state, or
+  mutated. Production entry points cannot import or select sandbox mode.
+
+## Milestones and acceptance
+
+1. Loading repair: candidate starts with visible status, resolves to office or a
+   stage-specific bounded error, ignores stale loads, and never mounts a null
+   viewport.
+2. Trust repair: strict builder rejects current registration; sandbox builder
+   accepts it unchanged and constructs real agents/destinations.
+3. Integration repair: direct URL automatically displays office, warning,
+   toolbar, at least two agents, labels, destination marker and route preview.
+4. Runtime controls: select, preview, begin, pause, resume, reset, speed and door
+   semantics use existing navigation/advance functions with one cleaned-up RAF.
+5. Verification: required npm checks pass; Chromium refresh, responsive sizing,
+   pan/zoom alignment and view switching pass with clean console/network state.
+
+## Test and visual-validation strategy
+
+Add focused Vitest component/unit coverage for loading transitions, stale loads,
+graph verification modes and immutability, simulation startup/controls, explicit
+host mounting, transforms and cleanup. Run `npm ci`, typecheck, lint, Vitest,
+production build and all three generated/bundle checks. Use the actual Vite
+server and browser DOM, console, network and bounding-box assertions at both
+required viewports. Keep screenshots and temporary browser scripts outside the
+repository.
+
+## Risks, assumptions, and rollback
+
+The candidate geometry remains intentionally unverified and may contain routing
+limitations; the persistent warning must say so. Large 8K image decode can be
+slower than JSON loading, so data loading has a bounded failure while image
+loading reports its own terminal error. The repair is isolated to the candidate
+development path and can be rolled back as one branch commit without changing
+generated data or registration evidence.
+
+## Decision and progress log
+
+- 2026-08-04: Started clean independent branch at required SHA.
+- 2026-08-04: Reproduced uncaught null-document crash in real Chromium.
+- 2026-08-04: Verified all nine development middleware responses settle with
+  HTTP 200 and JSON bodies.
+- 2026-08-04: Implementation, automated validation, browser QA, and the clean
+  repair commit are complete.
+- 2026-08-04: Replaced nullable loading with explicit loading/loaded/error states,
+  a ten-second terminal timeout, stale-load suppression, and normal sample fallback.
+- 2026-08-04: Split strict reviewed and unverified-sandbox validation; the
+  original candidate registration remains deeply unchanged and strict mode still
+  rejects it.
+- 2026-08-04: Consolidated on the existing candidate simulation inside the
+  authoritative office surface and removed the duplicate portal/RAF abstraction.
+- 2026-08-04: Vitest passes 415 tests across 37 files; typecheck and lint pass.
+- 2026-08-04: Chrome QA passes candidate direct load/refresh and full interaction
+  checks at 1920×1080 and 1366×768 plus normal office/legacy view switching.
+- 2026-08-04: Repaired the deterministic generated-manifest line-ending drift;
+  all required gates passed. Publication and post-commit smoke are the only
+  external handoff steps.

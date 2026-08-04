@@ -1,20 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { ReactNode } from 'react';
-import { OfficeOverlayDocument, OfficeLayer, ViewTransform, Point } from '../../office/types';
+import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform } from '../../office/types';
 import { EntityInspector } from './EntityInspector';
 import { OfficeViewport } from './OfficeViewport';
 import './office-engine.css';
 
+type OfficeLoadState =
+    | Readonly<{ status: 'loading'; stage: string }>
+    | Readonly<{ status: 'loaded'; document: OfficeOverlayDocument; dataSource: string }>
+    | Readonly<{ status: 'error'; stage: string; message: string }>;
+
 interface OfficeEngineCoreProps {
     active: boolean;
-    document: OfficeOverlayDocument | null;
-    loadError: string | null;
+    loadState: OfficeLoadState;
     statusLabel: string;
     dataSource: string;
-    debugToggle?: ReactNode;
     selectedId: string | null;
     hoveredId: string | null;
-    transform: ViewTransform;
     focusRequest: number;
     visibleLayers: ReadonlySet<OfficeLayer>;
     onSelectId: (id: string | null) => void;
@@ -22,16 +22,13 @@ interface OfficeEngineCoreProps {
     onPointerOfficePoint: (point: Point | null) => void;
     onTransformChange: (transform: ViewTransform) => void;
     onFocusRequest: () => void;
-    children?: ReactNode;
 }
 
 export function OfficeEngineCore({
     active,
-    document,
-    loadError,
+    loadState,
     statusLabel,
     dataSource,
-    debugToggle,
     selectedId,
     hoveredId,
     focusRequest,
@@ -41,9 +38,12 @@ export function OfficeEngineCore({
     onPointerOfficePoint,
     onTransformChange,
     onFocusRequest,
-    children
 }: OfficeEngineCoreProps) {
-    const inspected = document?.entities.find(e => e.id === hoveredId) ?? document?.entities.find(e => e.id === selectedId) ?? null;
+    const document = loadState.status === 'loaded' ? loadState.document : null;
+    const inspected = document?.entities.find(entity => entity.id === hoveredId)
+        ?? document?.entities.find(entity => entity.id === selectedId)
+        ?? null;
+    const candidateMode = dataSource === 'candidate-review';
 
     return (
         <main className="office-engine">
@@ -53,38 +53,43 @@ export function OfficeEngineCore({
                     <h1>Interactive office engine</h1>
                 </div>
                 <div className="header-actions">
-                    <span className={`sample-badge ${dataSource === 'candidate-review' ? 'sample-badge--candidate' : ''}`}>
-                        {statusLabel}
-                    </span>
-                    {debugToggle}
+                    <span className={`sample-badge ${candidateMode ? 'sample-badge--candidate' : ''}`}>{statusLabel}</span>
                 </div>
             </header>
-            <section className="engine-workspace">
-                {loadError && (
-                    <p className="asset-status asset-status--error" role="alert">
-                        {loadError}
+            <section className={`engine-workspace ${candidateMode ? 'engine-workspace--candidate' : ''}`}>
+                {candidateMode && (
+                    <p className="candidate-trust-warning" role="alert">
+                        Provisional, unverified Floor 1 geometry and routing — not production approved.
                     </p>
                 )}
-
-                <OfficeViewport
-                    active={active}
-                    document={document as any}
-                    debug={false}
-                    reviewMode={dataSource === 'candidate-review'}
-                    selectedId={selectedId}
-                    hoveredId={hoveredId}
-                    visibleLayers={visibleLayers}
-                    onSelect={onSelectId}
-                    onHover={onHoverId}
-                    onPointerOfficePoint={onPointerOfficePoint}
-                    onTransformChange={onTransformChange}
-                    focusRequest={focusRequest}
-                />
-
-                {children}
-
-                {/* Provide the normal side panel if there's no debug overlay covering it entirely. */}
-                {!children && (
+                {loadState.status === 'loading' && (
+                    <div className="office-load-state" role="status" data-load-stage={loadState.stage}>
+                        Loading Floor 1 {candidateMode ? 'candidate data' : 'office data'}…
+                    </div>
+                )}
+                {loadState.status === 'error' && (
+                    <div className="office-load-state office-load-state--error" role="alert" data-load-stage={loadState.stage}>
+                        <strong>Floor 1 failed during {loadState.stage}.</strong>
+                        <span>{loadState.message}</span>
+                    </div>
+                )}
+                {document && (
+                    <OfficeViewport
+                        active={active}
+                        document={document}
+                        debug={candidateMode}
+                        reviewMode={candidateMode}
+                        selectedId={selectedId}
+                        hoveredId={hoveredId}
+                        visibleLayers={visibleLayers}
+                        onSelect={onSelectId}
+                        onHover={onHoverId}
+                        onPointerOfficePoint={onPointerOfficePoint}
+                        onTransformChange={onTransformChange}
+                        focusRequest={focusRequest}
+                    />
+                )}
+                {document && !candidateMode && (
                     <aside className="engine-sidebar">
                         <section className="engine-panel access-legend">
                             <h2>Access semantics</h2>

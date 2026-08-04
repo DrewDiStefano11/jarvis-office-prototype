@@ -83,6 +83,8 @@ export type CandidateNavigationBuildOptions = Readonly<{
     instrumentation?: CandidateGraphBuildInstrumentation;
 }>;
 
+export type CandidateGraphVerificationMode = 'reviewed' | 'unverified-sandbox';
+
 export type CandidateDoorPermission = 'general' | 'restricted' | 'reserved' | 'blocked' | 'elevator' | 'manual_review_required' | 'malformed';
 export type CandidateDoorPhysicalState = 'closed' | 'opening' | 'open' | 'closing' | 'waiting' | 'unavailable';
 export type CandidateDoorStep = Readonly<{ doorId: string; permission: CandidateDoorPermission; initialPhysicalState: CandidateDoorPhysicalState; requiredAction: 'automatic_open' | 'wait_for_open' | 'elevator_call' | 'unavailable' | 'none'; approachPoint: Point; thresholdPoint: Point; exitPoint: Point; approachDistance: number; thresholdDistance: number; exitDistance: number; clearanceReleaseDistance: number; }>;
@@ -133,6 +135,7 @@ export type CandidateWalkSegment = Readonly<{
 }>;
 
 export type CandidateNavigationGraph = Readonly<{
+    verificationMode: CandidateGraphVerificationMode;
     rooms: readonly CandidateRoom[];
     doors: readonly CandidateDoorNode[];
     agents: readonly CandidateAgentFixture[];
@@ -325,8 +328,8 @@ function transformMarkupWidth(width: number, registration: MarkupRegistration): 
     return registration.storedCoordinateSpace === 'registered_candidate_source' ? width : width * registration.scale;
 }
 
-function unavailableGraph(reason: string): CandidateNavigationGraph {
-    return { rooms: [], doors: [], agents: [], destinations: [], colliders: [], walkNodes: [], walkSegments: [], roomDiagnostics: [reason], nodeCount: 0, edgeCount: 0, navigationAvailable: false, unavailableReason: reason };
+function unavailableGraph(reason: string, verificationMode: CandidateGraphVerificationMode): CandidateNavigationGraph {
+    return { verificationMode, rooms: [], doors: [], agents: [], destinations: [], colliders: [], walkNodes: [], walkSegments: [], roomDiagnostics: [reason], nodeCount: 0, edgeCount: 0, navigationAvailable: false, unavailableReason: reason };
 }
 
 function record(value: unknown, context: string): UnknownRecord {
@@ -602,13 +605,36 @@ function buildCandidateAgents(selectedPositions: readonly CandidatePositionRecor
     }));
 }
 
-export function buildCandidateSandboxGraph(documents: unknown, registration: unknown) {
-    return buildCandidateNavigationGraph(documents as unknown as CandidateDocuments, { registration, verificationMode: 'unverified-sandbox' } as unknown as CandidateNavigationBuildOptions);
+export function validateCandidateSandboxRegistration(registration: MarkupRegistration | null | undefined): string | null {
+    const shapeFailure = validateRegistrationShape(registration);
+    if (shapeFailure) return shapeFailure;
+    if (!registration) return 'Candidate sandbox unavailable: Floor 1 markup registration is missing.';
+    if (registration.productionApproved !== false) return 'Candidate sandbox unavailable: registration crossed the production boundary.';
+    if (registration.status !== 'unverified' && registration.status !== 'review_required') return 'Candidate sandbox unavailable: registration is not provisional.';
+    if (!['candidate_unverified', 'candidate_review_required', 'candidate_reviewed'].includes(registration.approvalStatus ?? '')) return 'Candidate sandbox unavailable: provisional approval status is invalid.';
+    if (!registration.provenance?.generator || !registration.provenance.generatedArtifact || registration.provenance.sourceEvidence.length === 0) return 'Candidate sandbox unavailable: registration provenance is missing.';
+    return null;
 }
+
+export function buildCandidateSandboxGraph(documents: CandidateDocuments, registration: MarkupRegistration): CandidateNavigationGraph {
+    const registrationFailure = validateCandidateSandboxRegistration(registration);
+    if (registrationFailure) return unavailableGraph(registrationFailure, 'unverified-sandbox');
+    return constructCandidateNavigationGraph(documents, registration, {}, 'unverified-sandbox');
+}
+
 export function buildCandidateNavigationGraph(documents: CandidateDocuments, options: CandidateNavigationBuildOptions = {}): CandidateNavigationGraph {
     const registration = options.registration ?? DEFAULT_CANDIDATE_REGISTRATION;
     const registrationFailure = validateCandidateReviewRegistration(registration);
-    if (registrationFailure) return unavailableGraph(registrationFailure);
+    if (registrationFailure) return unavailableGraph(registrationFailure, 'reviewed');
+    return constructCandidateNavigationGraph(documents, registration, options, 'reviewed');
+}
+
+function constructCandidateNavigationGraph(
+    documents: CandidateDocuments,
+    registration: MarkupRegistration,
+    options: CandidateNavigationBuildOptions,
+    verificationMode: CandidateGraphVerificationMode,
+): CandidateNavigationGraph {
     const roomData = wrapperData(documents.rooms, 'rooms');
     const positionData = wrapperData(documents.positions, 'positions');
     const doorData = wrapperData(documents.doors, 'doors');
@@ -714,6 +740,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
     }
 
     const graphForApproach = {
+        verificationMode,
         rooms,
         doors,
         agents: [],
@@ -908,6 +935,7 @@ export function buildCandidateNavigationGraph(documents: CandidateDocuments, opt
     }).filter((item): item is CandidateDestination => item !== null && bounded(item.point));
 
     return {
+        verificationMode,
         rooms,
         doors,
         agents,

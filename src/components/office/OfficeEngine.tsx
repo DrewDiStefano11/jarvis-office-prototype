@@ -1,114 +1,113 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { loadVerifiedProductionOverlay } from '../../office/floor1/runtime';
-import { loadFloor1CandidateOverlay } from '../../office/floor1/candidateReview';
-import { OfficeOverlayDocument, Point, ViewTransform } from '../../office/types';
+import {
+    FLOOR1_CANDIDATE_LAYERS,
+    loadFloor1CandidateOverlay,
+} from '../../office/floor1/candidateReview';
+import { NON_PRODUCTION_OVERLAY } from '../../office/sampleOverlay';
+import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform } from '../../office/types';
 import { OfficeEngineCore } from './OfficeEngineCore';
 
-const OfficeDevelopmentEngine = import.meta.env.DEV
-    ? lazy(() => import('./OfficeDevelopmentEngine').then(m => ({ default: m.OfficeDevelopmentEngine })))
-    : null;
+const CANDIDATE_LOAD_TIMEOUT_MS = 10_000;
+
+type OfficeLoadState =
+    | Readonly<{ status: 'loading'; stage: string }>
+    | Readonly<{ status: 'loaded'; document: OfficeOverlayDocument; dataSource: 'approved-production' | 'candidate-review' | 'sample-fallback' }>
+    | Readonly<{ status: 'error'; stage: string; message: string }>;
 
 interface OfficeEngineProps {
     active: boolean;
     candidateLoader?: () => Promise<OfficeOverlayDocument>;
 }
 
-export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
-    const [document, setDocument] = useState<OfficeOverlayDocument | null>(null);
-    const [loadError, setLoadError] = useState<string | null>(null);
-    const [dataSource, setDataSource] = useState<'approved-production' | 'candidate-review' | 'sample-fallback'>('sample-fallback');
-    const [debug, setDebug] = useState(false);
+function candidateModeRequested(): boolean {
+    return import.meta.env.DEV && new URLSearchParams(window.location.search).get('floor1Review') === 'candidate';
+}
 
-    // Viewport state
+function messageFrom(error: unknown, fallback: string): string {
+    return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise.then(
+            value => { window.clearTimeout(timeout); resolve(value); },
+            error => { window.clearTimeout(timeout); reject(error); },
+        );
+    });
+}
+
+export function OfficeEngine({ active, candidateLoader }: OfficeEngineProps) {
+    const candidateRequested = candidateModeRequested();
+    const [loadState, setLoadState] = useState<OfficeLoadState>({ status: 'loading', stage: candidateRequested ? 'candidate-data' : 'production-data' });
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-    const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
-    const [pointer, setPointer] = useState<Point | null>(null);
+    const [, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
+    const [, setPointer] = useState<Point | null>(null);
     const [focusRequest, setFocusRequest] = useState(0);
-
-    // Passed to children
-    const [visibleLayers, setVisibleLayers] = useState<Set<string>>(new Set());
+    const visibleLayers = useMemo<ReadonlySet<OfficeLayer>>(
+        () => candidateRequested ? new Set(FLOOR1_CANDIDATE_LAYERS) : new Set<OfficeLayer>(),
+        [candidateRequested],
+    );
 
     useEffect(() => {
-        let cancelled = false;
-        const url = new URL(window.location.href);
-        const reviewRequested = url.searchParams.get('floor1Review') === 'candidate';
+        let stale = false;
+        setLoadState({ status: 'loading', stage: candidateRequested ? 'candidate-data' : 'production-data' });
 
-        if (reviewRequested || debug) {
-            const loadCandidate = candidateLoader ?? loadFloor1CandidateOverlay;
-            loadCandidate().then(candidate => {
-                if (cancelled) return;
-                setDocument(candidate);
-                setDataSource('candidate-review');
-            }).catch(error => {
-                if (cancelled) return;
-                setLoadError(error instanceof Error ? error.message : 'Floor 1 candidate data failed validation.');
-            });
-            return () => { cancelled = true; };
+        if (candidateRequested) {
+            const loader = candidateLoader ?? loadFloor1CandidateOverlay;
+            withTimeout(loader(), CANDIDATE_LOAD_TIMEOUT_MS, 'Candidate data loading timed out after 10 seconds.')
+                .then(document => {
+                    if (!stale) setLoadState({ status: 'loaded', document, dataSource: 'candidate-review' });
+                })
+                .catch(error => {
+                    if (stale) return;
+                    const message = messageFrom(error, 'Floor 1 candidate data failed validation.');
+                    console.error('[Floor 1 candidate][candidate-data]', error);
+                    setLoadState({ status: 'error', stage: 'candidate-data', message });
+                });
+        } else {
+            loadVerifiedProductionOverlay()
+                .then(document => {
+                    if (stale) return;
+                    setLoadState(document
+                        ? { status: 'loaded', document, dataSource: 'approved-production' }
+                        : { status: 'loaded', document: NON_PRODUCTION_OVERLAY, dataSource: 'sample-fallback' });
+                })
+                .catch(error => {
+                    if (stale) return;
+                    const message = messageFrom(error, 'Approved Floor 1 data failed validation.');
+                    console.error('[Office engine][production-data]', error);
+                    setLoadState({ status: 'error', stage: 'production-data', message });
+                });
         }
 
-        loadVerifiedProductionOverlay().then(production => {
-            if (cancelled || !production) return;
-            setDocument(production);
-            setDataSource('approved-production');
-        }).catch(error => {
-            if (cancelled) return;
-            setLoadError(error instanceof Error ? error.message : 'Approved Floor 1 data failed validation.');
-        });
+        return () => { stale = true; };
+    }, [candidateLoader, candidateRequested]);
 
-        return () => { cancelled = true; };
-    }, [candidateLoader, debug]);
-
+    const dataSource = loadState.status === 'loaded' ? loadState.dataSource : candidateRequested ? 'candidate-review' : 'sample-fallback';
     const statusLabel = dataSource === 'approved-production'
         ? 'Approved production Floor 1'
         : dataSource === 'candidate-review'
-            ? 'Candidate review / Debug'
+            ? 'Candidate sandbox — unverified / not production approved'
             : 'Sample fallback — not production Floor 1';
-
-    const debugToggle = import.meta.env.DEV ? (
-        <label className="debug-toggle">
-            <input type="checkbox" checked={debug} onChange={e => {
-                setDebug(e.target.checked);
-                if (!e.target.checked) setVisibleLayers(new Set());
-            }} />
-            {debug ? 'Disable debug mode' : 'Enable debug mode'}
-        </label>
-    ) : null;
 
     return (
         <OfficeEngineCore
             active={active}
-            document={document}
-            loadError={loadError}
+            loadState={loadState}
             statusLabel={statusLabel}
             dataSource={dataSource}
-            debugToggle={debugToggle}
             selectedId={selectedId}
             hoveredId={hoveredId}
-            transform={transform}
             focusRequest={focusRequest}
-            visibleLayers={visibleLayers as any}
+            visibleLayers={visibleLayers}
             onSelectId={setSelectedId}
             onHoverId={setHoveredId}
             onPointerOfficePoint={setPointer}
             onTransformChange={setTransform}
-            onFocusRequest={() => setFocusRequest(v => v + 1)}
-        >
-            {debug && OfficeDevelopmentEngine && (
-                <Suspense fallback={null}>
-                    <OfficeDevelopmentEngine
-                        active={active}
-                        document={document as any}
-                        transform={transform}
-                        selectedId={selectedId}
-                        onSelectId={setSelectedId}
-                        pointer={pointer}
-                        visibleLayers={visibleLayers}
-                        setVisibleLayers={setVisibleLayers}
-                    />
-                </Suspense>
-            )}
-        </OfficeEngineCore>
+            onFocusRequest={() => setFocusRequest(value => value + 1)}
+        />
     );
 }

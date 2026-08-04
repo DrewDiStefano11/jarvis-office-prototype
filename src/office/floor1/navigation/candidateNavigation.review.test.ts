@@ -114,6 +114,7 @@ function alternateGraph(firstDoorMode: string): CandidateNavigationGraph {
         roomDiagnostics: [],
         nodeCount: 6,
         edgeCount: 3,
+        verificationMode: 'reviewed',
         navigationAvailable: true,
     };
 }
@@ -208,6 +209,7 @@ describe('current merge-blocker regressions', () => {
             roomDiagnostics: [],
             nodeCount: 1,
             edgeCount: 1,
+            verificationMode: 'reviewed',
             navigationAvailable: true,
         };
     }
@@ -270,6 +272,7 @@ describe('current merge-blocker regressions', () => {
             roomDiagnostics: [],
             nodeCount: 3,
             edgeCount: 2,
+        verificationMode: 'reviewed',
         navigationAvailable: true,
         };
         const route = testRoute(overlapGraph, { x: 100, y: 100 }, 'target');
@@ -493,6 +496,7 @@ describe('room destination access tiers and walk connector candidate search', ()
             roomDiagnostics: [],
             nodeCount: 11,
             edgeCount: 3,
+            verificationMode: 'reviewed',
             navigationAvailable: true,
         };
     }
@@ -513,6 +517,7 @@ describe('room destination access tiers and walk connector candidate search', ()
             roomDiagnostics: [],
             nodeCount: 6,
             edgeCount: 3,
+            verificationMode: 'reviewed',
             navigationAvailable: true,
         };
         return { ...base, ...overrides };

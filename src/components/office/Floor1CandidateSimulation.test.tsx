@@ -63,16 +63,23 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
     });
 
     it('portals navigation controls to the viewport outside the transformed world surface', async () => {
-        const { container } = render(<div className="office-viewport"><div className="office-surface"><Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} /></div></div>);
+        const host = document.createElement('div');
+        const { container } = render(<div className="office-viewport"><div className="office-surface" /><div data-testid="candidate-host" /></div>);
+        container.querySelector('[data-testid="candidate-host"]')?.replaceWith(host);
+        render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} controlHost={host} />);
         const controls = await screen.findByLabelText('Candidate navigation review controls');
-        expect(controls.parentElement).toBe(container.querySelector('.office-viewport'));
+        expect(controls.parentElement).toBe(host);
+        expect(host.parentElement).toBe(container.querySelector('.office-viewport'));
     });
 
 
     it('stops scroll and pointer gestures on the portaled panel before they reach the viewport', async () => {
         const wheel = vi.fn();
         const pointer = vi.fn();
-        render(<div className="office-viewport" onWheel={wheel} onPointerDown={pointer}><div className="office-surface"><Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} /></div></div>);
+        const host = document.createElement('div');
+        const wrapper = render(<div className="office-viewport" onWheel={wheel} onPointerDown={pointer}><div data-testid="candidate-host" /></div>);
+        wrapper.container.querySelector('[data-testid="candidate-host"]')?.replaceWith(host);
+        render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} controlHost={host} />);
         const controls = await screen.findByLabelText('Candidate navigation review controls');
         fireEvent.wheel(controls);
         fireEvent.pointerDown(controls);
@@ -90,7 +97,6 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
     it('renders all walk nodes in the graph review overlay instead of truncating by ID order', async () => {
         const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
         await screen.findByLabelText('Candidate navigation review controls');
-        fireEvent.click(screen.getByLabelText('Walk-path and door graph nodes'));
         await waitFor(() => expect(container.querySelectorAll('.floor1-candidate-debug--graph circle:not(.door)').length).toBeGreaterThan(1000));
     });
 
@@ -140,7 +146,7 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         render(<Floor1CandidateSimulation active reducedMotion={false} registration={TEST_REGISTRATION} />);
         const preview = await screen.findByText('Preview route');
         fireEvent.click(preview);
-        await waitFor(() => expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(true));
+        await waitFor(() => expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(false));
         expect(screen.getByLabelText(/Review agent 01\. idle\./)).toBeTruthy();
         const agentSelect = screen.getByLabelText('Agent') as HTMLSelectElement;
         fireEvent.change(agentSelect, { target: { value: 'floor1-review-agent-02' } });
@@ -148,7 +154,7 @@ describe('Floor1CandidateSimulation preview identity and destination controls', 
         const destinationSelect = screen.getByLabelText('Destination') as HTMLSelectElement;
         fireEvent.change(destinationSelect, { target: { value: destinationSelect.options[Math.min(1, destinationSelect.options.length - 1)]?.value ?? destinationSelect.value } });
         expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(true);
-        fireEvent.click(screen.getByText('Cancel'));
+        fireEvent.click(screen.getByText('Reset'));
         expect(screen.getByText('Begin movement').hasAttribute('disabled')).toBe(true);
         expect(screen.getByText('No route previewed.')).toBeTruthy();
     });

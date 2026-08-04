@@ -326,9 +326,24 @@ export async function loadFloor1CandidateOverlay(
     fetcher: typeof fetch = fetch,
 ): Promise<OfficeOverlayDocument> {
     const entries = await Promise.all(FLOOR1_CANDIDATE_CATEGORIES.map(async category => {
-        const response = await fetcher(`/__floor1-candidate/${category}.json`);
+        let response: Response;
+        try {
+            response = await fetcher(`/__floor1-candidate/${category}.json`);
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : 'request failed';
+            throw new Error(`Floor 1 candidate ${category} request failed: ${detail}`);
+        }
         if (!response.ok) throw new Error(`Floor 1 candidate ${category} failed to load (${response.status}).`);
-        return [category, await response.json()] as const;
+        try {
+            return [category, await response.json()] as const;
+        } catch {
+            throw new Error(`Floor 1 candidate ${category} is malformed JSON.`);
+        }
     }));
-    return buildFloor1CandidateOverlay(Object.fromEntries(entries) as CandidateDocuments);
+    try {
+        return buildFloor1CandidateOverlay(Object.fromEntries(entries) as CandidateDocuments);
+    } catch (error) {
+        const detail = error instanceof Error ? error.message : 'overlay validation failed';
+        throw new Error(`Floor 1 candidate overlay validation failed: ${detail}`);
+    }
 }
