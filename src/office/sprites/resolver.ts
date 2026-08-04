@@ -7,8 +7,14 @@ import {
 } from './types';
 
 function findClip(asset: SpriteAssetManifest, state: SpriteState, direction: SpriteDirection) {
-    return asset.clips.find(clip => clip.state === state && clip.direction === direction)
-        ?? asset.clips.find(clip => clip.state === state && clip.direction === 'none');
+    const truthfulFallbacks: readonly SpriteDirection[] = direction === 'none'
+        ? ['south', 'east', 'west', 'north']
+        : [direction, 'none', 'south', 'east', 'west', 'north'];
+    for (const candidate of truthfulFallbacks) {
+        const clip = asset.clips.find(item => item.state === state && item.direction === candidate);
+        if (clip) return clip;
+    }
+    return undefined;
 }
 
 export function resolveSpriteClip(

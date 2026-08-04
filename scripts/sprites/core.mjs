@@ -302,7 +302,7 @@ function inventoryMarkdown(inventory) {
       : 'not proven';
     lines.push(`| ${record.id} | \`${record.path}\` | ${record.width}×${record.height} | ${record.alphaChannelPresent ? (record.fullyOpaque ? 'present, unused' : 'used') : 'none'} | ${grid} | ${record.status} | ${record.blockingIssues.join('<br>') || '—'} |`);
   }
-  lines.push('', '## Promotion boundary', '', 'Only deterministic production candidates are copied into the generated runtime directory. The generated checksum must equal the inspected source checksum. Compass directions are not claimed because no authoritative row-direction metadata is committed.', '');
+  lines.push('', '## Promotion boundary', '', 'Only deterministic production candidates are copied into the generated runtime directory. The generated checksum must equal the inspected source checksum. The shared 6x8 agent-sheet layout authors cardinal rows as south=0, east=2, north=4, and west=6.', '');
   return lines.join('\n');
 }
 
@@ -325,6 +325,7 @@ export async function writeInventory(root = REPO_ROOT) {
 }
 
 function runtimeManifest(inventory) {
+  const cardinalRows = [['south', 0], ['east', 2], ['north', 4], ['west', 6]];
   const assets = inventory.records
     .filter(record => record.status === 'production_candidate' && record.blockingIssues.length === 0)
     .map(record => ({
@@ -346,46 +347,30 @@ function runtimeManifest(inventory) {
       blockingReason: null,
       agentProfileCompatibility: PROFILE_IDS,
       classification: 'agent',
-      authoredDirections: ['none'],
+      authoredDirections: cardinalRows.map(([direction]) => direction),
       horizontalFlipDirections: [],
-      clips: [
-        {
-          id: `${record.id}:idle`,
-          state: 'idle',
-          direction: 'none',
-          frames: [0],
-          framesPerSecond: 1,
-          loop: false,
-          repeatDelayMs: 0,
-          yoyo: false,
-          reducedMotionFallbackFrame: 0,
-          staticFallbackFrame: 0,
-        },
-        {
-          id: `${record.id}:walking`,
-          state: 'walking',
-          direction: 'none',
-          frames: [0, 1, 2, 3, 4, 5],
-          framesPerSecond: 8,
-          loop: true,
-          repeatDelayMs: 0,
-          yoyo: false,
-          reducedMotionFallbackFrame: 0,
-          staticFallbackFrame: 0,
-        },
-        {
-          id: `${record.id}:offline`,
-          state: 'offline',
-          direction: 'none',
-          frames: [0],
-          framesPerSecond: 1,
-          loop: false,
-          repeatDelayMs: 0,
-          yoyo: false,
-          reducedMotionFallbackFrame: 0,
-          staticFallbackFrame: 0,
-        }
-      ],
+      clips: cardinalRows.flatMap(([direction, row]) => {
+        const firstFrame = row * record.proposedColumns;
+        return [
+          {
+            id: `${record.id}:idle:${direction}`,
+            state: 'idle', direction, frames: [firstFrame], framesPerSecond: 1, loop: false,
+            repeatDelayMs: 0, yoyo: false, reducedMotionFallbackFrame: firstFrame, staticFallbackFrame: firstFrame,
+          },
+          {
+            id: `${record.id}:walking:${direction}`,
+            state: 'walking', direction,
+            frames: Array.from({ length: record.proposedColumns }, (_, column) => firstFrame + column),
+            framesPerSecond: 8, loop: true, repeatDelayMs: 0, yoyo: false,
+            reducedMotionFallbackFrame: firstFrame, staticFallbackFrame: firstFrame,
+          },
+          {
+            id: `${record.id}:offline:${direction}`,
+            state: 'offline', direction, frames: [firstFrame], framesPerSecond: 1, loop: false,
+            repeatDelayMs: 0, yoyo: false, reducedMotionFallbackFrame: firstFrame, staticFallbackFrame: firstFrame,
+          },
+        ];
+      }),
     }));
   return {
     schemaVersion: 1,

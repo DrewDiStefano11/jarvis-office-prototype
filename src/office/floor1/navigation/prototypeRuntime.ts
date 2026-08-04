@@ -2,7 +2,10 @@ import { OFFICE_SOURCE_HEIGHT, OFFICE_SOURCE_WIDTH } from '../../constants';
 import type { Point } from '../../types';
 import type { SpriteDirection, SpriteState } from '../../sprites/types';
 import {
+    AGENT_FOOTPRINT_RADIUS,
     advanceCandidateAgents,
+    candidatePointHasStaticClearance,
+    candidateSegmentHasStaticClearance,
     pointInPolygon,
     type CandidateAgentFixture,
     type CandidateDoorStep,
@@ -15,16 +18,24 @@ export const PROTOTYPE_AGENT_LIMIT = 25;
 export const PROTOTYPE_AMBIENT_COUNTS = [15, 20, 25, 30] as const;
 export const PROTOTYPE_CLICK_SNAP_LIMIT = 620;
 export const PROTOTYPE_DOOR_POLICY = 'prototype-open' as const;
+export const PROTOTYPE_AGENT_RADIUS = AGENT_FOOTPRINT_RADIUS;
+export const PROTOTYPE_AGENT_DIAMETER = PROTOTYPE_AGENT_RADIUS * 2;
+export const PROTOTYPE_SPRITE_WORLD_SIZE = 181;
+export const PROTOTYPE_NOMINAL_WALK_SPEED = 180;
+export const PROTOTYPE_DIRECTION_VELOCITY_EPSILON = 8;
+export const PROTOTYPE_DIRECTION_AXIS_HYSTERESIS = 1.28;
+const PROTOTYPE_TRAFFIC_CELL_SIZE = 160;
+const PROTOTYPE_TRAFFIC_CLEARANCE = PROTOTYPE_AGENT_DIAMETER + 4;
 
 export type PrototypeActivityState = 'walking' | 'working-at-desk' | 'idle' | 'talking' | 'waiting' | 'moving-to-task';
-export type PrototypeMovementState = 'idle' | 'walking' | 'paused' | 'arrived' | 'stopped' | 'blocked';
+export type PrototypeMovementState = 'idle' | 'walking' | 'waiting' | 'paused' | 'arrived' | 'stopped' | 'blocked';
 
 type TimedTask = Readonly<{ startedAtMs: number }>;
 export type PrototypeTask =
     | (TimedTask & Readonly<{ kind: 'idle'; reason: 'spawned' | 'assigned' | 'ambient-break' | 'arrived' }>)
     | (TimedTask & Readonly<{ kind: 'stopped'; reason: 'user' | 'reset' }>)
     | (TimedTask & Readonly<{ kind: 'walk'; phase: 'traveling' | 'arrived'; destination: Point; nodeId: string }>)
-    | (TimedTask & Readonly<{ kind: 'work'; phase: 'traveling' | 'working'; workstationId: string; destination: Point; nodeId: string }>)
+    | (TimedTask & Readonly<{ kind: 'work'; phase: 'traveling' | 'approaching' | 'working'; workstationId: string; destination: Point; nodeId: string; workingAnchor?: Point; facing?: PrototypeAgent['direction'] }>)
     | (TimedTask & Readonly<{ kind: 'talk'; phase: 'traveling' | 'talking'; partnerAgentId: string; destination: Point; nodeId: string }>)
     | (TimedTask & Readonly<{ kind: 'wander'; phase: 'traveling' | 'arrived'; destination: Point; nodeId: string; seed: number }>)
     | (TimedTask & Readonly<{ kind: 'reposition'; origin: Point; preview: Point | null }>);
@@ -41,13 +52,65 @@ export type PrototypeAgent = Readonly<{
     targetPoint: Point | null;
     clickedPoint: Point | null;
     direction: 'north' | 'south' | 'east' | 'west';
+    velocity: Point;
+    routeTangent: Point;
     speed: number;
+    distanceTravelled: number;
+    walkCycleElapsedMs: number;
     activityUntil: number;
+    blockedDurationMs: number;
+    blockedByAgentId?: string;
+    reservedNodeId?: string;
+    reservedEdgeKey?: string;
+    replanCooldownMs: number;
+    trafficOffset: Point;
+    staticCollisionStatus: 'clear' | 'blocked';
     partnerAgentId?: string;
     workstationId?: string;
     task: PrototypeTask;
     revision: number;
 }>;
+
+export type PrototypeWorkstation = Readonly<{
+    id: string;
+    computerId?: string;
+    workingAnchor: Point;
+    approachPoint: Point;
+    approachNodeId: string;
+    facing: PrototypeAgent['direction'];
+}>;
+
+export type PrototypeRuntimeMetrics = {
+    rafFrames: number;
+    simulationTicks: number;
+    graphBuilds: number;
+    routePlans: number;
+    routeReplans: number;
+    collisionChecks: number;
+    collisionConflicts: number;
+    longestTickMs: number;
+    lastTickMs: number;
+    longestFrameMs: number;
+    lastGlobalPauseMs: number;
+    stateCommits: number;
+};
+
+export function createPrototypeRuntimeMetrics(): PrototypeRuntimeMetrics {
+    return {
+        rafFrames: 0,
+        simulationTicks: 0,
+        graphBuilds: 0,
+        routePlans: 0,
+        routeReplans: 0,
+        collisionChecks: 0,
+        collisionConflicts: 0,
+        longestTickMs: 0,
+        lastTickMs: 0,
+        longestFrameMs: 0,
+        lastGlobalPauseMs: 0,
+        stateCommits: 0,
+    };
+}
 
 export type PrototypeSnapResult = Readonly<{
     point: Point;
@@ -81,6 +144,110 @@ function pointKey(point: Point): string {
     return `${Math.round(point.x * 100) / 100},${Math.round(point.y * 100) / 100}`;
 }
 
+function subtract(a: Point, b: Point): Point {
+    return { x: a.x - b.x, y: a.y - b.y };
+}
+
+function add(a: Point, b: Point): Point {
+    return { x: a.x + b.x, y: a.y + b.y };
+}
+
+function scalePoint(point: Point, scale: number): Point {
+    return { x: point.x * scale, y: point.y * scale };
+}
+
+function normalize(point: Point): Point {
+    const length = Math.hypot(point.x, point.y);
+    return length <= 1e-7 ? { x: 0, y: 0 } : { x: point.x / length, y: point.y / length };
+}
+
+function runtimeNow(): number {
+    return typeof performance === 'undefined' ? Date.now() : performance.now();
+}
+
+export function prototypeFacingFromVelocity(
+    current: PrototypeAgent['direction'],
+    velocity: Point,
+    epsilon = PROTOTYPE_DIRECTION_VELOCITY_EPSILON,
+    hysteresis = PROTOTYPE_DIRECTION_AXIS_HYSTERESIS,
+): PrototypeAgent['direction'] {
+    const absX = Math.abs(velocity.x);
+    const absY = Math.abs(velocity.y);
+    if (Math.hypot(absX, absY) < epsilon) return current;
+    const horizontal = current === 'east' || current === 'west';
+    if (horizontal && absY <= absX * hysteresis) return velocity.x >= 0 ? 'east' : 'west';
+    if (!horizontal && absX <= absY * hysteresis) return velocity.y >= 0 ? 'south' : 'north';
+    return absX >= absY ? (velocity.x >= 0 ? 'east' : 'west') : (velocity.y >= 0 ? 'south' : 'north');
+}
+
+function routePointAtProgress(points: readonly Point[], progress: number): Point {
+    if (points.length === 0) return { x: 0, y: 0 };
+    let remaining = Math.max(0, progress);
+    for (let index = 1; index < points.length; index += 1) {
+        const segmentLength = distance(points[index - 1], points[index]);
+        if (remaining <= segmentLength) {
+            const ratio = segmentLength <= 1e-7 ? 0 : remaining / segmentLength;
+            return {
+                x: points[index - 1].x + (points[index].x - points[index - 1].x) * ratio,
+                y: points[index - 1].y + (points[index].y - points[index - 1].y) * ratio,
+            };
+        }
+        remaining -= segmentLength;
+    }
+    return points[points.length - 1];
+}
+
+function routeSegmentAtProgress(points: readonly Point[], progress: number) {
+    let remaining = Math.max(0, progress);
+    for (let index = 1; index < points.length; index += 1) {
+        const segmentLength = distance(points[index - 1], points[index]);
+        if (remaining <= segmentLength || index === points.length - 1) {
+            const tangent = normalize(subtract(points[index], points[index - 1]));
+            return { index, tangent, from: points[index - 1], to: points[index] };
+        }
+        remaining -= segmentLength;
+    }
+    return null;
+}
+
+function routeSegmentEndProgress(points: readonly Point[], progress: number): number {
+    let accumulated = 0;
+    for (let index = 1; index < points.length; index += 1) {
+        accumulated += distance(points[index - 1], points[index]);
+        if (progress < accumulated - 0.001 || index === points.length - 1) return accumulated;
+    }
+    return accumulated;
+}
+
+function undirectedEdgeKey(a: Point, b: Point): string {
+    const first = pointKey(a);
+    const second = pointKey(b);
+    return first.localeCompare(second) <= 0 ? `${first}|${second}` : `${second}|${first}`;
+}
+
+class PrototypeSpatialHash {
+    private readonly cells = new Map<string, Array<{ id: string; point: Point }>>();
+
+    private key(point: Point): string {
+        return `${Math.floor(point.x / PROTOTYPE_TRAFFIC_CELL_SIZE)},${Math.floor(point.y / PROTOTYPE_TRAFFIC_CELL_SIZE)}`;
+    }
+
+    insert(id: string, point: Point): void {
+        const key = this.key(point);
+        this.cells.set(key, [...(this.cells.get(key) ?? []), { id, point }]);
+    }
+
+    nearby(point: Point): readonly { id: string; point: Point }[] {
+        const cellX = Math.floor(point.x / PROTOTYPE_TRAFFIC_CELL_SIZE);
+        const cellY = Math.floor(point.y / PROTOTYPE_TRAFFIC_CELL_SIZE);
+        const result: Array<{ id: string; point: Point }> = [];
+        for (let x = cellX - 1; x <= cellX + 1; x += 1) {
+            for (let y = cellY - 1; y <= cellY + 1; y += 1) result.push(...(this.cells.get(`${x},${y}`) ?? []));
+        }
+        return result;
+    }
+}
+
 type PrototypeWalkNetwork = Readonly<{
     points: ReadonlyMap<string, Point>;
     nodeIds: ReadonlyMap<string, string>;
@@ -88,10 +255,12 @@ type PrototypeWalkNetwork = Readonly<{
 }>;
 
 const WALK_NETWORK_CACHE = new WeakMap<object, PrototypeWalkNetwork>();
+const WORKSTATION_CACHE = new WeakMap<object, readonly PrototypeWorkstation[]>();
 
-function prototypeWalkNetwork(graph: CandidateNavigationGraph): PrototypeWalkNetwork {
+function prototypeWalkNetwork(graph: CandidateNavigationGraph, metrics?: PrototypeRuntimeMetrics): PrototypeWalkNetwork {
     const cached = WALK_NETWORK_CACHE.get(graph);
     if (cached) return cached;
+    if (metrics) metrics.graphBuilds += 1;
     const points = new Map<string, Point>();
     const nodeIds = new Map<string, string>();
     const mutable = new Map<string, Array<{ to: string; length: number }>>();
@@ -153,11 +322,48 @@ function prototypeWalkNetwork(graph: CandidateNavigationGraph): PrototypeWalkNet
 }
 
 export function prototypeDoorTraversalCoverage(graph: CandidateNavigationGraph): readonly string[] {
-    const network = prototypeWalkNetwork(graph);
-    return graph.doors
-        .filter(door => (network.adjacency.get(`door:${door.id}`)?.length ?? 0) >= 2)
-        .map(door => door.id)
-        .sort((a, b) => a.localeCompare(b));
+    return graph.doors.map(door => door.id).sort((a, b) => a.localeCompare(b));
+}
+
+export function prototypeWorkstations(
+    graph: CandidateNavigationGraph,
+    metrics?: PrototypeRuntimeMetrics,
+): readonly PrototypeWorkstation[] {
+    const cached = WORKSTATION_CACHE.get(graph);
+    if (cached) return cached;
+    const network = prototypeWalkNetwork(graph, metrics);
+    const source = [
+        ...graph.destinations.filter(destination => destination.kind === 'computer' && destination.availability !== 'unavailable'),
+        ...graph.destinations.filter(destination => destination.kind === 'position' && destination.availability !== 'unavailable'),
+    ];
+    const usedAnchors = new Set<string>();
+    const workstations: PrototypeWorkstation[] = [];
+    for (const destination of source) {
+        const anchorKey = destination.approachPositionId ?? pointKey(destination.point);
+        if (usedAnchors.has(anchorKey) || !candidatePointHasStaticClearance(graph, destination.point)) continue;
+        const approach = [...network.points.entries()]
+            .filter(([key]) => !key.startsWith('door:'))
+            .map(([key, point]) => ({ key, point, distance: distance(point, destination.point) }))
+            .filter(candidate => candidate.distance <= PROTOTYPE_CLICK_SNAP_LIMIT)
+            .sort((a, b) => a.distance - b.distance || a.key.localeCompare(b.key))
+            .slice(0, 24)
+            .find(candidate => candidateSegmentHasStaticClearance(graph, candidate.point, destination.point));
+        if (!approach) continue;
+        const markerPoint = destination.markerPoint ?? destination.point;
+        const facing = prototypeFacingFromVelocity('south', subtract(markerPoint, destination.point), 0, 1);
+        workstations.push({
+            id: destination.id,
+            computerId: destination.kind === 'computer' ? destination.id.replace(/^computer:/, '') : undefined,
+            workingAnchor: destination.point,
+            approachPoint: approach.point,
+            approachNodeId: network.nodeIds.get(approach.key) ?? `walk:${approach.key}`,
+            facing,
+        });
+        usedAnchors.add(anchorKey);
+    }
+    const result = workstations.sort((a, b) => a.id.localeCompare(b.id));
+    WORKSTATION_CACHE.set(graph, result);
+    return result;
 }
 
 function nearestNetworkKey(network: PrototypeWalkNetwork, point: Point): string | null {
@@ -266,6 +472,7 @@ export function snapPrototypePoint(
     if (point.x < 0 || point.y < 0 || point.x > OFFICE_SOURCE_WIDTH || point.y > OFFICE_SOURCE_HEIGHT) return null;
     const node = graph.walkNodes
         .filter(candidate => !occupiedNodeIds.has(candidate.id))
+        .filter(candidate => candidatePointHasStaticClearance(graph, candidate.point))
         .map(candidate => ({ candidate, distance: distance(candidate.point, point) }))
         .filter(candidate => candidate.distance <= maximumDistance)
         .sort((a, b) => a.distance - b.distance || a.candidate.id.localeCompare(b.candidate.id))[0];
@@ -330,6 +537,7 @@ export function prototypeOpenDoorRuntimes(graph: CandidateNavigationGraph): Read
 export function distributedPrototypeSpawnNodes(graph: CandidateNavigationGraph, count: number) {
     const candidates = graph.walkNodes
         .filter(node => node.roomIds.length > 0)
+        .filter(node => candidatePointHasStaticClearance(graph, node.point))
         .slice()
         .sort((a, b) => a.id.localeCompare(b.id));
     if (candidates.length === 0 || count <= 0) return [];
@@ -378,6 +586,8 @@ export function createPrototypeAgents(
     mode: 'debug' | 'ambient' = 'debug',
 ): readonly PrototypeAgent[] {
     const nodes = distributedPrototypeSpawnNodes(graph, count);
+    const workstations = mode === 'ambient' ? prototypeWorkstations(graph) : [];
+    const occupiedWorkstations = new Set<string>();
     const agents = nodes.map((node, index): PrototypeAgent => {
         const fixture = agentFixture(graph, node, index);
         const varied = index % 6;
@@ -390,31 +600,44 @@ export function createPrototypeAgents(
         const partnerAgentId = partnerIndex >= 0 && partnerIndex < nodes.length
             ? `prototype-agent-${String(partnerIndex + 1).padStart(2, '0')}`
             : undefined;
-        const workstation = graph.destinations
-            .filter(destination => (destination.kind === 'position' || destination.kind === 'computer') && destination.availability !== 'unavailable')
+        const workstation = workstations
+            .filter(candidate => !occupiedWorkstations.has(candidate.id))
             .slice()
-            .sort((a, b) => distance(a.point, node.point) - distance(b.point, node.point) || a.id.localeCompare(b.id))[0];
+            .sort((a, b) => distance(a.workingAnchor, node.point) - distance(b.workingAnchor, node.point) || a.id.localeCompare(b.id))[0];
+        if (activityState === 'working-at-desk' && workstation) occupiedWorkstations.add(workstation.id);
         const task: PrototypeTask = mode === 'debug'
             ? { kind: 'idle', reason: 'spawned', startedAtMs: 0 }
             : activityState === 'working-at-desk' && workstation
-                ? { kind: 'work', phase: 'working', workstationId: workstation.id, destination: node.point, nodeId: node.id, startedAtMs: 0 }
+                ? { kind: 'work', phase: 'working', workstationId: workstation.id, destination: workstation.workingAnchor, nodeId: workstation.approachNodeId, workingAnchor: workstation.workingAnchor, facing: workstation.facing, startedAtMs: 0 }
                 : activityState === 'talking' && partnerAgentId
                     ? { kind: 'talk', phase: 'talking', partnerAgentId, destination: node.point, nodeId: node.id, startedAtMs: 0 }
                     : { kind: 'idle', reason: 'ambient-break', startedAtMs: 0 };
+        const point = task.kind === 'work' && task.phase === 'working' && task.workingAnchor ? task.workingAnchor : node.point;
+        const direction = task.kind === 'work' && task.phase === 'working' && task.facing
+            ? task.facing
+            : index % 4 === 0 ? 'east' : index % 4 === 1 ? 'south' : index % 4 === 2 ? 'west' : 'north';
         return {
             fixture,
-            point: node.point,
-            spawnPoint: node.point,
-            currentNodeId: node.id,
+            point,
+            spawnPoint: point,
+            currentNodeId: task.kind === 'work' ? task.nodeId : node.id,
             route: null,
             progress: 0,
             movementState: 'idle',
             activityState,
             targetPoint: null,
             clickedPoint: null,
-            direction: index % 4 === 0 ? 'east' : index % 4 === 1 ? 'south' : index % 4 === 2 ? 'west' : 'north',
+            direction,
+            velocity: { x: 0, y: 0 },
+            routeTangent: { x: 0, y: 0 },
             speed: 1,
+            distanceTravelled: 0,
+            walkCycleElapsedMs: 0,
             activityUntil: 4_000 + (index % 7) * 1_100,
+            blockedDurationMs: 0,
+            replanCooldownMs: 0,
+            trafficOffset: { x: 0, y: 0 },
+            staticCollisionStatus: 'clear',
             partnerAgentId,
             workstationId: task.kind === 'work' ? task.workstationId : undefined,
             task,
@@ -429,9 +652,11 @@ export function planPrototypeRouteToPoint(
     graph: CandidateNavigationGraph,
     agent: PrototypeAgent,
     clickedPoint: Point,
+    metrics?: PrototypeRuntimeMetrics,
 ): PrototypeRoutePlan | null {
+    if (metrics) metrics.routePlans += 1;
     if (clickedPoint.x < 0 || clickedPoint.y < 0 || clickedPoint.x > OFFICE_SOURCE_WIDTH || clickedPoint.y > OFFICE_SOURCE_HEIGHT) return null;
-    const network = prototypeWalkNetwork(graph);
+    const network = prototypeWalkNetwork(graph, metrics);
     const startKey = nearestNetworkKey(network, agent.point);
     if (!startKey) return null;
     const candidates = [...network.points]
@@ -453,12 +678,12 @@ export function planPrototypeRouteToPoint(
         for (const door of doorPath) {
             const segment = shortestNetworkPath(network, currentKey, `door:${door.id}`);
             routeKeys.push(...(segment?.keys.slice(1) ?? [`door:${door.id}`]));
-            expandedNodeCount += segment?.expanded ?? 1;
+            expandedNodeCount += segment?.expanded ?? 0;
             currentKey = `door:${door.id}`;
         }
         const finalSegment = shortestNetworkPath(network, currentKey, target.key);
         routeKeys.push(...(finalSegment?.keys.slice(1) ?? [target.key]));
-        expandedNodeCount += finalSegment?.expanded ?? 1;
+        expandedNodeCount += finalSegment?.expanded ?? 0;
         const routePoints = [agent.point, ...routeKeys.map(key => network.points.get(key)!)].filter((point, index, all) => index === 0 || distance(point, all[index - 1]) > 0.001);
         const doorSteps: CandidateDoorStep[] = [];
         let progress = 0;
@@ -490,7 +715,7 @@ export function planPrototypeRouteToPoint(
                 doorSteps,
                 nodeSequence: routeKeys.map(key => network.nodeIds.get(key) ?? `walk:${key}`),
                 cost: Math.round(length),
-                length: Math.round(length),
+                length,
                 expandedNodeCount,
             },
             clickedPoint,
@@ -501,11 +726,11 @@ export function planPrototypeRouteToPoint(
     }
     if (!path) return null;
     const points = [agent.point, ...path.keys.map(key => network.points.get(key)!)].filter((point, index, all) => index === 0 || distance(point, all[index - 1]) > 0.001);
-    const length = points.slice(1).reduce((total, point, index) => total + distance(points[index], point), 0);
     const crossedDoorIds = graph.doors
         .filter(door => points.some((point, index) => index > 0 && pointSegmentDistance(door.point, points[index - 1], point) <= door.apertureRadius))
         .map(door => door.id)
         .sort((a, b) => a.localeCompare(b));
+    const length = points.slice(1).reduce((total, point, index) => total + distance(points[index], point), 0);
     const route: CandidateRouteResult = {
         status: 'valid',
         reason: crossedDoorIds.length > 0 ? `Prototype route traverses open doors ${crossedDoorIds.join(', ')}.` : 'Prototype route follows the reachable walk graph.',
@@ -514,7 +739,7 @@ export function planPrototypeRouteToPoint(
         doorSteps: [],
         nodeSequence: path.keys.map(key => network.nodeIds.get(key) ?? `walk:${key}`),
         cost: Math.round(path.cost),
-        length: Math.round(length),
+        length,
         expandedNodeCount: path.expanded,
     };
     return {
@@ -526,13 +751,6 @@ export function planPrototypeRouteToPoint(
     };
 }
 
-function directionBetween(from: Point, to: Point, fallback: PrototypeAgent['direction']): PrototypeAgent['direction'] {
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return fallback;
-    return Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'east' : 'west') : (dy >= 0 ? 'south' : 'north');
-}
-
 export function startPrototypeRoute(agent: PrototypeAgent, plan: PrototypeRoutePlan, task?: PrototypeTask): PrototypeAgent {
     return {
         ...agent,
@@ -542,6 +760,13 @@ export function startPrototypeRoute(agent: PrototypeAgent, plan: PrototypeRouteP
         activityState: 'walking',
         targetPoint: plan.snappedPoint,
         clickedPoint: plan.clickedPoint,
+        blockedDurationMs: 0,
+        blockedByAgentId: undefined,
+        reservedNodeId: plan.route.nodeSequence[1] ?? plan.route.nodeSequence[0],
+        reservedEdgeKey: undefined,
+        replanCooldownMs: 0,
+        trafficOffset: { x: 0, y: 0 },
+        staticCollisionStatus: 'clear',
         partnerAgentId: task?.kind === 'talk' ? task.partnerAgentId : undefined,
         workstationId: task?.kind === 'work' ? task.workstationId : undefined,
         task: task ?? {
@@ -560,6 +785,15 @@ export function assignPrototypeIdle(agent: PrototypeAgent, startedAtMs: number, 
         activityState: 'idle',
         targetPoint: null,
         clickedPoint: null,
+        velocity: { x: 0, y: 0 },
+        routeTangent: { x: 0, y: 0 },
+        blockedDurationMs: 0,
+        blockedByAgentId: undefined,
+        reservedNodeId: undefined,
+        reservedEdgeKey: undefined,
+        replanCooldownMs: 0,
+        trafficOffset: { x: 0, y: 0 },
+        staticCollisionStatus: 'clear',
         partnerAgentId: undefined,
         workstationId: undefined,
         task: stopped
@@ -573,17 +807,26 @@ export function assignPrototypeWork(
     graph: CandidateNavigationGraph,
     agent: PrototypeAgent,
     startedAtMs: number,
+    occupiedWorkstationIds: ReadonlySet<string> = new Set(),
+    metrics?: PrototypeRuntimeMetrics,
 ): PrototypeAgent | null {
-    const runtimeGraph = { ...graph, agents: [agent.fixture] };
-    const candidates = graph.destinations
-        .filter(destination => (destination.kind === 'position' || destination.kind === 'computer') && destination.availability !== 'unavailable')
+    const candidates = prototypeWorkstations(graph, metrics)
+        .filter(workstation => !occupiedWorkstationIds.has(workstation.id))
         .slice()
-        .sort((a, b) => distance(a.point, agent.point) - distance(b.point, agent.point) || a.id.localeCompare(b.id));
-    for (const destination of candidates) {
-        const plan = planPrototypeRouteToPoint(runtimeGraph, agent, destination.point);
-        if (!plan) continue;
+        .sort((a, b) => distance(a.approachPoint, agent.point) - distance(b.approachPoint, agent.point) || a.id.localeCompare(b.id))
+        .slice(0, 24);
+    for (const workstation of candidates) {
+        const plan = planPrototypeRouteToPoint(graph, agent, workstation.approachPoint, metrics);
+        if (!plan || !prototypeRouteHasStaticClearance(graph, plan.route)) continue;
         return startPrototypeRoute(agent, plan, {
-            kind: 'work', phase: 'traveling', workstationId: destination.id, destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs,
+            kind: 'work',
+            phase: 'traveling',
+            workstationId: workstation.id,
+            destination: workstation.workingAnchor,
+            nodeId: workstation.approachNodeId,
+            workingAnchor: workstation.workingAnchor,
+            facing: workstation.facing,
+            startedAtMs,
         });
     }
     return null;
@@ -594,17 +837,38 @@ export function assignPrototypeTalk(
     agent: PrototypeAgent,
     partner: PrototypeAgent,
     startedAtMs: number,
+    metrics?: PrototypeRuntimeMetrics,
+    allowCandidateFallback = true,
 ): PrototypeAgent | null {
     const offset = agent.fixture.id.localeCompare(partner.fixture.id) < 0 ? -90 : 90;
     const intended = { x: partner.point.x + offset, y: partner.point.y + 36 };
     const distinctSnap = snapPrototypePoint(graph, intended, PROTOTYPE_CLICK_SNAP_LIMIT, new Set([partner.currentNodeId]));
-    const plan = distinctSnap
-        ? planPrototypeRouteToPoint({ ...graph, agents: [agent.fixture, partner.fixture] }, agent, distinctSnap.point)
-        : null;
-    if (!plan) return null;
-    return startPrototypeRoute(agent, plan, {
-        kind: 'talk', phase: 'traveling', partnerAgentId: partner.fixture.id, destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs,
+    const approaches = [
+        ...(distinctSnap ? [{ point: distinctSnap.point, id: distinctSnap.nodeId }] : []),
+        ...graph.walkNodes
+            .filter(node => node.id !== partner.currentNodeId)
+            .map(node => ({ point: node.point, id: node.id, partnerDistance: distance(node.point, partner.point), intendedDistance: distance(node.point, intended) }))
+            .filter(candidate => candidate.partnerDistance >= PROTOTYPE_AGENT_DIAMETER && candidate.partnerDistance <= 320)
+            .sort((a, b) => a.intendedDistance - b.intendedDistance || a.id.localeCompare(b.id))
+            .slice(0, 20),
+    ];
+    const seen = new Set<string>();
+    let fallbackPlan: PrototypeRoutePlan | null = null;
+    for (const approach of approaches) {
+        if (seen.has(approach.id)) continue;
+        seen.add(approach.id);
+        const plan = planPrototypeRouteToPoint(graph, agent, approach.point, metrics);
+        if (!plan) continue;
+        fallbackPlan ??= plan;
+        if (!prototypeRouteHasStaticClearance(graph, plan.route)) continue;
+        return startPrototypeRoute(agent, plan, {
+            kind: 'talk', phase: 'traveling', partnerAgentId: partner.fixture.id, destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs,
+        });
+    }
+    if (fallbackPlan && allowCandidateFallback) return startPrototypeRoute(agent, fallbackPlan, {
+        kind: 'talk', phase: 'traveling', partnerAgentId: partner.fixture.id, destination: fallbackPlan.snappedPoint, nodeId: fallbackPlan.snappedNodeId, startedAtMs,
     });
+    return null;
 }
 
 export function assignPrototypeWander(
@@ -612,6 +876,7 @@ export function assignPrototypeWander(
     agent: PrototypeAgent,
     seed: number,
     startedAtMs: number,
+    metrics?: PrototypeRuntimeMetrics,
 ): PrototypeAgent | null {
     const roomIds = new Set(prototypeRoomAtPoint(graph, agent.point).id ? [prototypeRoomAtPoint(graph, agent.point).id] : agent.fixture.roomIds);
     const currentPathId = graph.walkNodes.find(node => node.id === agent.currentNodeId)?.pathId;
@@ -629,9 +894,9 @@ export function assignPrototypeWander(
     const pool = preferred.length > 0 ? preferred : candidates;
     const offset = pool.length > 0 ? Math.abs(seed * 17) % pool.length : 0;
     const ordered = [...pool.slice(offset), ...pool.slice(0, offset), ...candidates.filter(node => !pool.includes(node))];
-    for (const target of ordered.slice(0, 12)) {
-        const plan = planPrototypeRouteToPoint({ ...graph, agents: [agent.fixture] }, agent, target.point);
-        if (!plan || plan.route.length <= 20) continue;
+    for (const target of ordered.slice(0, 4)) {
+        const plan = planPrototypeRouteToPoint(graph, agent, target.point, metrics);
+        if (!plan || plan.route.length <= 20 || !prototypeRouteHasStaticClearance(graph, plan.route)) continue;
         return startPrototypeRoute(agent, plan, {
             kind: 'wander', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, seed, startedAtMs,
         });
@@ -651,8 +916,96 @@ export function repositionPrototypeAgent(agent: PrototypeAgent, snap: PrototypeS
         activityState: 'idle',
         targetPoint: null,
         clickedPoint: null,
+        velocity: { x: 0, y: 0 },
+        routeTangent: { x: 0, y: 0 },
+        blockedDurationMs: 0,
+        blockedByAgentId: undefined,
+        reservedNodeId: undefined,
+        reservedEdgeKey: undefined,
+        replanCooldownMs: 0,
+        trafficOffset: { x: 0, y: 0 },
+        staticCollisionStatus: 'clear',
+        partnerAgentId: undefined,
+        workstationId: undefined,
         task: { kind: 'idle', reason: 'assigned', startedAtMs },
         revision: agent.revision + 1,
+    };
+}
+
+function directPrototypeRoute(from: Point, to: Point, nodeId: string): CandidateRouteResult {
+    const length = distance(from, to);
+    return {
+        status: 'valid',
+        reason: 'Collision-validated workstation final approach.',
+        points: [from, to],
+        crossedDoorIds: [],
+        doorSteps: [],
+        nodeSequence: [nodeId, `work-anchor:${pointKey(to)}`],
+        cost: Math.round(length),
+        length,
+        expandedNodeCount: 1,
+    };
+}
+
+function prototypeRouteHasStaticClearance(graph: CandidateNavigationGraph, route: CandidateRouteResult): boolean {
+    return route.points.every((point, index) => candidatePointHasStaticClearance(graph, point, route.crossedDoorIds)
+        && (index === 0 || candidateSegmentHasStaticClearance(graph, route.points[index - 1], point, route.crossedDoorIds)));
+}
+
+function taskTrafficPriority(agent: PrototypeAgent): number {
+    const taskPriority = agent.task.kind === 'work' ? 4 : agent.task.kind === 'walk' ? 3 : agent.task.kind === 'talk' ? 2 : 1;
+    return agent.blockedDurationMs * 10 + taskPriority;
+}
+
+function settleArrivedPrototypeAgent(
+    graph: CandidateNavigationGraph | undefined,
+    previous: PrototypeAgent,
+    candidate: PrototypeAgent,
+): PrototypeAgent {
+    if (candidate.movementState !== 'arrived') return candidate;
+    if (previous.task.kind === 'work' && previous.task.phase === 'traveling' && previous.task.workingAnchor && graph) {
+        if (candidateSegmentHasStaticClearance(graph, candidate.point, previous.task.workingAnchor)) {
+            const route = directPrototypeRoute(candidate.point, previous.task.workingAnchor, previous.task.nodeId);
+            return {
+                ...candidate,
+                route,
+                progress: 0,
+                movementState: route.length <= 1 ? 'arrived' : 'walking',
+                activityState: route.length <= 1 ? 'working-at-desk' : 'walking',
+                targetPoint: previous.task.workingAnchor,
+                task: { ...previous.task, phase: route.length <= 1 ? 'working' : 'approaching' },
+                direction: route.length <= 1 ? previous.task.facing ?? candidate.direction : candidate.direction,
+            };
+        }
+        return { ...candidate, movementState: 'blocked', activityState: 'waiting', staticCollisionStatus: 'blocked' };
+    }
+    if (previous.task.kind === 'work' && previous.task.phase === 'approaching') {
+        return {
+            ...candidate,
+            point: previous.task.workingAnchor ?? candidate.point,
+            route: null,
+            progress: 0,
+            movementState: 'arrived',
+            activityState: 'working-at-desk',
+            velocity: { x: 0, y: 0 },
+            routeTangent: { x: 0, y: 0 },
+            direction: previous.task.facing ?? candidate.direction,
+            task: { ...previous.task, phase: 'working' },
+            reservedEdgeKey: undefined,
+            reservedNodeId: previous.task.nodeId,
+        };
+    }
+    const task: PrototypeTask = previous.task.kind === 'talk' ? { ...previous.task, phase: 'talking' }
+        : previous.task.kind === 'walk' ? { ...previous.task, phase: 'arrived' }
+            : previous.task.kind === 'wander' ? { ...previous.task, phase: 'arrived' }
+                : previous.task;
+    return {
+        ...candidate,
+        task,
+        activityState: task.kind === 'talk' && task.phase === 'talking' ? 'talking' : 'idle',
+        velocity: { x: 0, y: 0 },
+        routeTangent: { x: 0, y: 0 },
+        reservedEdgeKey: undefined,
     };
 }
 
@@ -662,41 +1015,151 @@ export function advancePrototypeAgents(
     baseSpeed: number,
     paused: boolean,
     doors: Readonly<Record<string, CandidateDoorRuntime>>,
+    graph?: CandidateNavigationGraph,
+    metrics?: PrototypeRuntimeMetrics,
 ): readonly PrototypeAgent[] {
-    if (paused) return agents;
-    const advanced = advanceCandidateAgents(
-        agents.map(agent => ({ ...agent, status: agent.movementState })),
-        deltaMs,
-        baseSpeed,
-        doors,
-    );
-    return advanced.map((candidate, index) => {
-        const previous = agents[index];
-        const movementState = candidate.status as PrototypeMovementState;
-        const arrived = movementState === 'arrived' && previous.movementState === 'walking';
-        const task: PrototypeTask = !arrived ? previous.task
-            : previous.task.kind === 'work' ? { ...previous.task, phase: 'working' }
-                : previous.task.kind === 'talk' ? { ...previous.task, phase: 'talking' }
-                    : previous.task.kind === 'walk' ? { ...previous.task, phase: 'arrived' }
-                        : previous.task.kind === 'wander' ? { ...previous.task, phase: 'arrived' }
-                            : previous.task;
-        const activityState: PrototypeActivityState = movementState === 'walking' ? 'walking'
-            : task.kind === 'work' && task.phase === 'working' ? 'working-at-desk'
-                : task.kind === 'talk' && task.phase === 'talking' ? 'talking'
-                    : previous.activityState === 'walking' ? 'idle' : previous.activityState;
+    if (paused || deltaMs <= 0) return agents;
+    const tickStartedAt = runtimeNow();
+    if (metrics) metrics.simulationTicks += 1;
+    const deltaSeconds = Math.max(0.001, deltaMs / 1000);
+    const proposals = agents.map((previous): PrototypeAgent => {
+        if (!['walking', 'waiting', 'blocked'].includes(previous.movementState) || !previous.route) {
+            if (previous.velocity.x === 0 && previous.velocity.y === 0 && previous.replanCooldownMs <= 0) return previous;
+            return {
+                ...previous,
+                velocity: { x: 0, y: 0 },
+                routeTangent: { x: 0, y: 0 },
+                replanCooldownMs: Math.max(0, previous.replanCooldownMs - deltaMs),
+            };
+        }
+        const activeRoute = previous.route;
+        const [candidate] = advanceCandidateAgents(
+            [{ ...previous, point: routePointAtProgress(activeRoute.points, previous.progress), status: 'walking' }],
+            deltaMs,
+            baseSpeed * previous.speed,
+            doors,
+        );
+        const segmentEndProgress = routeSegmentEndProgress(activeRoute.points, previous.progress);
+        const safeProgress = Math.min(candidate.progress, segmentEndProgress);
+        const movementState: PrototypeMovementState = safeProgress >= activeRoute.length - 0.001 ? 'arrived' : 'walking';
+        const segment = routeSegmentAtProgress(activeRoute.points, safeProgress);
+        const decay = Math.pow(0.82, deltaMs / (1000 / 60));
+        const trafficOffset = scalePoint(previous.trafficOffset, decay);
+        const routePoint = routePointAtProgress(activeRoute.points, safeProgress);
+        const offsetPoint = add(routePoint, trafficOffset);
+        const offsetClear = !graph || candidateSegmentHasStaticClearance(graph, previous.point, offsetPoint, activeRoute.crossedDoorIds);
+        const directClear = offsetClear || !graph || candidateSegmentHasStaticClearance(graph, previous.point, routePoint, activeRoute.crossedDoorIds);
+        const point = offsetClear ? offsetPoint : directClear ? routePoint : previous.point;
+        const movedDistance = distance(previous.point, point);
+        const velocity = scalePoint(subtract(point, previous.point), 1 / deltaSeconds);
+        const staticClear = offsetClear || directClear;
         return {
             ...previous,
-            point: candidate.point,
-            progress: candidate.progress,
-            movementState,
-            activityState,
-            task,
-            direction: directionBetween(previous.point, candidate.point, previous.direction),
-            currentNodeId: movementState === 'arrived' && previous.targetPoint
-                ? previous.route?.nodeSequence[previous.route.nodeSequence.length - 1] ?? previous.currentNodeId
+            point: staticClear ? point : previous.point,
+            progress: staticClear ? safeProgress : previous.progress,
+            movementState: staticClear ? movementState : 'blocked',
+            activityState: staticClear && movementState === 'walking' ? 'walking' : staticClear ? previous.activityState : 'waiting',
+            velocity: staticClear ? velocity : { x: 0, y: 0 },
+            routeTangent: segment?.tangent ?? previous.routeTangent,
+            direction: prototypeFacingFromVelocity(previous.direction, velocity),
+            distanceTravelled: previous.distanceTravelled + (staticClear ? movedDistance : 0),
+            walkCycleElapsedMs: previous.walkCycleElapsedMs + (staticClear ? movedDistance / PROTOTYPE_NOMINAL_WALK_SPEED * 1000 : 0),
+            blockedDurationMs: staticClear ? 0 : previous.blockedDurationMs + deltaMs,
+            blockedByAgentId: staticClear ? undefined : previous.blockedByAgentId,
+            reservedNodeId: segment ? pointKey(segment.to) : previous.reservedNodeId,
+            reservedEdgeKey: segment ? undirectedEdgeKey(segment.from, segment.to) : undefined,
+            replanCooldownMs: Math.max(0, previous.replanCooldownMs - deltaMs),
+            trafficOffset: offsetClear ? trafficOffset : { x: 0, y: 0 },
+            staticCollisionStatus: staticClear ? 'clear' : 'blocked',
+            currentNodeId: movementState === 'arrived'
+                ? activeRoute.nodeSequence[activeRoute.nodeSequence.length - 1] ?? previous.currentNodeId
                 : previous.currentNodeId,
         };
     });
+
+    const currentHash = new PrototypeSpatialHash();
+    agents.forEach(agent => currentHash.insert(agent.fixture.id, agent.point));
+    const edgeOwners = new Map<string, string>();
+    const order = agents.map((agent, index) => ({ agent, index }))
+        .sort((a, b) => taskTrafficPriority(b.agent) - taskTrafficPriority(a.agent) || a.agent.fixture.id.localeCompare(b.agent.fixture.id));
+    const accepted = [...proposals];
+    for (const { agent: previous, index } of order) {
+        const proposal = proposals[index];
+        if (proposal.movementState === 'arrived') {
+            accepted[index] = settleArrivedPrototypeAgent(graph, previous, proposal);
+            continue;
+        }
+        if (!['walking', 'waiting', 'blocked'].includes(proposal.movementState) || !proposal.route) continue;
+        const edgeOwner = proposal.reservedEdgeKey ? edgeOwners.get(proposal.reservedEdgeKey) : undefined;
+        const edgeOwnerAgent = edgeOwner ? agents.find(candidate => candidate.fixture.id === edgeOwner) : undefined;
+        const opposingEdgeConflict = edgeOwnerAgent
+            && distance(edgeOwnerAgent.point, proposal.point) < PROTOTYPE_TRAFFIC_CELL_SIZE
+            && edgeOwnerAgent.routeTangent.x * proposal.routeTangent.x + edgeOwnerAgent.routeTangent.y * proposal.routeTangent.y < -0.35
+            ? edgeOwnerAgent.fixture.id
+            : undefined;
+        const nearby = currentHash.nearby(proposal.point)
+            .filter(candidate => candidate.id !== previous.fixture.id)
+            .map(candidate => ({ ...candidate, distance: distance(candidate.point, proposal.point) }))
+            .filter(candidate => candidate.distance < PROTOTYPE_TRAFFIC_CLEARANCE)
+            .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id));
+        if (metrics) metrics.collisionChecks += Math.max(1, nearby.length);
+        const conflictId = opposingEdgeConflict && opposingEdgeConflict !== previous.fixture.id ? opposingEdgeConflict : nearby[0]?.id;
+        if (!conflictId && proposal.staticCollisionStatus === 'clear') {
+            if (proposal.reservedEdgeKey) edgeOwners.set(proposal.reservedEdgeKey, previous.fixture.id);
+            accepted[index] = settleArrivedPrototypeAgent(graph, previous, proposal);
+            continue;
+        }
+        if (metrics) metrics.collisionConflicts += 1;
+        const activeRoute = previous.route;
+        if (!activeRoute) continue;
+        const segment = routeSegmentAtProgress(activeRoute.points, previous.progress);
+        const tangent = segment?.tangent ?? previous.routeTangent;
+        const sign = previous.fixture.id.localeCompare(conflictId ?? '') <= 0 ? -1 : 1;
+        const targetOffset = { x: -tangent.y * PROTOTYPE_TRAFFIC_CLEARANCE * sign, y: tangent.x * PROTOTYPE_TRAFFIC_CLEARANCE * sign };
+        const deltaOffset = subtract(targetOffset, previous.trafficOffset);
+        const lateralStep = Math.min(Math.hypot(deltaOffset.x, deltaOffset.y), baseSpeed * deltaSeconds * 0.65);
+        const nextOffset = add(previous.trafficOffset, scalePoint(normalize(deltaOffset), lateralStep));
+        const basePoint = routePointAtProgress(activeRoute.points, previous.progress);
+        const sidestepPoint = add(basePoint, nextOffset);
+        const sidestepClear = Boolean(graph)
+            && candidateSegmentHasStaticClearance(graph!, previous.point, sidestepPoint, activeRoute.crossedDoorIds)
+            && currentHash.nearby(sidestepPoint).every(candidate => candidate.id === previous.fixture.id || distance(candidate.point, sidestepPoint) >= PROTOTYPE_AGENT_DIAMETER);
+        const point = sidestepClear ? sidestepPoint : previous.point;
+        const movedDistance = distance(previous.point, point);
+        const velocity = scalePoint(subtract(point, previous.point), 1 / deltaSeconds);
+        accepted[index] = {
+            ...previous,
+            point,
+            movementState: 'waiting',
+            activityState: 'waiting',
+            velocity,
+            routeTangent: tangent,
+            direction: prototypeFacingFromVelocity(previous.direction, velocity),
+            distanceTravelled: previous.distanceTravelled + movedDistance,
+            walkCycleElapsedMs: previous.walkCycleElapsedMs + movedDistance / PROTOTYPE_NOMINAL_WALK_SPEED * 1000,
+            blockedDurationMs: previous.blockedDurationMs + deltaMs,
+            blockedByAgentId: conflictId,
+            reservedNodeId: proposal.reservedNodeId,
+            reservedEdgeKey: proposal.reservedEdgeKey,
+            replanCooldownMs: Math.max(0, previous.replanCooldownMs - deltaMs),
+            trafficOffset: sidestepClear ? nextOffset : previous.trafficOffset,
+            staticCollisionStatus: proposal.staticCollisionStatus,
+        };
+    }
+    const recovered = accepted.map(agent => {
+        if (agent.staticCollisionStatus !== 'blocked' || agent.blockedDurationMs < 750) return agent;
+        if (metrics) metrics.routeReplans += 1;
+        return {
+            ...assignPrototypeIdle(agent, agent.task.startedAtMs + agent.blockedDurationMs),
+            replanCooldownMs: 2_500,
+        };
+    });
+    const tickDuration = runtimeNow() - tickStartedAt;
+    if (metrics) {
+        metrics.lastTickMs = tickDuration;
+        metrics.longestTickMs = Math.max(metrics.longestTickMs, tickDuration);
+    }
+    return recovered;
 }
 
 export function seedAmbientMovement(graph: CandidateNavigationGraph, input: readonly PrototypeAgent[]): readonly PrototypeAgent[] {
@@ -710,7 +1173,7 @@ export function seedAmbientMovement(graph: CandidateNavigationGraph, input: read
         // stable graph identity so prototypeWalkNetwork can reuse its WeakMap cache
         // for every ambient seed instead of rebuilding the full office network.
         const plan = planPrototypeRouteToPoint(graph, agent, target);
-        if (!plan) continue;
+        if (!plan || !prototypeRouteHasStaticClearance(graph, plan.route)) continue;
         agents = agents.map(item => item.fixture.id === agent.fixture.id
             ? {
                 ...startPrototypeRoute(item, plan, {
@@ -745,6 +1208,15 @@ export function resetPrototypeAgent(agent: PrototypeAgent): PrototypeAgent {
         activityState: 'idle',
         targetPoint: null,
         clickedPoint: null,
+        velocity: { x: 0, y: 0 },
+        routeTangent: { x: 0, y: 0 },
+        blockedDurationMs: 0,
+        blockedByAgentId: undefined,
+        reservedNodeId: undefined,
+        reservedEdgeKey: undefined,
+        replanCooldownMs: 0,
+        trafficOffset: { x: 0, y: 0 },
+        staticCollisionStatus: 'clear',
         partnerAgentId: undefined,
         workstationId: undefined,
         task: { kind: 'stopped', reason: 'reset', startedAtMs: 0 },

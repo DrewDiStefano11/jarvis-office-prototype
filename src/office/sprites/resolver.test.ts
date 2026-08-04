@@ -5,9 +5,9 @@ import { SpriteManifest } from './types';
 
 describe('sprite state resolution', () => {
     it('selects an exact walking clip and advances deterministically', () => {
-        const resolved = resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'agent-sheet-01', 'walking', 'none');
+        const resolved = resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'agent-sheet-01', 'walking', 'east');
         expect(resolved?.resolvedState).toBe('walking');
-        expect(frameAtElapsedTime(resolved!, 130)).toBe(1);
+        expect(frameAtElapsedTime(resolved!, 130)).toBe(13);
         expect(framePosition(resolved!.asset, 7)).toEqual({ column: 1, row: 1, x: -181, y: -181 });
     });
 
@@ -15,7 +15,7 @@ describe('sprite state resolution', () => {
         const resolved = resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'agent-sheet-01', 'reviewing', 'west');
         expect(resolved?.fallbackChain).toEqual(['reviewing', 'working', 'idle']);
         expect(resolved?.resolvedState).toBe('idle');
-        expect(resolved?.resolvedDirection).toBe('none');
+        expect(resolved?.resolvedDirection).toBe('west');
     });
 
     it('uses a static reduced-motion frame and handles missing assets safely', () => {
@@ -30,6 +30,13 @@ describe('sprite state resolution', () => {
         expect(resolved?.resolvedState).toBe('offline');
         expect(resolved?.clip.frames).toEqual([0]);
         expect(frameAtElapsedTime(resolved!, 10_000)).toBe(0);
+    });
+
+    it('declares truthful cardinal clips and falls back from directionless requests to south', () => {
+        const asset = AGENT_SPRITE_MANIFEST.assets[0];
+        expect(asset.authoredDirections).toEqual(['south', 'east', 'north', 'west']);
+        expect(resolveSpriteClip(AGENT_SPRITE_MANIFEST, asset.id, 'walking', 'north')?.clip.frames).toEqual([24, 25, 26, 27, 28, 29]);
+        expect(resolveSpriteClip(AGENT_SPRITE_MANIFEST, asset.id, 'walking', 'none')?.resolvedDirection).toBe('south');
     });
 
     it('builds correct yoyo frame sequences for looping and non-looping clips', () => {

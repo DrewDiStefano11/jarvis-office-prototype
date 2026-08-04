@@ -141,6 +141,31 @@ describe('Agent Simulation usability', () => {
         expect(container.querySelector('[data-agent-id="prototype-agent-01"]')?.getAttribute('data-sprite-state')).toBe('idle');
     });
 
+    it('keeps the sprite body at a constant world size without inverse zoom compensation', async () => {
+        const { container, rerender } = render(<Floor1CandidateSimulation active={false} reducedMotion presentation="simulation" registration={TEST_REGISTRATION} transform={{ x: 0, y: 0, scale: 0.1 }} />);
+        await screen.findByLabelText('Agent simulation controls');
+        fireEvent.click(screen.getByRole('button', { name: 'Add agent' }));
+        const before = container.querySelector<HTMLElement>('.prototype-agent')!;
+        expect(before.style.width).toBe('');
+        expect(before.style.getPropertyValue('--agent-compensation')).toBe('');
+        expect(before.querySelector<HTMLElement>('.prototype-agent__sprite-wrap')?.className).toContain('prototype-agent__sprite-wrap');
+        rerender(<Floor1CandidateSimulation active={false} reducedMotion presentation="simulation" registration={TEST_REGISTRATION} transform={{ x: 0, y: 0, scale: 1.5 }} />);
+        const after = container.querySelector<HTMLElement>('.prototype-agent')!;
+        expect(after.style.left).toBe(before.style.left);
+        expect(after.style.top).toBe(before.style.top);
+        expect(after.style.getPropertyValue('--agent-compensation')).toBe('');
+    });
+
+    it('exposes velocity, footprint, and direction as truthful agent diagnostics', async () => {
+        const { container } = render(<Floor1CandidateSimulation active={false} reducedMotion presentation="simulation" registration={TEST_REGISTRATION} />);
+        await screen.findByLabelText('Agent simulation controls');
+        fireEvent.click(screen.getByRole('button', { name: 'Add agent' }));
+        const agent = container.querySelector<HTMLElement>('.prototype-agent')!;
+        expect(agent.dataset.velocity).toMatch(/^-?\d+\.\d{2},-?\d+\.\d{2}$/);
+        expect(agent.dataset.footprintRadius).toBe('34');
+        expect(['north', 'south', 'east', 'west']).toContain(agent.dataset.spriteDirection);
+    });
+
     it('opens a compact card with identity, task, location, movement, and collapsed diagnostics', async () => {
         render(<Floor1CandidateSimulation active reducedMotion presentation="simulation" registration={TEST_REGISTRATION} viewport={{ width: 1200, height: 800 }} transform={{ x: 0, y: 0, scale: 0.1 }} />);
         await screen.findByLabelText('Agent simulation controls');

@@ -28,9 +28,6 @@ type Props = Readonly<{
     onAvailabilityChange?: (agentId: string, available: boolean, reason: string | null) => void;
 }>;
 
-const MINIMUM_SPRITE_SCREEN_PX = 42;
-const SPRITE_WORLD_PX = 181;
-
 export function PrototypeAgentRenderer({
     agent,
     runtime,
@@ -50,17 +47,19 @@ export function PrototypeAgentRenderer({
     onFrameChange,
     onAvailabilityChange,
 }: Props) {
-    const compensation = Math.min(4.5, Math.max(0.72, MINIMUM_SPRITE_SCREEN_PX / (SPRITE_WORLD_PX * Math.max(0.001, transformScale))));
     const style = {
         left: agent.point.x,
         top: agent.point.y,
-        '--agent-compensation': compensation,
+        '--agent-ui-compensation': Math.min(3, Math.max(0.7, 1 / Math.max(0.001, transformScale))),
     } as CSSProperties;
     const spriteState = prototypeSpriteState(agent);
     const spriteDirection = prototypeSpriteDirection(agent);
     const status = agent.movementState === 'walking' ? 'walking' : agent.activityState;
     const shortName = agent.fixture.label.replace(/^Agent\s+/i, 'A');
     const taskElapsed = Math.max(0, elapsedMs - agent.task.startedAtMs);
+    const spriteElapsed = agent.movementState === 'walking' || agent.movementState === 'waiting'
+        ? agent.walkCycleElapsedMs
+        : taskElapsed;
 
     const pointer = (handler: Props['onPointerDown'] | Props['onPointerMove'] | Props['onPointerUp'] | Props['onPointerCancel']) =>
         (event: PointerEvent<HTMLButtonElement>) => {
@@ -85,8 +84,15 @@ export function PrototypeAgentRenderer({
             aria-pressed={selected}
             data-agent-id={agent.fixture.id}
             data-agent-state={agent.activityState}
+            data-movement-state={agent.movementState}
             data-sprite-state={spriteState}
             data-sprite-direction={spriteDirection}
+            data-velocity={`${agent.velocity.x.toFixed(2)},${agent.velocity.y.toFixed(2)}`}
+            data-footprint-radius="34"
+            data-static-collision={agent.staticCollisionStatus}
+            data-blocked-by={agent.blockedByAgentId ?? ''}
+            data-task-kind={agent.task.kind}
+            data-task-phase={'phase' in agent.task ? agent.task.phase : ''}
             title={`${agent.fixture.label} · ${spriteState} · ${agent.fixture.spriteAssetId}`}
         >
             <span className="prototype-agent__selection-ring" aria-hidden="true" />
@@ -100,8 +106,8 @@ export function PrototypeAgentRenderer({
                     direction={spriteDirection}
                     reducedMotion={reducedMotion}
                     paused={paused}
-                    speed={agent.speed}
-                    externalElapsedMs={taskElapsed}
+                    speed={1}
+                    externalElapsedMs={spriteElapsed}
                     onFrameChange={frame => onFrameChange?.(agent.fixture.id, frame)}
                     onAvailabilityChange={(available, reason) => onAvailabilityChange?.(agent.fixture.id, available, reason)}
                     className="prototype-agent__sprite"

@@ -15,13 +15,16 @@ import {
     assignPrototypeWander,
     assignPrototypeWork,
     createPrototypeAgents,
+    createPrototypeRuntimeMetrics,
     distributedPrototypeSpawnNodes,
     planPrototypeRouteToPoint,
     prototypeDoorTraversalCoverage,
     prototypeOpenDoorRuntimes,
     prototypeOpenGraph,
     prototypeRoomAtPoint,
+    prototypeFacingFromVelocity,
     prototypeSpriteState,
+    prototypeWorkstations,
     repositionPrototypeAgent,
     snapPrototypePoint,
     startPrototypeRoute,
@@ -44,6 +47,62 @@ const strictGraph = buildCandidateSandboxGraph(sourceDocuments, registration);
 const graph = prototypeOpenGraph(strictGraph);
 
 describe('prototype runtime', () => {
+    it.each([
+        [{ x: 120, y: 0 }, 'east'],
+        [{ x: -120, y: 0 }, 'west'],
+        [{ x: 0, y: -120 }, 'north'],
+        [{ x: 0, y: 120 }, 'south'],
+    ] as const)('faces actual cardinal velocity %o as %s', (velocity, expected) => {
+        expect(prototypeFacingFromVelocity('south', velocity)).toBe(expected);
+    });
+
+    it('retains facing for stationary noise and uses hysteresis near diagonal transitions', () => {
+        expect(prototypeFacingFromVelocity('west', { x: 2, y: -3 })).toBe('west');
+        expect(prototypeFacingFromVelocity('east', { x: 10, y: -11 })).toBe('east');
+        expect(prototypeFacingFromVelocity('east', { x: 10, y: -14 })).toBe('north');
+    });
+
+    it('never selects the direction opposite a meaningful velocity', () => {
+        const samples = [{ x: 50, y: 2 }, { x: -50, y: 2 }, { x: 2, y: 50 }, { x: 2, y: -50 }];
+        for (const velocity of samples) {
+            const facing = prototypeFacingFromVelocity('south', velocity);
+            const vector = facing === 'east' ? { x: 1, y: 0 } : facing === 'west' ? { x: -1, y: 0 }
+                : facing === 'south' ? { x: 0, y: 1 } : { x: 0, y: -1 };
+            expect(vector.x * velocity.x + vector.y * velocity.y).toBeGreaterThan(0);
+        }
+    });
+
+    it('caches workstation geometry and keeps explicit anchors collision clear', () => {
+        const metrics = createPrototypeRuntimeMetrics();
+        const first = prototypeWorkstations(graph, metrics);
+        const second = prototypeWorkstations(graph, metrics);
+        expect(first).toBe(second);
+        expect(first.length).toBeGreaterThan(25);
+        expect(metrics.graphBuilds).toBe(1);
+    });
+
+    it('does not assign an occupied workstation twice', () => {
+        const [first, second] = createPrototypeAgents(graph, 2, 'debug');
+        const firstWork = assignPrototypeWork(graph, first, 0);
+        expect(firstWork?.workstationId).toBeTruthy();
+        const occupied = new Set(firstWork?.workstationId ? [firstWork.workstationId] : []);
+        const secondWork = assignPrototypeWork(graph, second, 0, occupied);
+        expect(secondWork?.workstationId).toBeTruthy();
+        expect(secondWork?.workstationId).not.toBe(firstWork?.workstationId);
+    });
+
+    it('advances walk cadence from distance and freezes it while paused', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const moving = assignPrototypeWander(graph, agent, 7, 0);
+        expect(moving).not.toBeNull();
+        if (!moving) return;
+        const advanced = advancePrototypeAgents([moving], 250, 180, false, prototypeOpenDoorRuntimes(graph), graph)[0];
+        expect(advanced.distanceTravelled).toBeGreaterThan(0);
+        expect(advanced.walkCycleElapsedMs).toBeGreaterThan(0);
+        const paused = advancePrototypeAgents([advanced], 250, 180, true, prototypeOpenDoorRuntimes(graph), graph)[0];
+        expect(paused.walkCycleElapsedMs).toBe(advanced.walkCycleElapsedMs);
+        expect(paused.point).toEqual(advanced.point);
+    });
     it('creates deterministic agents on distinct valid walk nodes', () => {
         const agents = createPrototypeAgents(graph, 25, 'debug');
         const nodeIds = new Set(graph.walkNodes.map(node => node.id));
@@ -145,8 +204,8 @@ describe('prototype runtime', () => {
         expect(assigned?.workstationId).toMatch(/^(position:POSITION|computer:COMPUTER)_/);
         if (!assigned) return;
         let current = assigned;
-        for (let index = 0; index < 300 && current.movementState === 'walking'; index += 1) {
-            current = advancePrototypeAgents([current], 100, 1000, false, prototypeOpenDoorRuntimes(graph))[0];
+        for (let index = 0; index < 1_000 && ['walking', 'waiting', 'blocked'].includes(current.movementState); index += 1) {
+            current = advancePrototypeAgents([current], 100, 1000, false, prototypeOpenDoorRuntimes(graph), graph)[0];
         }
         expect(current.task.kind).toBe('work');
         expect(current.activityState).toBe('working-at-desk');

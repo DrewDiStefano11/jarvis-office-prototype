@@ -188,7 +188,7 @@ const MAX_SAMPLED_WALK_NODES = 1_600;
 const SAFE_REASON_LIMIT = 180;
 const SPRITE_SHEET_COUNT = 16;
 const DOOR_APERTURE_RADIUS = 96;
-const AGENT_FOOTPRINT_RADIUS = 34;
+export const AGENT_FOOTPRINT_RADIUS = 34;
 const CONNECTOR_SEARCH_LIMIT = 18;
 const CONNECTOR_MAX_DISTANCE = 420;
 const CONNECTOR_INGRESS_DISTANCE = 180;
@@ -997,6 +997,60 @@ function doorForHit(graph: CandidateNavigationGraph, pointValue: Point, crossedD
 
 function isDoorAperturePoint(graph: CandidateNavigationGraph, pointValue: Point, crossedDoorIds: readonly string[]): boolean {
     return !!doorForHit(graph, pointValue, crossedDoorIds);
+}
+
+type IndexedCollider = Readonly<{ collider: CandidateCollider; minX: number; minY: number; maxX: number; maxY: number }>;
+const STATIC_COLLIDER_INDEX = new WeakMap<object, readonly IndexedCollider[]>();
+
+function staticColliderIndex(graph: CandidateNavigationGraph): readonly IndexedCollider[] {
+    const cached = STATIC_COLLIDER_INDEX.get(graph);
+    if (cached) return cached;
+    const indexed = graph.colliders.map(collider => {
+        const margin = collider.thickness / 2 + AGENT_FOOTPRINT_RADIUS;
+        return {
+            collider,
+            minX: Math.min(...collider.points.map(point => point.x)) - margin,
+            minY: Math.min(...collider.points.map(point => point.y)) - margin,
+            maxX: Math.max(...collider.points.map(point => point.x)) + margin,
+            maxY: Math.max(...collider.points.map(point => point.y)) + margin,
+        };
+    });
+    STATIC_COLLIDER_INDEX.set(graph, indexed);
+    return indexed;
+}
+
+export function candidatePointHasStaticClearance(
+    graph: CandidateNavigationGraph,
+    pointValue: Point,
+    crossedDoorIds: readonly string[] = [],
+): boolean {
+    if (!bounded(pointValue)) return false;
+    return staticColliderIndex(graph)
+        .filter(item => pointValue.x >= item.minX && pointValue.x <= item.maxX && pointValue.y >= item.minY && pointValue.y <= item.maxY)
+        .every(({ collider }) => {
+        if (!pointOverlapsColliderFootprint(pointValue, collider)) return true;
+        return collider.kind === 'wall' && isDoorAperturePoint(graph, pointValue, crossedDoorIds);
+    });
+}
+
+export function candidateSegmentHasStaticClearance(
+    graph: CandidateNavigationGraph,
+    a: Point,
+    b: Point,
+    crossedDoorIds: readonly string[] = [],
+): boolean {
+    if (!bounded(a) || !bounded(b)) return false;
+    const minX = Math.min(a.x, b.x);
+    const minY = Math.min(a.y, b.y);
+    const maxX = Math.max(a.x, b.x);
+    const maxY = Math.max(a.y, b.y);
+    return staticColliderIndex(graph)
+        .filter(item => item.maxX >= minX && item.minX <= maxX && item.maxY >= minY && item.minY <= maxY)
+        .every(({ collider }) => {
+        const hits = colliderIntersections(a, b, collider);
+        if (hits.length === 0) return true;
+        return collider.kind === 'wall' && hits.every(hit => isDoorAperturePoint(graph, hit, crossedDoorIds));
+    });
 }
 
 function isWalkSupported(graph: CandidateNavigationGraph, pointValue: Point): boolean {

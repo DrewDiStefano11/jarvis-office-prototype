@@ -12,6 +12,7 @@ import { FLOOR1_CANDIDATE_LAYER_CONTROLS } from '../../office/floor1/candidateRe
 import {
     buildCandidateNavigationGraph,
     buildCandidateSandboxGraph,
+    validateCandidateRouteSegments,
     type CandidateNavigationGraph,
     type MarkupRegistration,
 } from '../../office/floor1/navigation/candidateNavigation';
@@ -21,24 +22,29 @@ import {
     assignPrototypeTalk,
     assignPrototypeWander,
     assignPrototypeWork,
+    createPrototypeRuntimeMetrics,
     createPrototypeAgents,
     planPrototypeRouteToPoint,
     PROTOTYPE_AGENT_LIMIT,
+    PROTOTYPE_AGENT_RADIUS,
     PROTOTYPE_AMBIENT_COUNTS,
     PROTOTYPE_CLICK_SNAP_LIMIT,
     PROTOTYPE_DOOR_POLICY,
+    PROTOTYPE_SPRITE_WORLD_SIZE,
     prototypeOpenDoorRuntimes,
     prototypeOpenGraph,
     prototypeRoomAtPoint,
     prototypeSpriteDirection,
     prototypeSpriteState,
     prototypeTaskSummary,
+    prototypeWorkstations,
     repositionPrototypeAgent,
     resetPrototypeAgent,
     snapPrototypePoint,
     startPrototypeRoute,
     type PrototypeActivityState,
     type PrototypeAgent,
+    type PrototypeRuntimeMetrics,
 } from '../../office/floor1/navigation/prototypeRuntime';
 import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
 import { frameAtElapsedTime, resolveSpriteClip } from '../../office/sprites/resolver';
@@ -74,11 +80,20 @@ type LocalOverlays = Readonly<{
     destinations: boolean;
     labels: boolean;
     agentBounds: boolean;
+    workstations: boolean;
 }>;
 
 type OverlaySnapshot = Readonly<{ layers: ReadonlySet<OfficeLayer>; local: LocalOverlays }>;
 
 const BASE_SPEED_PX_PER_SECOND = 180;
+const UI_SNAPSHOT_INTERVAL_MS = 250;
+const RENDER_SNAPSHOT_INTERVAL_MS = 1000 / 30;
+
+type RuntimeDiagnosticsSnapshot = Readonly<PrototypeRuntimeMetrics & {
+    fps: number;
+    medianFrameMs: number;
+    p95FrameMs: number;
+}>;
 const NOOP_SET_LAYERS = () => undefined;
 const NOOP_ACTION = () => undefined;
 const NOOP_FOCUS: (point: Point) => void = () => undefined;
@@ -94,6 +109,7 @@ const ALL_LOCAL_OVERLAYS: LocalOverlays = {
     destinations: true,
     labels: true,
     agentBounds: true,
+    workstations: true,
 };
 
 type CommandMode = 'walk' | 'talk' | 'reposition' | null;
@@ -116,6 +132,7 @@ const NO_LOCAL_OVERLAYS: LocalOverlays = {
     destinations: false,
     labels: false,
     agentBounds: false,
+    workstations: false,
 };
 
 function candidateGraph(registration?: MarkupRegistration): CandidateNavigationGraph {
@@ -197,9 +214,16 @@ export function Floor1CandidateSimulation({
     const [selectedSpriteAvailability, setSelectedSpriteAvailability] = useState<Readonly<{ available: boolean; reason: string | null }>>({ available: true, reason: null });
     const [removeConfirmation, setRemoveConfirmation] = useState(false);
     const [spriteRuntime] = useState(() => new SpriteSurfaceRuntime());
+    const [runtimeDiagnostics, setRuntimeDiagnostics] = useState<RuntimeDiagnosticsSnapshot>(() => ({
+        ...createPrototypeRuntimeMetrics(), fps: 0, medianFrameMs: 0, p95FrameMs: 0,
+    }));
     const agentsRef = useRef(agents);
     const lastTimestampRef = useRef<number | null>(null);
     const frameRef = useRef<number | null>(null);
+    const lastUiSnapshotRef = useRef(0);
+    const lastRenderSnapshotRef = useRef(0);
+    const frameDurationsRef = useRef<number[]>([]);
+    const runtimeMetricsRef = useRef(createPrototypeRuntimeMetrics());
     const previousOverlayRef = useRef<OverlaySnapshot | null>(null);
 
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? null;
@@ -208,6 +232,8 @@ export function Floor1CandidateSimulation({
     const movingCount = agents.filter(agent => agent.movementState === 'walking').length;
     const workingCount = agents.filter(agent => agent.activityState === 'working-at-desk').length;
     const talkingCount = agents.filter(agent => agent.activityState === 'talking').length;
+    const waitingCount = agents.filter(agent => ['waiting', 'blocked'].includes(agent.movementState)).length;
+    const workstations = useMemo(() => prototypeWorkstations(graph, runtimeMetricsRef.current), [graph]);
 
     useEffect(() => { agentsRef.current = agents; }, [agents]);
 
@@ -229,45 +255,87 @@ export function Floor1CandidateSimulation({
         setFeedback(mode === 'debug' ? 'Add an agent, then click the office to send it there.' : `Ambient team running with ${ambientCount} agents.`);
     }, [ambientCount, graph, mode]);
 
-    const scheduleAmbient = useCallback((current: readonly PrototypeAgent[], deltaMs: number) => {
+    const scheduleAmbient = useCallback((current: readonly PrototypeAgent[]) => {
         if (mode !== 'ambient' && !autoMovement) return current;
-        const runtimeGraph = { ...graph, agents: current.map(agent => agent.fixture) };
-        return current.map((agent, index) => {
-            if (agent.movementState === 'walking' || agent.movementState === 'paused') return agent;
+        const now = simulationElapsedRef.current;
+        const occupiedWorkstations = new Set(current.flatMap(agent => agent.workstationId ? [agent.workstationId] : []));
+        const next = [...current];
+        let changed = false;
+        let plannedThisTick = false;
+        for (let index = 0; index < next.length; index += 1) {
+            const agent = next[index];
+            if (['walking', 'waiting', 'blocked', 'paused'].includes(agent.movementState) && agent.route) continue;
+            if (agent.replanCooldownMs > 0) continue;
             if (agent.movementState === 'arrived') {
                 const settledActivity = agent.task.kind === 'work' ? 'working-at-desk'
                     : agent.task.kind === 'talk' ? 'talking' : 'idle';
-                return {
+                const isAmbientRoamer = mode === 'ambient' && index % 5 === 0;
+                next[index] = {
                     ...agent,
                     movementState: 'idle' as const,
                     activityState: settledActivity as PrototypeActivityState,
-                    activityUntil: settledActivity === 'idle' ? 3_600 : 7_200 + (index % 4) * 900,
+                    activityUntil: now + (isAmbientRoamer ? 240 + index * 23 : settledActivity === 'idle' ? 3_600 : 7_200 + (index % 4) * 900),
                 };
+                changed = true;
+                continue;
             }
-            const remaining = agent.activityUntil - deltaMs;
-            if (remaining > 0) return { ...agent, activityUntil: remaining };
-            const activity = nextAmbientActivity(index, agent.revision + 1);
+            if (now < agent.activityUntil) continue;
+            if (mode === 'ambient' && agent.task.kind === 'work' && agent.task.phase === 'working') {
+                next[index] = { ...agent, activityUntil: now + 12_000 + (index % 4) * 700 };
+                changed = true;
+                continue;
+            }
+            const scheduledActivity = mode === 'ambient' && index % 5 === 0
+                ? 'moving-to-task'
+                : nextAmbientActivity(index, agent.revision + 1);
+            const activity = scheduledActivity === 'working-at-desk'
+                ? 'idle'
+                : mode === 'ambient' && scheduledActivity === 'talking' ? 'idle' : scheduledActivity;
+            if (agent.workstationId) occupiedWorkstations.delete(agent.workstationId);
+            if (plannedThisTick && activity !== 'idle') {
+                next[index] = { ...agent, activityUntil: now + 120 + (index % 5) * 40 };
+                changed = true;
+                continue;
+            }
             if (activity === 'moving-to-task') {
-                const wander = assignPrototypeWander(runtimeGraph, agent, index + agent.revision, simulationElapsedRef.current);
-                if (wander && (wander.route?.length ?? 0) > 20) return { ...wander, activityUntil: 0 };
+                const wander = assignPrototypeWander(graph, agent, index + agent.revision, now, runtimeMetricsRef.current);
+                if (wander && (wander.route?.length ?? 0) > 20) {
+                    next[index] = { ...wander, activityUntil: 0 };
+                    plannedThisTick = true;
+                    changed = true;
+                    continue;
+                }
             }
             if (activity === 'working-at-desk') {
-                const working = assignPrototypeWork(runtimeGraph, agent, simulationElapsedRef.current);
-                if (working) return { ...working, activityUntil: 0 };
+                const working = assignPrototypeWork(graph, agent, now, occupiedWorkstations, runtimeMetricsRef.current);
+                if (working) {
+                    next[index] = { ...working, activityUntil: 0 };
+                    if (working.workstationId) occupiedWorkstations.add(working.workstationId);
+                    plannedThisTick = true;
+                    changed = true;
+                    continue;
+                }
             }
             if (activity === 'talking') {
                 const partnerIndex = index % 2 === 0 ? Math.min(current.length - 1, index + 1) : index - 1;
-                const partner = current[partnerIndex];
+                const partner = next[partnerIndex];
                 const talking = partner && partner.fixture.id !== agent.fixture.id
-                    ? assignPrototypeTalk(runtimeGraph, agent, partner, simulationElapsedRef.current)
+                    ? assignPrototypeTalk(graph, agent, partner, now, runtimeMetricsRef.current, false)
                     : null;
-                if (talking) return { ...talking, activityUntil: 0 };
+                if (talking) {
+                    next[index] = { ...talking, activityUntil: 0 };
+                    plannedThisTick = true;
+                    changed = true;
+                    continue;
+                }
             }
-            return {
-                ...assignPrototypeIdle(agent, simulationElapsedRef.current),
-                activityUntil: 4_500 + ((index + agent.revision) % 6) * 1_250,
+            next[index] = {
+                ...assignPrototypeIdle(agent, now),
+                activityUntil: now + 4_500 + ((index + agent.revision) % 6) * 1_250,
             };
-        });
+            changed = true;
+        }
+        return changed ? next : current;
     }, [autoMovement, graph, mode]);
 
     useEffect(() => {
@@ -280,13 +348,40 @@ export function Floor1CandidateSimulation({
         const tick = (timestamp: number) => {
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
-            const delta = last === null ? 0 : Math.min(100, timestamp - last);
+            const rawDelta = last === null ? 0 : timestamp - last;
+            const delta = Math.min(100, rawDelta);
             simulationElapsedRef.current += delta;
-            setSimulationElapsedMs(simulationElapsedRef.current);
-            setAgents(previous => scheduleAmbient(
-                advancePrototypeAgents(previous, delta, BASE_SPEED_PX_PER_SECOND * playbackSpeed, false, doorRuntimes),
-                delta,
+            const metrics = runtimeMetricsRef.current;
+            metrics.rafFrames += 1;
+            metrics.longestFrameMs = Math.max(metrics.longestFrameMs, rawDelta);
+            if (rawDelta > 250) metrics.lastGlobalPauseMs = rawDelta;
+            if (rawDelta > 0) {
+                const frames = frameDurationsRef.current;
+                frames.push(rawDelta);
+                if (frames.length > 120) frames.shift();
+            }
+            const advanced = scheduleAmbient(advancePrototypeAgents(
+                agentsRef.current, delta, BASE_SPEED_PX_PER_SECOND * playbackSpeed, false, doorRuntimes, graph, metrics,
             ));
+            agentsRef.current = advanced;
+            if (timestamp - lastRenderSnapshotRef.current >= RENDER_SNAPSHOT_INTERVAL_MS) {
+                lastRenderSnapshotRef.current = timestamp;
+                metrics.stateCommits += 1;
+                setAgents(advanced);
+            }
+            if (timestamp - lastUiSnapshotRef.current >= UI_SNAPSHOT_INTERVAL_MS) {
+                lastUiSnapshotRef.current = timestamp;
+                const sortedFrames = [...frameDurationsRef.current].sort((a, b) => a - b);
+                const percentile = (ratio: number) => sortedFrames[Math.min(sortedFrames.length - 1, Math.floor(sortedFrames.length * ratio))] ?? 0;
+                const medianFrameMs = percentile(0.5);
+                setSimulationElapsedMs(simulationElapsedRef.current);
+                setRuntimeDiagnostics({
+                    ...metrics,
+                    fps: medianFrameMs > 0 ? 1000 / medianFrameMs : 0,
+                    medianFrameMs,
+                    p95FrameMs: percentile(0.95),
+                });
+            }
             frameRef.current = requestAnimationFrame(tick);
         };
         frameRef.current = requestAnimationFrame(tick);
@@ -295,7 +390,7 @@ export function Floor1CandidateSimulation({
             frameRef.current = null;
             lastTimestampRef.current = null;
         };
-    }, [active, agents.length, doorRuntimes, paused, playbackSpeed, scheduleAmbient]);
+    }, [active, agents.length, doorRuntimes, graph, paused, playbackSpeed, scheduleAmbient]);
 
     useEffect(() => {
         if (!active) return;
@@ -414,9 +509,8 @@ export function Floor1CandidateSimulation({
         const rect = event.currentTarget.getBoundingClientRect();
         const scale = rect.width / 8192;
         const clickedPoint = { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale };
-        const runtimeGraph = { ...graph, agents: agents.map(agent => agent.fixture) };
-        const plan = planPrototypeRouteToPoint(runtimeGraph, selectedAgent, clickedPoint);
-        if (!plan) {
+        const plan = planPrototypeRouteToPoint(graph, selectedAgent, clickedPoint, runtimeMetricsRef.current);
+        if (!plan || validateCandidateRouteSegments(graph, plan.route.points, plan.route.crossedDoorIds)) {
             setFeedback('No reachable path near clicked location.');
             return;
         }
@@ -446,7 +540,7 @@ export function Floor1CandidateSimulation({
         if (commandMode === 'talk' && selectedAgent && agentId !== selectedAgent.fixture.id) {
             const partner = agents.find(agent => agent.fixture.id === agentId);
             if (!partner) return;
-            const assigned = assignPrototypeTalk(graph, selectedAgent, partner, simulationElapsedRef.current);
+            const assigned = assignPrototypeTalk(graph, selectedAgent, partner, simulationElapsedRef.current, runtimeMetricsRef.current);
             if (!assigned) {
                 setFeedback(`No reachable conversation approach near ${partner.fixture.label}.`);
                 return;
@@ -466,7 +560,7 @@ export function Floor1CandidateSimulation({
                         nodeId: agent.currentNodeId,
                         startedAtMs: simulationElapsedRef.current,
                     },
-                    activityUntil: 8_000,
+                    activityUntil: simulationElapsedRef.current + 8_000,
                     revision: agent.revision + 1,
                 };
             }));
@@ -486,7 +580,8 @@ export function Floor1CandidateSimulation({
 
     const assignWork = () => {
         if (!selectedAgent) return;
-        const assigned = assignPrototypeWork(graph, selectedAgent, simulationElapsedRef.current);
+        const occupied = new Set(agents.flatMap(agent => agent.workstationId && agent.fixture.id !== selectedAgent.fixture.id ? [agent.workstationId] : []));
+        const assigned = assignPrototypeWork(graph, selectedAgent, simulationElapsedRef.current, occupied, runtimeMetricsRef.current);
         if (!assigned) {
             setFeedback('No reachable workstation destination is available.');
             return;
@@ -498,7 +593,7 @@ export function Floor1CandidateSimulation({
 
     const assignWander = () => {
         if (!selectedAgent) return;
-        const assigned = assignPrototypeWander(graph, selectedAgent, selectedAgent.revision + agents.length, simulationElapsedRef.current);
+        const assigned = assignPrototypeWander(graph, selectedAgent, selectedAgent.revision + agents.length, simulationElapsedRef.current, runtimeMetricsRef.current);
         if (!assigned) {
             setFeedback('No reachable wander target is available in the current room.');
             return;
@@ -586,8 +681,11 @@ export function Floor1CandidateSimulation({
     const resolvedSprite = selectedAgent
         ? resolveSpriteClip(AGENT_SPRITE_MANIFEST, selectedAgent.fixture.spriteAssetId, requestedSpriteState, requestedSpriteDirection, reducedMotion)
         : null;
+    const selectedSpriteElapsed = selectedAgent && ['walking', 'waiting'].includes(selectedAgent.movementState)
+        ? selectedAgent.walkCycleElapsedMs
+        : selectedAgent ? Math.max(0, simulationElapsedMs - selectedAgent.task.startedAtMs) : 0;
     const computedSpriteFrame = resolvedSprite && selectedAgent
-        ? frameAtElapsedTime(resolvedSprite, Math.max(0, simulationElapsedMs - selectedAgent.task.startedAtMs), selectedAgent.speed)
+        ? frameAtElapsedTime(resolvedSprite, selectedSpriteElapsed, 1)
         : selectedSpriteFrame;
     const cardWidth = 326;
     const cardHeightEstimate = mode === 'debug' ? 560 : 300;
@@ -620,7 +718,7 @@ export function Floor1CandidateSimulation({
                         direction={requestedSpriteDirection}
                         reducedMotion={reducedMotion}
                         paused={paused}
-                        externalElapsedMs={Math.max(0, simulationElapsedMs - selectedAgent.task.startedAtMs)}
+                        externalElapsedMs={selectedSpriteElapsed}
                         scale={0.3}
                     />
                 </div>
@@ -668,6 +766,13 @@ export function Floor1CandidateSimulation({
                     <dt>Node</dt><dd>{selectedAgent.currentNodeId}</dd>
                     <dt>Coordinates</dt><dd>{coordinate(selectedAgent.point)}</dd>
                     <dt>Doors</dt><dd>{selectedAgent.route?.crossedDoorIds.join(', ') || 'none'}</dd>
+                    <dt>Velocity</dt><dd>{selectedAgent.velocity.x.toFixed(1)}, {selectedAgent.velocity.y.toFixed(1)} px/s</dd>
+                    <dt>Tangent</dt><dd>{selectedAgent.routeTangent.x.toFixed(2)}, {selectedAgent.routeTangent.y.toFixed(2)}</dd>
+                    <dt>Footprint</dt><dd>r={PROTOTYPE_AGENT_RADIUS}px</dd>
+                    <dt>Sprite size</dt><dd>{PROTOTYPE_SPRITE_WORLD_SIZE} world px · {(PROTOTYPE_SPRITE_WORLD_SIZE * transform.scale).toFixed(1)} screen px</dd>
+                    <dt>Reserved</dt><dd>{selectedAgent.reservedNodeId ?? 'none'} · {selectedAgent.reservedEdgeKey ?? 'no edge'}</dd>
+                    <dt>Traffic</dt><dd>{selectedAgent.blockedByAgentId ? `waiting for ${selectedAgent.blockedByAgentId}` : 'clear'} · {Math.round(selectedAgent.blockedDurationMs)}ms</dd>
+                    <dt>Static check</dt><dd>{selectedAgent.staticCollisionStatus}</dd>
                 </dl>
             </details>
         </aside>
@@ -694,8 +799,13 @@ export function Floor1CandidateSimulation({
                 <dt>Agent node</dt><dd>{selectedAgent?.currentNodeId ?? 'none'}</dd>
                 <dt>Route</dt><dd>{selectedAgent?.route ? `${selectedAgent.route.nodeSequence.length} nodes · ${selectedAgent.route.length}px · ${selectedAgent.route.crossedDoorIds.join(', ') || 'no doors'}` : 'none'}</dd>
                 <dt>Door policy</dt><dd>{PROTOTYPE_DOOR_POLICY} · {graph.doors.length}/{graph.doors.length} open</dd>
+                <dt>Loop</dt><dd>1 RAF · {runtimeDiagnostics.fps.toFixed(1)} fps · median {runtimeDiagnostics.medianFrameMs.toFixed(1)}ms · p95 {runtimeDiagnostics.p95FrameMs.toFixed(1)}ms</dd>
+                <dt>Tick</dt><dd>{runtimeDiagnostics.lastTickMs.toFixed(2)}ms · max {runtimeDiagnostics.longestTickMs.toFixed(2)}ms · frame max {runtimeDiagnostics.longestFrameMs.toFixed(1)}ms</dd>
+                <dt>Traffic</dt><dd>{movingCount} moving · {waitingCount} waiting · {runtimeDiagnostics.collisionChecks} checks · {runtimeDiagnostics.collisionConflicts} conflicts</dd>
+                <dt>Planning</dt><dd>{runtimeDiagnostics.graphBuilds} graph builds · {runtimeDiagnostics.routePlans} plans · {runtimeDiagnostics.routeReplans} replans</dd>
+                <dt>Commits</dt><dd>{runtimeDiagnostics.stateCommits} agent snapshots · 30/s maximum</dd>
                 <dt>Last message</dt><dd>{feedback}</dd>
-                <dt>Limitation</dt><dd>Dynamic agent-to-agent avoidance is future work.</dd>
+                <dt>Last pause</dt><dd>{runtimeDiagnostics.lastGlobalPauseMs.toFixed(1)}ms</dd>
             </dl>
         </details>
     );
@@ -780,6 +890,7 @@ export function Floor1CandidateSimulation({
                     {([
                         ['nodes', 'Navigation nodes'], ['edges', 'Navigation edges'], ['colliders', 'Modeled colliders'], ['doors', 'Open door state'],
                         ['routes', 'Route previews'], ['destinations', 'Destinations'], ['labels', 'Agent labels'], ['agentBounds', 'Agent debug bounds'],
+                        ['workstations', 'Workstation anchors'],
                     ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={localOverlays[key]} onChange={() => toggleLocalOverlay(key)} /> {label}</label>)}
                 </div>
             </section>
@@ -837,6 +948,16 @@ export function Floor1CandidateSimulation({
                 <svg className={`floor1-candidate-destination ${selectedAgent.movementState === 'arrived' ? 'floor1-candidate-destination--arrived' : ''}`} aria-label="Clicked destination marker">
                     <circle cx={selectedAgent.clickedPoint.x} cy={selectedAgent.clickedPoint.y} r="46" />
                     {selectedAgent.targetPoint && <circle className="snapped" cx={selectedAgent.targetPoint.x} cy={selectedAgent.targetPoint.y} r="24" />}
+                </svg>
+            )}
+            {localOverlays.workstations && (
+                <svg className="floor1-candidate-debug floor1-candidate-debug--graph" aria-label="Workstation anchors">
+                    {workstations.map(workstation => <g key={workstation.id} data-workstation-id={workstation.id}>
+                        <line className="edge" x1={workstation.approachPoint.x} y1={workstation.approachPoint.y} x2={workstation.workingAnchor.x} y2={workstation.workingAnchor.y} />
+                        <circle className="node" cx={workstation.approachPoint.x} cy={workstation.approachPoint.y} r={PROTOTYPE_AGENT_RADIUS} />
+                        <circle className="door door--open" cx={workstation.workingAnchor.x} cy={workstation.workingAnchor.y} r="22" />
+                        <text x={workstation.workingAnchor.x + 30} y={workstation.workingAnchor.y}>{workstation.id}</text>
+                    </g>)}
                 </svg>
             )}
             {dragState?.active && (
