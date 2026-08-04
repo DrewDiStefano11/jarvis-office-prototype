@@ -1,0 +1,8 @@
+# Generated text is hashed byte-for-byte. Keep repository and checkout bytes LF
+# on every platform, independent of a contributor's core.autocrlf setting.
+artifacts/production-floor1/*.json text eol=lf
+artifacts/production-floor1/*.md text eol=lf
+artifacts/production-floor1/**/*.json text eol=lf
+artifacts/production-floor1/**/*.md text eol=lf
+artifacts/production-floor1/**/*.svg text eol=lf
+src/office/data/floor1/**/*.json text eol=lf

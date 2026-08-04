@@ -2080,6 +2080,24 @@ generated data or registration evidence.
 
 ## Decision and progress log
 
+- 2026-08-04 CI determinism repair: GitHub Actions run 30915790866 failed
+  `check:floor1-generated` on Node 20 because the committed manifest described
+  the Windows CRLF checkout of `alignment-assistance.json` (654 bytes), while
+  the Git blob and Ubuntu checkout are LF (653 bytes). The generator hashes
+  existing evidence files without first normalizing their text bytes.
+- CI repair architecture: declare LF for generated text in `.gitattributes`,
+  normalize generated JSON/Markdown/SVG text to LF before manifest hashing, and
+  add a focused CRLF-to-LF regression test. Regenerate the legitimate manifest,
+  run the complete requested validation matrix, push a follow-up commit, then
+  monitor every GitHub Actions matrix job to a terminal green result. No
+  registration geometry, approval evidence, or production trust state changes.
+- 2026-08-04: Implemented LF normalization before manifest hashing and LF Git
+  attributes for generated text. Regeneration now records the Linux-consistent
+  653-byte alignment artifact and 11,568,585-byte total. Clean-install local
+  validation passes typecheck, lint, 417 tests across 38 files, both generated
+  checks, production build, and production-bundle exclusion. Remaining: verify
+  the committed blobs in a clean LF checkout, push, and monitor both CI jobs.
+
 - 2026-08-04: Started clean independent branch at required SHA.
 - 2026-08-04: Reproduced uncaught null-document crash in real Chromium.
 - 2026-08-04: Verified all nine development middleware responses settle with
