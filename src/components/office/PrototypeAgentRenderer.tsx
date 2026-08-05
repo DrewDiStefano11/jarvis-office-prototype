@@ -116,6 +116,10 @@ export function PrototypeAgentRenderer({
             data-footprint-radius="34"
             data-static-collision={agent.staticCollisionStatus}
             data-blocked-by={agent.blockedByAgentId ?? ''}
+            data-blocked-duration-ms={Math.round(agent.blockedDurationMs)}
+            data-replan-attempts={agent.replanAttempts}
+            data-agent-revision={agent.revision}
+            data-route-progress={Math.round(agent.progress)}
             data-task-kind={agent.task.kind}
             data-task-phase={'phase' in agent.task ? agent.task.phase : ''}
             data-portal-door={agent.portalTransition?.doorId ?? ''}

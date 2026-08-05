@@ -332,7 +332,8 @@ Consequences: a fresh exact-registration graph reports 30/47 doors provisional-v
 - A fresh D01 route reported 97 nodes, 1098px, and D01; live diagnostics subsequently recorded 12 completed portal transitions with zero active/hidden remnants and no portal waits at that observation.
 - Global pause held all 25 agent styles stable for 1.2s and resume restored the shared clock.
 - The first exact-commit 20-agent soak was stopped at minute 7: Agents 17 and 18 remained statically blocked at unchanged feet positions because a collision-valid route was repeatedly accepted by stall replanning but rejected by swept-footprint movement.
-- Added a strict one-replan budget; a second static stall now fails to explicit `route-failed`, then automatic scheduling holds a 12s ambient break before rotating activity instead of immediately retrying the same work route.
+- Added a strict one-replan budget; a second static stall now fails to explicit `route-failed`, and automatic scheduling leaves that agent safely idle until a manual command or reset instead of ever retrying the same failed destination.
+- The first restarted 20-agent soak again sampled Agent 18 at the same blocked feet position beyond two minutes. The run was stopped and does not count; automatic post-failure activity rotation was removed entirely, and richer development attributes were added to prove duration/replan/revision/progress on the next fresh run.
 
 ## Unexpected Discoveries
 
@@ -368,7 +369,7 @@ User review needed: No.
 Date: 2026-08-05
 Discovery: During the first exact-commit 20-agent soak, Agents 17 and 18 stayed in `blocked` with `static-collision=blocked`, zero velocity, unchanged feet positions, and traveling work tasks for multiple minute samples.
 Impact: The existing cooldown bounded retry frequency but not retry count, so an accepted replacement route could restart the same collision indefinitely.
-Decision: Allow one automatic static-stall replan per task; if that route stalls again, fail visibly and clear the route/reservations. Automatic mode then observes the failure cooldown and takes a 12s ambient break before rotating activity.
+Decision: Allow one automatic static-stall replan per task; if that route stalls again, fail visibly and clear the route/reservations. Automatic mode must keep the agent safely idle until a manual command or reset. Development DOM diagnostics expose blocked duration, replan count, revision, and route progress for soak verification.
 Plan change: Restart both full-duration soaks from a new exact commit; the failed seven-minute run does not count.
 User review needed: No.
 

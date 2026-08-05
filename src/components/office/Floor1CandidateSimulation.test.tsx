@@ -58,6 +58,7 @@ describe('Agent Simulation usability', () => {
         expect(agents.map(agent => agent.dataset.agentId)).toEqual(['prototype-agent-01', 'prototype-agent-02', 'prototype-agent-03', 'prototype-agent-04', 'prototype-agent-05']);
         expect(new Set(agents.map(agent => `${agent.style.left},${agent.style.top}`)).size).toBe(5);
         expect(agents.every(agent => Number(agent.style.zIndex) === 1_000 + Math.round(Number.parseFloat(agent.style.top)))).toBe(true);
+        expect(agents.every(agent => agent.dataset.replanAttempts === '0' && agent.dataset.blockedDurationMs === '0')).toBe(true);
     });
 
     it('enforces and announces the 25-agent limit', async () => {

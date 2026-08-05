@@ -394,11 +394,14 @@ describe('prototype runtime', () => {
             activityState: 'waiting' as const,
             targetPoint: target,
             staticCollisionStatus: 'blocked' as const,
-            blockedDurationMs: 800,
+            blockedDurationMs: 0,
             replanAttempts: 1,
             task: { kind: 'walk' as const, phase: 'traveling' as const, destination: target, nodeId: 'blocked-target', startedAtMs: 0 },
         };
-        const recovered = advancePrototypeAgents([stalled], 16, 180, false, prototypeOpenDoorRuntimes(graph), graph)[0];
+        let recovered: typeof agent = stalled;
+        for (let index = 0; index < 10 && recovered.route; index += 1) {
+            recovered = advancePrototypeAgents([recovered], 100, 180, false, prototypeOpenDoorRuntimes(graph), graph)[0];
+        }
         expect(recovered.route).toBeNull();
         expect(recovered.movementState).toBe('idle');
         expect(recovered.task).toMatchObject({ kind: 'idle', reason: 'route-failed' });

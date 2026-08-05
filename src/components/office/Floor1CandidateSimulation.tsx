@@ -312,13 +312,6 @@ export function Floor1CandidateSimulation({
             const agent = next[index];
             if (['walking', 'waiting', 'blocked', 'paused'].includes(agent.movementState) && agent.route) continue;
             if (agent.task.kind === 'idle' && agent.task.reason === 'route-failed') {
-                if (agent.replanCooldownMs > 0) continue;
-                next[index] = {
-                    ...assignPrototypeIdle(agent, now),
-                    task: { kind: 'idle', reason: 'ambient-break', startedAtMs: now },
-                    activityUntil: now + 12_000 + (index % 4) * 700,
-                };
-                changed = true;
                 continue;
             }
             if (agent.replanCooldownMs > 0) continue;
