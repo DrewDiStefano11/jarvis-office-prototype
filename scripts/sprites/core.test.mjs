@@ -48,14 +48,24 @@ describe('sprite inventory and generation', () => {
     const inventory = await buildInventory();
     expect(inventory.counts).toEqual({
       total: 18,
-      productionCandidates: 16,
+      productionCandidates: 12,
       provisional: 1,
-      blocked: 1,
+      blocked: 5,
       duplicates: 0,
     });
     expect(inventory.records.find(record => record.id === 'nexus-tube-reference')?.blockingIssues).toContain(
       'The 1254x1254 source is not evenly divisible by the apparent frame rows and columns.',
     );
+    expect(inventory.records.find(record => record.id === 'agent-sheet-01')?.frameIntegrity).toMatchObject({
+      inspectedFrameCount: 24,
+      emptyFrameIndexes: [],
+      edgeBleedFrameIndexes: [],
+      fragmentedFrameIndexes: [],
+    });
+    expect(inventory.records.find(record => record.id === 'agent-sheet-05')?.blockingIssues).toContain(
+      'Authored directional frames contain multiple major disconnected body regions: 12, 13, 14, 15, 16, 17.',
+    );
+    expect(inventory.records.find(record => record.id === 'agent-sheet-12')?.runtimeCapability).toBe('quarantined-fallback-only');
   }, 30_000);
 
   it('is deterministic, removes stale files, and preserves source bytes', async () => {

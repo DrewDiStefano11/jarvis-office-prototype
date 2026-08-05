@@ -45,6 +45,12 @@ export type SpriteAssetManifest = Readonly<{
     availability: 'available' | 'blocked';
     approval: 'approved' | 'provisional';
     blockingReason: string | null;
+    runtimeCapability: 'limited-cardinal-idle-walk';
+    frameIntegrity: Readonly<{
+        method: string;
+        inspectedFrameCount: number;
+        maximumBottomAnchorDeviationPixels: number | null;
+    }>;
     agentProfileCompatibility: readonly string[];
     classification: 'agent' | 'hologram' | 'effect';
     authoredDirections: readonly SpriteDirection[];
@@ -58,6 +64,7 @@ export type BlockedSpriteAsset = Readonly<{
     availability: 'blocked';
     approval: 'provisional';
     blockingReason: string;
+    runtimeCapability: 'quarantined-fallback-only';
 }>;
 
 export type SpriteManifest = Readonly<{
