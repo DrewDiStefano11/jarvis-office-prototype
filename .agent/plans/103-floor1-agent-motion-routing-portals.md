@@ -334,6 +334,7 @@ Consequences: a fresh exact-registration graph reports 30/47 doors provisional-v
 - The first exact-commit 20-agent soak was stopped at minute 7: Agents 17 and 18 remained statically blocked at unchanged feet positions because a collision-valid route was repeatedly accepted by stall replanning but rejected by swept-footprint movement.
 - Added a strict one-replan budget; a second static stall now fails to explicit `route-failed`, and automatic scheduling leaves that agent safely idle until a manual command or reset instead of ever retrying the same failed destination.
 - The first restarted 20-agent soak again sampled Agent 18 at the same blocked feet position beyond two minutes. The run was stopped and does not count; automatic post-failure activity rotation was removed entirely, and richer development attributes were added to prove duration/replan/revision/progress on the next fresh run.
+- The richer diagnostics identified the exact state: Agent 18 was at 100% route progress with 0px remaining, but the final swept-footprint placement was statically rejected. Added an immediate endpoint failure path that clears the route at the last safe point; live HMR verification changed Agent 18 from blocked/traveling to idle/route-cleared on the next tick.
 
 ## Unexpected Discoveries
 
@@ -367,9 +368,9 @@ User review needed: No.
 ### X-103-04 - Stall replanning could accept the same swept-footprint failure forever
 
 Date: 2026-08-05
-Discovery: During the first exact-commit 20-agent soak, Agents 17 and 18 stayed in `blocked` with `static-collision=blocked`, zero velocity, unchanged feet positions, and traveling work tasks for multiple minute samples.
+Discovery: During the first exact-commit 20-agent soak, Agents 17 and 18 stayed in `blocked` with `static-collision=blocked`, zero velocity, unchanged feet positions, and traveling work tasks for multiple minute samples. Richer diagnostics later showed the repeating Agent 18 case was already at 100% route progress with 0px remaining: the graph endpoint passed route validation but its final swept feet placement was rejected.
 Impact: The existing cooldown bounded retry frequency but not retry count, so an accepted replacement route could restart the same collision indefinitely.
-Decision: Allow one automatic static-stall replan per task; if that route stalls again, fail visibly and clear the route/reservations. Automatic mode must keep the agent safely idle until a manual command or reset. Development DOM diagnostics expose blocked duration, replan count, revision, and route progress for soak verification.
+Decision: A statically rejected final endpoint fails immediately at the last safe feet point. Mid-route stalls may use one automatic replan; if that route stalls again, fail visibly and clear the route/reservations. Automatic mode must keep the agent safely idle until a manual command or reset. Development DOM diagnostics expose blocked duration, replan count, revision, and route progress for soak verification.
 Plan change: Restart both full-duration soaks from a new exact commit; the failed seven-minute run does not count.
 User review needed: No.
 

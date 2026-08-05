@@ -7,6 +7,7 @@ import interactiveObjects from '../../data/floor1/provisional/interactive-object
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
+import { OFFICE_SOURCE_WIDTH } from '../../constants';
 import { FLOOR1_CANDIDATE_REGISTRATION } from '../candidateRegistration';
 import { buildCandidateSandboxGraph } from './candidateNavigation';
 import {
@@ -374,22 +375,25 @@ describe('prototype runtime', () => {
     it('fails a repeatedly static-blocked route after one bounded replan', () => {
         const agent = createPrototypeAgents(graph, 1, 'debug')[0];
         const collisionPoint = graph.colliders.find(collider => collider.points.length > 0)!.points[0];
-        const target = { x: collisionPoint.x + 120, y: collisionPoint.y };
+        const start = { x: Math.min(OFFICE_SOURCE_WIDTH - 1, collisionPoint.x + 500), y: collisionPoint.y };
+        const target = collisionPoint;
+        const routeLength = Math.hypot(target.x - start.x, target.y - start.y);
         const route = {
             status: 'valid' as const,
             reason: 'Static-stall recovery fixture.',
-            points: [collisionPoint, target],
+            points: [start, target],
             crossedDoorIds: [],
             doorSteps: [],
             nodeSequence: ['blocked-start', 'blocked-target'],
-            cost: 120,
-            length: 120,
+            cost: Math.round(routeLength),
+            length: routeLength,
             expandedNodeCount: 1,
         };
         const stalled = {
             ...agent,
-            point: collisionPoint,
+            point: start,
             route,
+            progress: routeLength,
             movementState: 'blocked' as const,
             activityState: 'waiting' as const,
             targetPoint: target,
@@ -398,10 +402,7 @@ describe('prototype runtime', () => {
             replanAttempts: 1,
             task: { kind: 'walk' as const, phase: 'traveling' as const, destination: target, nodeId: 'blocked-target', startedAtMs: 0 },
         };
-        let recovered: typeof agent = stalled;
-        for (let index = 0; index < 10 && recovered.route; index += 1) {
-            recovered = advancePrototypeAgents([recovered], 100, 180, false, prototypeOpenDoorRuntimes(graph), graph)[0];
-        }
+        const recovered = advancePrototypeAgents([stalled], 100, 180, false, prototypeOpenDoorRuntimes(graph), graph)[0];
         expect(recovered.route).toBeNull();
         expect(recovered.movementState).toBe('idle');
         expect(recovered.task).toMatchObject({ kind: 'idle', reason: 'route-failed' });

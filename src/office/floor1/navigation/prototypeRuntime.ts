@@ -1671,6 +1671,17 @@ export function advancePrototypeAgents(
         };
     }
     const recovered = accepted.map(agent => {
+        const rejectedFinalEndpoint = Boolean(agent.route)
+            && agent.staticCollisionStatus === 'blocked'
+            && agent.progress >= (agent.route?.length ?? Number.POSITIVE_INFINITY) - 0.001;
+        if (rejectedFinalEndpoint) {
+            const failed = assignPrototypeIdle(agent, agent.task.startedAtMs + agent.blockedDurationMs);
+            return {
+                ...failed,
+                task: { kind: 'idle' as const, reason: 'route-failed' as const, startedAtMs: failed.task.startedAtMs },
+                replanCooldownMs: 2_500,
+            };
+        }
         const stalledAgainstStatic = agent.staticCollisionStatus === 'blocked' && agent.blockedDurationMs >= 750;
         const stalledInTraffic = agent.movementState === 'waiting' && agent.blockedDurationMs >= 2_500;
         if ((!stalledAgainstStatic && !stalledInTraffic) || agent.replanCooldownMs > 0) return agent;
