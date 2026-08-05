@@ -7,9 +7,11 @@ import interactiveObjects from '../../data/floor1/provisional/interactive-object
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
+import { FLOOR1_CANDIDATE_REGISTRATION } from '../candidateRegistration';
 import { buildCandidateSandboxGraph } from './candidateNavigation';
 import {
     advancePrototypeAgents,
+    auditPrototypePortalEndpoints,
     assignPrototypeIdle,
     assignPrototypeTalk,
     assignPrototypeWander,
@@ -17,6 +19,8 @@ import {
     createPrototypeAgents,
     createPrototypeRuntimeMetrics,
     distributedPrototypeSpawnNodes,
+    findValidatedPrototypeRouteToPoint,
+    layoutPrototypeAgentLabels,
     planPrototypeRouteToPoint,
     prototypeDoorTraversalCoverage,
     prototypeOpenDoorRuntimes,
@@ -26,7 +30,9 @@ import {
     prototypeSpriteState,
     prototypeWorkstations,
     repositionPrototypeAgent,
+    resetPrototypeAgent,
     snapPrototypePoint,
+    selectPrototypeRouteToPoint,
     startPrototypeRoute,
 } from './prototypeRuntime';
 
@@ -45,6 +51,78 @@ const registration = {
 const sourceDocuments = { rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths };
 const strictGraph = buildCandidateSandboxGraph(sourceDocuments, registration);
 const graph = prototypeOpenGraph(strictGraph);
+const registeredGraph = prototypeOpenGraph(buildCandidateSandboxGraph(sourceDocuments, FLOOR1_CANDIDATE_REGISTRATION));
+
+function portalTestPlan(agent: ReturnType<typeof createPrototypeAgents>[number], doorCount = 1) {
+    const pairs = auditPrototypePortalEndpoints(graph)
+        .filter(item => item.status === 'provisional-valid' && item.approachPoint && item.exitPoint)
+        .slice(0, doorCount);
+    const points: Array<{ x: number; y: number }> = [];
+    const doorSteps: Array<{
+        doorId: string;
+        permission: 'general';
+        initialPhysicalState: 'open';
+        requiredAction: 'none';
+        approachPoint: { x: number; y: number };
+        thresholdPoint: { x: number; y: number };
+        exitPoint: { x: number; y: number };
+        approachDistance: number;
+        thresholdDistance: number;
+        exitDistance: number;
+        clearanceReleaseDistance: number;
+    }> = [];
+    let progress = 0;
+    for (const pair of pairs) {
+        const door = graph.doors.find(item => item.id === pair.doorId)!;
+        const approachPoint = pair.approachPoint!;
+        const exitPoint = pair.exitPoint!;
+        if (points.length === 0) points.push(approachPoint);
+        else {
+            const previousPoint = points[points.length - 1];
+            progress += Math.hypot(approachPoint.x - previousPoint.x, approachPoint.y - previousPoint.y);
+            points.push(approachPoint);
+        }
+        const approachDistance = progress;
+        progress += Math.hypot(door.point.x - approachPoint.x, door.point.y - approachPoint.y);
+        points.push(door.point);
+        const thresholdDistance = progress;
+        progress += Math.hypot(exitPoint.x - door.point.x, exitPoint.y - door.point.y);
+        points.push(exitPoint);
+        doorSteps.push({
+            doorId: door.id,
+            permission: 'general',
+            initialPhysicalState: 'open',
+            requiredAction: 'none',
+            approachPoint,
+            thresholdPoint: door.point,
+            exitPoint,
+            approachDistance,
+            thresholdDistance,
+            exitDistance: progress,
+            clearanceReleaseDistance: progress + 68,
+        });
+    }
+    const snappedPoint = points[points.length - 1] ?? agent.point;
+    return {
+        route: {
+            status: 'valid' as const,
+            reason: 'Deterministic portal state-machine fixture.',
+            points,
+            crossedDoorIds: doorSteps.map(step => step.doorId),
+            doorSteps,
+            nodeSequence: points.map((_, index) => `portal-fixture-${index}`),
+            cost: Math.round(progress),
+            length: progress,
+            expandedNodeCount: points.length,
+        },
+        clickedPoint: snappedPoint,
+        snappedPoint,
+        snappedNodeId: 'portal-fixture-end',
+        snapDistance: 0,
+        candidatesEvaluated: 1,
+        searchRadius: 160,
+    };
+}
 
 describe('prototype runtime', () => {
     it.each([
@@ -137,6 +215,41 @@ describe('prototype runtime', () => {
         expect(plan?.snappedNodeId).toBeTruthy();
     });
 
+    it('audits every registered door and never approves an incomplete portal pair', () => {
+        const audit = auditPrototypePortalEndpoints(graph);
+        expect(audit).toHaveLength(47);
+        expect(new Set(audit.map(item => item.doorId)).size).toBe(47);
+        expect(audit.filter(item => item.status === 'provisional-valid').every(item => item.approachPoint && item.exitPoint)).toBe(true);
+        expect(audit.filter(item => item.status === 'disabled-incomplete').every(item => !item.approachPoint || !item.exitPoint)).toBe(true);
+    });
+
+    it('returns explicit click-route rejection reasons instead of a generic null result', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        expect(selectPrototypeRouteToPoint(graph, agent, { x: -1, y: 20 })).toMatchObject({
+            status: 'rejected', reason: 'outside-office',
+        });
+    });
+
+    it('reports the unverified D47 transition for the reproduced long A21 click', () => {
+        const originalAgent = createPrototypeAgents(registeredGraph, 25, 'debug')[20];
+        const start = snapPrototypePoint(registeredGraph, { x: 1_022.48, y: 1_805.52 }, 620);
+        expect(start).not.toBeNull();
+        if (!start) return;
+        const agent = repositionPrototypeAgent(originalAgent, start, 0);
+        const selection = findValidatedPrototypeRouteToPoint(registeredGraph, agent, { x: 5_325, y: 2_966 });
+        expect(selection).toMatchObject({ status: 'rejected', reason: 'transition-unavailable' });
+        expect(selection.status === 'rejected' ? selection.message : '').toContain('D47 has no validated portal endpoint pair');
+    });
+
+    it('selects a nearby reachable alternative when the closest endpoint is occupied', () => {
+        const agent = createPrototypeAgents(registeredGraph, 1, 'debug')[0];
+        const occupant = { point: agent.point };
+        const selection = findValidatedPrototypeRouteToPoint(registeredGraph, agent, occupant.point, undefined, { occupiedPoints: [occupant.point] });
+        expect(selection.status, JSON.stringify(selection)).toBe('accepted');
+        if (selection.status !== 'accepted') return;
+        expect(Math.hypot(selection.plan.snappedPoint.x - occupant.point.x, selection.plan.snappedPoint.y - occupant.point.y)).toBeGreaterThanOrEqual(72);
+    });
+
     it('advances a started route while preserving its exact position when paused', () => {
         const agent = createPrototypeAgents(graph, 1, 'debug')[0];
         const routeGraph = { ...graph, agents: [agent.fixture] };
@@ -157,29 +270,124 @@ describe('prototype runtime', () => {
         expect(moving.point).not.toEqual(started.point);
     });
 
-    it('plans a runtime route that traverses multiple prototype-open door thresholds', () => {
+    it('represents multiple ordered portal transitions in one runtime route', () => {
         const agent = createPrototypeAgents(graph, 1, 'debug')[0];
-        const routeGraph = { ...graph, agents: [agent.fixture] };
-        let plan = null;
-        let maximumDoorCount = 0;
-        for (const node of graph.walkNodes.slice().sort((a, b) => Math.hypot(b.point.x - agent.point.x, b.point.y - agent.point.y) - Math.hypot(a.point.x - agent.point.x, a.point.y - agent.point.y))) {
-            const candidate = planPrototypeRouteToPoint(routeGraph, agent, node.point);
-            maximumDoorCount = Math.max(maximumDoorCount, candidate?.route.crossedDoorIds.length ?? 0);
-            if ((candidate?.route.crossedDoorIds.length ?? 0) < 2) continue;
-            plan = candidate;
-            break;
-        }
-        expect(maximumDoorCount).toBeGreaterThanOrEqual(2);
-        expect(plan?.route.status).toBe('valid');
-        expect(plan?.route.crossedDoorIds.length).toBeGreaterThanOrEqual(2);
-        expect(plan?.route.doorSteps.every(step => step.requiredAction === 'none')).toBe(true);
+        const plan = portalTestPlan(agent, 2);
+        expect(plan.route.crossedDoorIds).toHaveLength(2);
+        expect(plan.route.doorSteps.map(step => step.doorId)).toEqual(plan.route.crossedDoorIds);
+        expect(plan.route.doorSteps[1].approachDistance).toBeGreaterThan(plan.route.doorSteps[0].exitDistance);
+        expect(plan.route.doorSteps.every(step => step.requiredAction === 'none')).toBe(true);
     });
 
-    it('assigns the sixteen real sprite variants deterministically and keeps identity through task changes', () => {
+    it('crosses door routes through a bounded portal-out, hidden, and portal-in transition', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const plan = portalTestPlan(agent);
+        const firstStep = plan.route.doorSteps[0];
+        let current = {
+            ...startPrototypeRoute(agent, plan),
+            point: firstStep.thresholdPoint,
+            progress: Math.max(0, firstStep.thresholdDistance - 1),
+        };
+        const doorsOpen = prototypeOpenDoorRuntimes(graph);
+        for (let index = 0; index < 100 && !current.portalTransition; index += 1) {
+            current = advancePrototypeAgents([current], 100, 2_000, false, doorsOpen)[0];
+        }
+        expect(current.movementState).toBe('portal-out');
+        const cadenceAtPortal = current.walkCycleElapsedMs;
+        const pausedPortal = advancePrototypeAgents([current], 100, 2_000, true, doorsOpen)[0];
+        expect(pausedPortal.portalTransition?.elapsedMs).toBe(current.portalTransition?.elapsedMs);
+        expect(pausedPortal.point).toEqual(current.point);
+        current = advancePrototypeAgents([current], 170, 2_000, false, doorsOpen)[0];
+        expect(current.movementState).toBe('hidden-transition');
+        expect(current.walkCycleElapsedMs).toBe(cadenceAtPortal);
+        current = advancePrototypeAgents([current], 120, 2_000, false, doorsOpen)[0];
+        expect(current.movementState).toBe('portal-in');
+        current = advancePrototypeAgents([current], 220, 2_000, false, doorsOpen)[0];
+        expect(current.portalTransition).toBeUndefined();
+        expect(current.movementState).toBe('walking');
+    });
+
+    it('reserves a portal exit deterministically and releases it after owner removal', () => {
+        const [first, second, third] = createPrototypeAgents(graph, 3, 'debug');
+        const plan = portalTestPlan(first);
+        const step = plan.route.doorSteps[0];
+        const atApproach = (agent: typeof first) => ({
+            ...startPrototypeRoute(agent, plan),
+            point: step.approachPoint,
+            progress: step.approachDistance,
+        });
+        const doorsOpen = prototypeOpenDoorRuntimes(graph);
+        const congested = advancePrototypeAgents([atApproach(first), atApproach(second), atApproach(third)], 16, 180, false, doorsOpen);
+        expect(congested.filter(agent => Boolean(agent.portalTransition))).toHaveLength(1);
+        expect(congested.filter(agent => agent.movementState === 'waiting')).toHaveLength(2);
+        const ownerId = congested.find(agent => agent.portalTransition)?.fixture.id;
+        const afterReset = advancePrototypeAgents(
+            congested.map(agent => agent.fixture.id === ownerId ? resetPrototypeAgent(agent) : agent),
+            16,
+            180,
+            false,
+            doorsOpen,
+        );
+        expect(afterReset.filter(agent => Boolean(agent.portalTransition))).toHaveLength(1);
+        const remaining = congested.filter(agent => agent.fixture.id !== ownerId);
+        const afterRemoval = advancePrototypeAgents(remaining, 16, 180, false, doorsOpen);
+        expect(afterRemoval.filter(agent => Boolean(agent.portalTransition))).toHaveLength(1);
+        expect(new Set(afterRemoval.map(agent => `${agent.point.x},${agent.point.y}`)).size).toBeGreaterThan(1);
+    });
+
+    it('does not let two agents settle on the same feet position', () => {
+        const [first, second] = createPrototypeAgents(graph, 2, 'debug');
+        const target = { x: 4_000, y: 2_700 };
+        const routePlan = (start: typeof target, nodeId: string) => ({
+            route: {
+                status: 'valid' as const,
+                reason: 'test route',
+                points: [start, target],
+                crossedDoorIds: [],
+                doorSteps: [],
+                nodeSequence: [nodeId, 'shared-target'],
+                cost: 100,
+                length: Math.hypot(target.x - start.x, target.y - start.y),
+                expandedNodeCount: 1,
+            },
+            clickedPoint: target,
+            snappedPoint: target,
+            snappedNodeId: 'shared-target',
+            snapDistance: 0,
+            candidatesEvaluated: 1,
+            searchRadius: 160,
+        });
+        const firstStart = { x: target.x - 100, y: target.y };
+        const secondStart = { x: target.x + 100, y: target.y };
+        const firstPlan = routePlan(firstStart, first.currentNodeId);
+        const secondPlan = routePlan(secondStart, second.currentNodeId);
+        const moving = [
+            { ...startPrototypeRoute({ ...first, point: firstStart }, firstPlan), progress: firstPlan.route.length - 1, point: { x: target.x - 1, y: target.y } },
+            { ...startPrototypeRoute({ ...second, point: secondStart }, secondPlan), progress: secondPlan.route.length - 1, point: { x: target.x + 1, y: target.y } },
+        ];
+        const advanced = advancePrototypeAgents(moving, 1_000, 200, false, prototypeOpenDoorRuntimes(graph));
+        expect(advanced.filter(agent => agent.movementState === 'arrived')).toHaveLength(1);
+        expect(advanced.filter(agent => agent.movementState === 'waiting')).toHaveLength(1);
+        expect(Math.hypot(advanced[0].point.x - advanced[1].point.x, advanced[0].point.y - advanced[1].point.y)).toBeGreaterThanOrEqual(68);
+    });
+
+    it('places overlapping agent labels on deterministic alternate sides', () => {
+        const [first, second] = createPrototypeAgents(graph, 2, 'debug');
+        const isolated = layoutPrototypeAgentLabels([first], 1);
+        expect(isolated.get(first.fixture.id)?.side).toBe('above');
+        expect(isolated.get(first.fixture.id)?.y).toBeLessThan(0);
+        const labels = layoutPrototypeAgentLabels([first, { ...second, point: first.point }], 1, { previous: isolated });
+        expect(labels.get(first.fixture.id)).toEqual(labels.get(first.fixture.id));
+        expect(labels.get(second.fixture.id)?.side).not.toBe(labels.get(first.fixture.id)?.side);
+        const stable = layoutPrototypeAgentLabels([first, { ...second, point: { x: first.point.x + 1, y: first.point.y } }], 1, { previous: labels });
+        expect(stable.get(first.fixture.id)?.side).toBe(labels.get(first.fixture.id)?.side);
+    });
+
+    it('assigns every validated runtime sprite variant deterministically and keeps identity through task changes', () => {
         const first = createPrototypeAgents(graph, 25, 'debug');
         const second = createPrototypeAgents(graph, 25, 'debug');
         expect(first.map(agent => agent.fixture.spriteAssetId)).toEqual(second.map(agent => agent.fixture.spriteAssetId));
-        expect(new Set(first.map(agent => agent.fixture.spriteAssetId))).toHaveLength(16);
+        expect(new Set(first.map(agent => agent.fixture.spriteAssetId))).toHaveLength(12);
         const changed = assignPrototypeIdle(first[0], 1000, true);
         expect(changed.fixture).toBe(first[0].fixture);
         expect(changed.fixture.spriteAssetId).toBe('agent-sheet-01');
@@ -265,8 +473,22 @@ describe('prototype runtime', () => {
     });
 
     it('routes talk partners toward distinct valid nodes and exposes reciprocal IDs', () => {
-        const [agent, partner] = createPrototypeAgents(graph, 2, 'debug');
-        const assigned = assignPrototypeTalk(graph, agent, partner, 900);
+        const [agent, originalPartner] = createPrototypeAgents(graph, 2, 'debug');
+        const currentPathId = graph.walkNodes.find(node => node.id === agent.currentNodeId)?.pathId;
+        const partnerNode = graph.walkNodes
+            .filter(node => node.pathId === currentPathId && node.id !== agent.currentNodeId)
+            .map(node => ({ node, distance: Math.hypot(node.point.x - agent.point.x, node.point.y - agent.point.y) }))
+            .filter(candidate => candidate.distance >= 100 && candidate.distance <= 280)
+            .sort((a, b) => a.distance - b.distance || a.node.id.localeCompare(b.node.id))[0]?.node;
+        expect(partnerNode).toBeTruthy();
+        if (!partnerNode) return;
+        const partner = repositionPrototypeAgent(originalPartner, {
+            point: partnerNode.point,
+            nodeId: partnerNode.id,
+            roomId: partnerNode.roomIds[0] ?? partnerNode.roomId,
+            distance: 0,
+        }, 0);
+        const assigned = assignPrototypeTalk(graph, agent, partner, 900, undefined, false);
         expect(assigned?.task.kind).toBe('talk');
         if (!assigned || assigned.task.kind !== 'talk') return;
         expect(assigned.task.partnerAgentId).toBe(partner.fixture.id);

@@ -14,6 +14,11 @@
 .prototype-agent { position: absolute; z-index: 3; width: 181px; height: 181px; padding: 0; overflow: visible; border: 0; background: transparent; pointer-events: auto; touch-action: none; cursor: pointer; transform: translate(-50%,-100%); transform-origin: 50% 100%; }
 .prototype-agent:hover { background: transparent; }
 .prototype-agent__sprite-wrap { position: absolute; inset: 0; width: 181px; height: 181px; filter: drop-shadow(0 7px 3px rgba(0,0,0,.65)); }
+.prototype-agent--portal-out .prototype-agent__sprite-wrap, .prototype-agent--portal-in .prototype-agent__sprite-wrap { opacity: var(--portal-sprite-opacity); transform: scale(var(--portal-sprite-scale)); }
+.prototype-agent--hidden-transition .prototype-agent__sprite-wrap { visibility: hidden; opacity: 0; }
+.prototype-agent--portal-out .prototype-agent__label, .prototype-agent--hidden-transition .prototype-agent__label, .prototype-agent--portal-in .prototype-agent__label { visibility: hidden; opacity: 0; }
+.prototype-agent--hidden-transition .prototype-agent__selection-ring, .prototype-agent--hidden-transition .prototype-agent__facing-indicator, .prototype-agent--hidden-transition .prototype-agent__activity-dot { visibility: hidden; }
+.prototype-agent__portal-effect { position: absolute; z-index: -1; left: var(--portal-effect-x); top: var(--portal-effect-y); width: 112px; height: 42px; opacity: var(--portal-effect-opacity); border: 7px solid #68d7ff; border-radius: 50%; box-shadow: 0 0 24px #29baf2, inset 0 0 18px rgba(104,215,255,.75); transform: translate(-50%,-50%); }
 .prototype-agent__sprite.sprite-player { position: absolute; left: 50%; top: 100%; }
 .prototype-agent__sprite.sprite-player--missing { display: grid; place-items: center; width: 70px !important; height: 70px !important; color: #fff; background: #101820; border: 5px solid #ff6474; border-radius: 50%; font-size: 30px; transform: translate(-50%,-100%) !important; }
 .prototype-agent__selection-ring { position: absolute; z-index: -1; left: 50%; bottom: -3px; width: 92px; height: 34px; opacity: 0; border: 7px solid #65c7ff; border-radius: 50%; box-shadow: 0 0 16px rgba(101,199,255,.8); transform: translateX(-50%) scale(var(--agent-ui-compensation)); }
@@ -26,7 +31,7 @@
 .prototype-agent__activity-dot--working-at-desk { background: #79d96d; }
 .prototype-agent__activity-dot--talking { background: #c992ff; }
 .prototype-agent__activity-dot--waiting { background: #ff9f43; }
-.prototype-agent__label { position: absolute; left: 50%; top: 174px; transform: translateX(-50%) scale(var(--agent-ui-compensation)); transform-origin: 50% 0; min-width: max-content; padding: 4px 7px; color: #f5fbff; background: rgba(5,11,16,.95); border: 2px solid #3e687e; border-radius: 5px; font-size: 25px; font-weight: 850; line-height: 1.1; }
+.prototype-agent__label { position: absolute; z-index: 3; left: var(--agent-label-x); top: var(--agent-label-y); transform: translate(-50%,-50%) scale(var(--agent-ui-compensation)); transform-origin: 50% 50%; min-width: max-content; padding: 4px 7px; color: #f5fbff; background: rgba(5,11,16,.95); border: 2px solid #3e687e; border-radius: 5px; font-size: 25px; font-weight: 850; line-height: 1.1; }
 .prototype-agent--selected .prototype-agent__label { border-color: #65c7ff; }
 .prototype-agent--debug-bounds { outline: 3px dashed #ff8f40; outline-offset: -3px; }
 .floor1-candidate-drag-feedback .origin { fill: rgba(216,238,250,.12); stroke: #b3c7d3; stroke-width: 8; stroke-dasharray: 18 12; }

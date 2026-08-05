@@ -9,22 +9,24 @@ import walls from '../../office/data/floor1/provisional/walls.json';
 import objects from '../../office/data/floor1/provisional/objects.json';
 import walkPaths from '../../office/data/floor1/provisional/walk-paths.json';
 import { FLOOR1_CANDIDATE_LAYER_CONTROLS } from '../../office/floor1/candidateReview';
+import { screenToOffice } from '../../office/coordinates';
 import {
     buildCandidateNavigationGraph,
     buildCandidateSandboxGraph,
-    validateCandidateRouteSegments,
     type CandidateNavigationGraph,
     type MarkupRegistration,
 } from '../../office/floor1/navigation/candidateNavigation';
 import {
     advancePrototypeAgents,
+    auditPrototypePortalEndpoints,
     assignPrototypeIdle,
     assignPrototypeTalk,
     assignPrototypeWander,
     assignPrototypeWork,
     createPrototypeRuntimeMetrics,
     createPrototypeAgents,
-    planPrototypeRouteToPoint,
+    layoutPrototypeAgentLabels,
+    findValidatedPrototypeRouteToPoint,
     PROTOTYPE_AGENT_LIMIT,
     PROTOTYPE_AGENT_RADIUS,
     PROTOTYPE_AMBIENT_COUNTS,
@@ -113,6 +115,17 @@ const ALL_LOCAL_OVERLAYS: LocalOverlays = {
 };
 
 type CommandMode = 'walk' | 'talk' | 'reposition' | null;
+type ClickRouteDiagnostic = Readonly<{
+    screen: Point;
+    viewportLocal: Point;
+    world: Point;
+    candidatesEvaluated: number;
+    searchRadius: number;
+    acceptedEndpoint: Point | null;
+    rejectionReason: string | null;
+    routeCost: number | null;
+    clickOffset: number | null;
+}>;
 type DragState = Readonly<{
     agentId: string;
     pointerId: number;
@@ -203,6 +216,7 @@ export function Floor1CandidateSimulation({
     const [paused, setPaused] = useState(false);
     const [autoMovement, setAutoMovement] = useState(false);
     const [feedback, setFeedback] = useState(mode === 'debug' ? 'Add an agent, then click the office to send it there.' : 'Ambient simulation running.');
+    const [clickRouteDiagnostic, setClickRouteDiagnostic] = useState<ClickRouteDiagnostic | null>(null);
     const [panelCollapsed, setPanelCollapsed] = useState(false);
     const [commandMode, setCommandMode] = useState<CommandMode>(null);
     const [dragState, setDragState] = useState<DragState | null>(null);
@@ -225,6 +239,9 @@ export function Floor1CandidateSimulation({
     const frameDurationsRef = useRef<number[]>([]);
     const runtimeMetricsRef = useRef(createPrototypeRuntimeMetrics());
     const previousOverlayRef = useRef<OverlaySnapshot | null>(null);
+    const previousLabelPlacementsRef = useRef<ReturnType<typeof layoutPrototypeAgentLabels>>(new Map());
+    const labelLayoutUpdatedAtRef = useRef(0);
+    const labelLayoutContextRef = useRef('');
 
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? null;
     const anyDiagnosticOverlay = visibleLayers.size > 0 || Object.values(localOverlays).some(Boolean);
@@ -234,8 +251,37 @@ export function Floor1CandidateSimulation({
     const talkingCount = agents.filter(agent => agent.activityState === 'talking').length;
     const waitingCount = agents.filter(agent => ['waiting', 'blocked'].includes(agent.movementState)).length;
     const workstations = useMemo(() => prototypeWorkstations(graph, runtimeMetricsRef.current), [graph]);
+    const portalEndpointAudit = useMemo(() => auditPrototypePortalEndpoints(graph), [graph]);
+    const labelPlacements = useMemo(() => {
+        const contextKey = `${selectedAgentId ?? ''}:${transform.scale}:${transform.x}:${transform.y}:${viewport.width}:${viewport.height}:${agents.length}`;
+        const now = typeof performance === 'undefined' ? Date.now() : performance.now();
+        if (labelLayoutContextRef.current === contextKey
+            && previousLabelPlacementsRef.current.size === agents.length
+            && now - labelLayoutUpdatedAtRef.current < 200) return previousLabelPlacementsRef.current;
+        const placements = layoutPrototypeAgentLabels(agents, transform.scale, {
+            offsetX: transform.x,
+            offsetY: transform.y,
+            viewportWidth: viewport.width,
+            viewportHeight: viewport.height,
+            selectedAgentId,
+            previous: previousLabelPlacementsRef.current,
+        });
+        previousLabelPlacementsRef.current = placements;
+        labelLayoutUpdatedAtRef.current = now;
+        labelLayoutContextRef.current = contextKey;
+        return placements;
+    }, [agents, selectedAgentId, transform.scale, transform.x, transform.y, viewport.height, viewport.width]);
 
     useEffect(() => { agentsRef.current = agents; }, [agents]);
+
+    useEffect(() => {
+        if (!import.meta.env.DEV) return;
+        for (const agent of agents) {
+            const root = document.querySelector<HTMLElement>(`.prototype-agent[data-agent-id="${agent.fixture.id}"]`);
+            const primaryVisualCount = root?.querySelectorAll('[data-primary-sprite-visual="true"]').length ?? 0;
+            if (primaryVisualCount !== 1) console.error(`[floor1-agent-integrity] ${agent.fixture.id} has ${primaryVisualCount} primary sprite visuals; expected exactly one.`);
+        }
+    }, [agents]);
 
     useEffect(() => () => spriteRuntime.dispose(), [spriteRuntime]);
 
@@ -507,11 +553,45 @@ export function Floor1CandidateSimulation({
             return;
         }
         const rect = event.currentTarget.getBoundingClientRect();
-        const scale = rect.width / 8192;
-        const clickedPoint = { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale };
-        const plan = planPrototypeRouteToPoint(graph, selectedAgent, clickedPoint, runtimeMetricsRef.current);
-        if (!plan || validateCandidateRouteSegments(graph, plan.route.points, plan.route.crossedDoorIds)) {
-            setFeedback('No reachable path near clicked location.');
+        const screen = { x: event.clientX, y: event.clientY };
+        const viewportLocal = {
+            x: event.clientX - (rect.left - transform.x),
+            y: event.clientY - (rect.top - transform.y),
+        };
+        const clickedPoint = screenToOffice(viewportLocal, transform);
+        const selection = findValidatedPrototypeRouteToPoint(graph, selectedAgent, clickedPoint, runtimeMetricsRef.current, {
+            occupiedPoints: agents.filter(agent => agent.fixture.id !== selectedAgent.fixture.id).map(agent => agent.point),
+        });
+        if (selection.status === 'rejected') {
+            setClickRouteDiagnostic({
+                screen,
+                viewportLocal,
+                world: clickedPoint,
+                candidatesEvaluated: selection.candidatesEvaluated ?? 0,
+                searchRadius: selection.searchRadius ?? PROTOTYPE_CLICK_SNAP_LIMIT,
+                acceptedEndpoint: null,
+                rejectionReason: selection.message,
+                routeCost: null,
+                clickOffset: null,
+            });
+            setFeedback(selection.message);
+            return;
+        }
+        const { plan } = selection;
+        setClickRouteDiagnostic({
+            screen,
+            viewportLocal,
+            world: clickedPoint,
+            candidatesEvaluated: plan.candidatesEvaluated,
+            searchRadius: plan.searchRadius,
+            acceptedEndpoint: plan.snappedPoint,
+            rejectionReason: null,
+            routeCost: plan.route.cost,
+            clickOffset: plan.snapDistance,
+        });
+        if (Math.hypot(plan.snappedPoint.x - selectedAgent.point.x, plan.snappedPoint.y - selectedAgent.point.y) <= PROTOTYPE_AGENT_RADIUS) {
+            setCommandMode(null);
+            setFeedback('Already near the best reachable destination.');
             return;
         }
         setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id
@@ -796,12 +876,18 @@ export function Floor1CandidateSimulation({
                 <dt>Transform</dt><dd>zoom {transform.scale.toFixed(3)} · pan {Math.round(transform.x)}, {Math.round(transform.y)}</dd>
                 <dt>Viewport</dt><dd>{Math.round(viewport.width)} × {Math.round(viewport.height)}</dd>
                 <dt>Pointer</dt><dd>{coordinate(pointer)}</dd>
+                <dt>Last click</dt><dd>{clickRouteDiagnostic
+                    ? `screen ${coordinate(clickRouteDiagnostic.screen)} · local ${coordinate(clickRouteDiagnostic.viewportLocal)} · world ${coordinate(clickRouteDiagnostic.world)} · ${clickRouteDiagnostic.candidatesEvaluated} candidates/${clickRouteDiagnostic.searchRadius}px · endpoint ${coordinate(clickRouteDiagnostic.acceptedEndpoint)} · cost ${clickRouteDiagnostic.routeCost ?? 'n/a'} · offset ${clickRouteDiagnostic.clickOffset === null ? 'n/a' : Math.round(clickRouteDiagnostic.clickOffset)} · ${clickRouteDiagnostic.rejectionReason ?? 'accepted'}`
+                    : 'none'}</dd>
                 <dt>Agent node</dt><dd>{selectedAgent?.currentNodeId ?? 'none'}</dd>
                 <dt>Route</dt><dd>{selectedAgent?.route ? `${selectedAgent.route.nodeSequence.length} nodes · ${selectedAgent.route.length}px · ${selectedAgent.route.crossedDoorIds.join(', ') || 'no doors'}` : 'none'}</dd>
                 <dt>Door policy</dt><dd>{PROTOTYPE_DOOR_POLICY} · {graph.doors.length}/{graph.doors.length} open</dd>
+                <dt>Door endpoints</dt><dd>{portalEndpointAudit.filter(item => item.status === 'provisional-valid').length}/{portalEndpointAudit.length} provisional-valid</dd>
+                <dt>Disabled doors</dt><dd>{portalEndpointAudit.filter(item => item.status === 'disabled-incomplete').map(item => item.doorId).join(', ') || 'none'}</dd>
                 <dt>Loop</dt><dd>1 RAF · {runtimeDiagnostics.fps.toFixed(1)} fps · median {runtimeDiagnostics.medianFrameMs.toFixed(1)}ms · p95 {runtimeDiagnostics.p95FrameMs.toFixed(1)}ms</dd>
                 <dt>Tick</dt><dd>{runtimeDiagnostics.lastTickMs.toFixed(2)}ms · max {runtimeDiagnostics.longestTickMs.toFixed(2)}ms · frame max {runtimeDiagnostics.longestFrameMs.toFixed(1)}ms</dd>
                 <dt>Traffic</dt><dd>{movingCount} moving · {waitingCount} waiting · {runtimeDiagnostics.collisionChecks} checks · {runtimeDiagnostics.collisionConflicts} conflicts</dd>
+                <dt>Portals</dt><dd>{agents.filter(agent => Boolean(agent.portalTransition)).length} active · {runtimeDiagnostics.portalTransitions} transitions · {runtimeDiagnostics.portalWaits} waits</dd>
                 <dt>Planning</dt><dd>{runtimeDiagnostics.graphBuilds} graph builds · {runtimeDiagnostics.routePlans} plans · {runtimeDiagnostics.routeReplans} replans</dd>
                 <dt>Commits</dt><dd>{runtimeDiagnostics.stateCommits} agent snapshots · 30/s maximum</dd>
                 <dt>Last message</dt><dd>{feedback}</dd>
@@ -984,6 +1070,7 @@ export function Floor1CandidateSimulation({
                             showLabel={mode === 'debug' ? localOverlays.labels : selectedAgentId === agent.fixture.id}
                             showBounds={localOverlays.agentBounds}
                             dragging={Boolean(dragging)}
+                            labelPlacement={labelPlacements.get(agent.fixture.id)}
                             onSelect={selectAgent}
                             onPointerDown={beginDrag}
                             onPointerMove={updateDrag}

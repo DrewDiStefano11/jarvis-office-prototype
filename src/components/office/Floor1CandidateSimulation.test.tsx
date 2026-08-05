@@ -57,6 +57,7 @@ describe('Agent Simulation usability', () => {
         expect(agents).toHaveLength(5);
         expect(agents.map(agent => agent.dataset.agentId)).toEqual(['prototype-agent-01', 'prototype-agent-02', 'prototype-agent-03', 'prototype-agent-04', 'prototype-agent-05']);
         expect(new Set(agents.map(agent => `${agent.style.left},${agent.style.top}`)).size).toBe(5);
+        expect(agents.every(agent => Number(agent.style.zIndex) === 1_000 + Math.round(Number.parseFloat(agent.style.top)))).toBe(true);
     });
 
     it('enforces and announces the 25-agent limit', async () => {
@@ -139,6 +140,32 @@ describe('Agent Simulation usability', () => {
         expect(container.querySelectorAll('.prototype-agent__marker')).toHaveLength(0);
         expect(container.querySelectorAll('.prototype-agent .sprite-player--missing')).toHaveLength(0);
         expect(container.querySelector('[data-agent-id="prototype-agent-01"]')?.getAttribute('data-sprite-state')).toBe('idle');
+        for (const agent of container.querySelectorAll('.prototype-agent')) {
+            expect(agent.querySelectorAll('[data-primary-sprite-visual="true"]')).toHaveLength(1);
+        }
+    });
+
+    it('never assigns quarantined sprite sheets even when valid variants must be reused', async () => {
+        const { container } = render(<Floor1CandidateSimulation active={false} reducedMotion presentation="simulation" registration={TEST_REGISTRATION} />);
+        await screen.findByLabelText('Agent simulation controls');
+        const addTen = screen.getByRole('button', { name: 'Add 10' });
+        fireEvent.click(addTen); fireEvent.click(addTen); fireEvent.click(screen.getByRole('button', { name: 'Add 5' }));
+        const titles = [...container.querySelectorAll<HTMLElement>('.prototype-agent')].map(agent => agent.title);
+        expect(titles).toHaveLength(25);
+        expect(titles.every(title => !/agent-sheet-(05|12|13|16)/.test(title))).toBe(true);
+        expect(container.querySelectorAll('[data-primary-sprite-visual="true"]')).toHaveLength(25);
+    });
+
+    it('uses the authoritative transform for a panned and zoomed click', async () => {
+        const transform = { x: 100, y: 50, scale: 0.5 };
+        const { container } = render(<Floor1CandidateSimulation active={false} reducedMotion presentation="simulation" registration={TEST_REGISTRATION} transform={transform} />);
+        await screen.findByLabelText('Agent simulation controls');
+        fireEvent.click(screen.getByRole('button', { name: 'Add agent' }));
+        const root = container.querySelector<HTMLElement>('.floor1-candidate-simulation')!;
+        vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({ x: 100, y: 50, left: 100, top: 50, right: 4196, bottom: 2780, width: 4096, height: 2730, toJSON: () => ({}) });
+        fireEvent.click(root, { clientX: 2_200, clientY: 1_400 });
+        await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Walking now'));
+        expect(container.querySelector('.floor1-candidate-destination .snapped')).toBeTruthy();
     });
 
     it('keeps the sprite body at a constant world size without inverse zoom compensation', async () => {
@@ -218,9 +245,9 @@ describe('Agent Simulation usability', () => {
         expect(screen.getByText(/Click a reachable destination/)).toBeTruthy();
         expect(screen.queryByLabelText('Agent 01 details')).toBeNull();
         const root = container.querySelector<HTMLElement>('.floor1-candidate-simulation')!;
-        vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 8192, bottom: 5460, width: 8192, height: 5460, toJSON: () => ({}) });
-        fireEvent.click(root, { clientX: 4200, clientY: 2700 });
-        expect(container.querySelector('.floor1-candidate-route')).toBeTruthy();
+        vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 819.2, bottom: 546, width: 819.2, height: 546, toJSON: () => ({}) });
+        fireEvent.click(root, { clientX: 420, clientY: 270 });
+        await waitFor(() => expect(container.querySelector('.floor1-candidate-route')).toBeTruthy());
         expect(screen.getByLabelText('Agent 01 details').textContent).toContain('Walking to assigned point');
     });
 
@@ -242,15 +269,15 @@ describe('Agent Simulation usability', () => {
         expect(agent.querySelector('[aria-label^="agent-sheet-01"]')).toBe(sprite);
     });
 
-    it('establishes a talk task by choosing another visible agent', async () => {
+    it('fails a talk command clearly when the partner has no safe transition', async () => {
         render(<Floor1CandidateSimulation active reducedMotion presentation="simulation" registration={TEST_REGISTRATION} viewport={{ width: 1200, height: 800 }} transform={{ x: 0, y: 0, scale: 0.1 }} />);
         await screen.findByLabelText('Agent simulation controls');
         fireEvent.click(screen.getByRole('button', { name: 'Add 5' }));
         fireEvent.click(screen.getByRole('button', { name: 'Talk to agent' }));
         expect(screen.getByText(/Choose a conversation partner/)).toBeTruthy();
         fireEvent.click(screen.getByLabelText(/Agent 02\. idle\./));
-        expect(screen.getByRole('status').textContent).toContain('talk with Agent 02');
-        expect(screen.getByLabelText('Agent 01 details').textContent).toContain('Agent 02');
+        expect(screen.getByRole('status').textContent).toBe('No reachable conversation approach near Agent 02.');
+        expect(screen.getByLabelText(/Agent 01\. idle\./)).toBeTruthy();
     });
 
     it('requires concise confirmation before card removal', async () => {
