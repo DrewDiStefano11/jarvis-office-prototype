@@ -128,3 +128,93 @@ Keep one authoritative RAF and one deterministic runtime module. Cache immutable
 - Implement milestones 2–6 with focused tests.
 - Complete long-running browser validation and all command gates.
 - Commit, push, confirm final Node 18/20 CI, and leave PR #26 draft.
+
+## PR #26 CI state-model repair addendum (2026-08-05)
+
+### Goal and current repository state
+
+Repair TS2367 at `Floor1CandidateSimulation.tsx:309` on exact branch head
+`0f2e382f1dc1c1f24aa5e111a6a64d33391bcf2d`, retain the existing motion and
+workstation design, commit the omitted current sprite artifacts, validate the
+exact committed tree, push normally to draft PR #26, and stop after both CI
+matrix jobs are green. Local and remote heads matched before editing. The
+worktree contained two uncommitted generated sprite outputs; the official
+`check:sprites-generated` command confirms those outputs are required by the
+committed direction-aware generator.
+
+### Scope and out of scope
+
+- Correct the activity scheduler so a scheduled desk-work intent reaches the
+  existing `assignPrototypeWork` transition.
+- Strengthen runtime tests for routing, work phase, stationary behavior,
+  occupancy retention, cancellation, and task replacement.
+- Include only the two generator-confirmed sprite outputs omitted from the
+  prior motion-refinement commit.
+- Run clean-install, committed-tree, browser, remote-SHA, PR-description, and
+  Node 18/20 workflow validation required by the repair prompt.
+- Do not alter geometry, access, dependencies, compiler/CI settings, PR draft
+  state, branch history, or production trust boundaries.
+
+### Architecture and data model decision
+
+Keep the existing separated model: `movementState` is authoritative for
+physical motion; the discriminated `task.kind/phase` is authoritative for task
+lifecycle; `activityState` is the UI/animation activity projection; and
+`workstationId` is the occupancy reservation. Do not add `working-at-desk` to a
+movement union or suppress the compiler. Preserve the scheduler's
+`working-at-desk` intent until `assignPrototypeWork` creates a `work/traveling`
+task; arrival then advances through `approaching` to `working`, while idle,
+replacement, drag, reset, and removal paths clear `workstationId`.
+
+### Milestones and acceptance criteria
+
+1. Reproduce and explain the exact CI error and local/CI discrepancy.
+2. Make the scheduler branch reachable without weakening types; focused tests
+   prove work arrival, stationary occupancy, and release transitions.
+3. Run every required local gate after `npm ci`, inspect the staged patch, and
+   commit only intentional files.
+4. Re-run typecheck and the complete test suite against the exact commit, leave
+   an empty worktree, and verify the pushed remote SHA byte-for-byte.
+5. Complete the specified browser workflow, update the PR body truthfully, and
+   verify every required step succeeds in both Node matrix jobs.
+
+### Test, visual validation, risks, and rollback
+
+Use Vitest runtime/component coverage plus TypeScript control-flow validation;
+run all generated and production exclusion checks. Browser QA must exercise the
+full work-at-desk transition and release flow, pause/resume, click movement,
+drag rollback, diagnostics, scaling, and collision behavior at both routes.
+The main risk is confusing scheduled activity with authoritative task phase;
+the mitigation is to assert all four relevant fields. The candidate geometry
+remains unverified and unchanged. Rollback is the single repair commit; no
+history rewrite or force push is permitted.
+
+### Decision and progress log
+
+- 2026-08-05: Verified local HEAD, remote branch, and PR head all equal the
+  required starting SHA; PR #26 is open, draft, mergeable, and unmerged.
+- 2026-08-05: Reproduced TS2367 locally. `scheduledActivity` was narrowed by a
+  rewrite from `working-at-desk` to `idle` immediately before the work branch,
+  making the comparison unreachable even though runtime work state is valid.
+- 2026-08-05: Found the prior final tree was not what the claimed local checks
+  described: committed source fails typecheck, while two generated artifacts
+  needed by the committed generator remained only in the working tree.
+- 2026-08-05: Browser QA found the authoritative `work/working` task, working
+  sprite, stationary position, and workstation reservation could coexist with a
+  stale `idle` activity projection. The generic arrival-settling branch reset
+  already-working agents to idle on later ticks; it now preserves the domain
+  task projection so accessible labels, diagnostics, and styling stay truthful.
+- 2026-08-05: Current-tree clean-install validation passes typecheck, lint, 457
+  tests across 40 files, both generated checks, production build, production
+  bundle exclusion, and `git diff --check`.
+- 2026-08-05: Browser QA passes both routes at 1920x1080 and 1366x768 with a
+  truthful work transition, stationary reserved worker, concurrent movement,
+  pause/resume, cancellation/release, click-to-walk, zoom scaling, and clean
+  console. Browser automation did not emit pointer-move events for its drag
+  gesture; the dedicated component test remains the invalid-drop evidence.
+
+### Remaining work
+
+- Inspect and commit the staged repair, validate the exact committed tree,
+  repeat exact-SHA browser smoke, push, update the PR body, and monitor the
+  exact-SHA Node 18/20 workflow to green.

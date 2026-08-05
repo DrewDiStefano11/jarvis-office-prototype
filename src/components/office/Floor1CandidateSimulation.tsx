@@ -288,9 +288,9 @@ export function Floor1CandidateSimulation({
             const scheduledActivity = mode === 'ambient' && index % 5 === 0
                 ? 'moving-to-task'
                 : nextAmbientActivity(index, agent.revision + 1);
-            const activity = scheduledActivity === 'working-at-desk'
+            const activity = mode === 'ambient' && scheduledActivity === 'talking'
                 ? 'idle'
-                : mode === 'ambient' && scheduledActivity === 'talking' ? 'idle' : scheduledActivity;
+                : scheduledActivity;
             if (agent.workstationId) occupiedWorkstations.delete(agent.workstationId);
             if (plannedThisTick && activity !== 'idle') {
                 next[index] = { ...agent, activityUntil: now + 120 + (index % 5) * 40 };

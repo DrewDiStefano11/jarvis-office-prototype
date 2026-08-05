@@ -1002,7 +1002,8 @@ function settleArrivedPrototypeAgent(
     return {
         ...candidate,
         task,
-        activityState: task.kind === 'talk' && task.phase === 'talking' ? 'talking' : 'idle',
+        activityState: task.kind === 'work' && task.phase === 'working' ? 'working-at-desk'
+            : task.kind === 'talk' && task.phase === 'talking' ? 'talking' : 'idle',
         velocity: { x: 0, y: 0 },
         routeTangent: { x: 0, y: 0 },
         reservedEdgeKey: undefined,

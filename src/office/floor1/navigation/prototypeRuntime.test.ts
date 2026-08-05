@@ -203,12 +203,65 @@ describe('prototype runtime', () => {
         expect(assigned?.task.kind).toBe('work');
         expect(assigned?.workstationId).toMatch(/^(position:POSITION|computer:COMPUTER)_/);
         if (!assigned) return;
+        expect(assigned.task).toMatchObject({ kind: 'work', phase: 'traveling', workstationId: assigned.workstationId });
+        expect(assigned.movementState).toBe('walking');
+        expect(assigned.activityState).toBe('walking');
         let current = assigned;
         for (let index = 0; index < 1_000 && ['walking', 'waiting', 'blocked'].includes(current.movementState); index += 1) {
             current = advancePrototypeAgents([current], 100, 1000, false, prototypeOpenDoorRuntimes(graph), graph)[0];
         }
-        expect(current.task.kind).toBe('work');
+        expect(current.task).toMatchObject({ kind: 'work', phase: 'working', workstationId: assigned.workstationId });
         expect(current.activityState).toBe('working-at-desk');
+        expect(current.workstationId).toBe(assigned.workstationId);
+        expect(current.movementState).toBe('arrived');
+        expect(current.velocity).toEqual({ x: 0, y: 0 });
+        expect(prototypeSpriteState(current)).toBe('working');
+
+        const stationary = advancePrototypeAgents([current], 500, 1000, false, prototypeOpenDoorRuntimes(graph), graph)[0];
+        expect(stationary.point).toEqual(current.point);
+        expect(stationary.workstationId).toBe(assigned.workstationId);
+        expect(stationary.task).toMatchObject({ kind: 'work', phase: 'working' });
+        expect(stationary.activityState).toBe('working-at-desk');
+        expect(stationary.velocity).toEqual({ x: 0, y: 0 });
+    });
+
+    it('projects an authoritative working task back to the working activity state', () => {
+        const agent = createPrototypeAgents(graph, 20, 'ambient').find(candidate => candidate.task.kind === 'work');
+        expect(agent?.task.kind).toBe('work');
+        if (!agent || agent.task.kind !== 'work') return;
+        const inconsistent = { ...agent, movementState: 'arrived' as const, activityState: 'idle' as const };
+        const projected = advancePrototypeAgents([inconsistent], 100, 180, false, prototypeOpenDoorRuntimes(graph), graph)[0];
+        expect(projected.task).toMatchObject({ kind: 'work', phase: 'working' });
+        expect(projected.activityState).toBe('working-at-desk');
+        expect(projected.velocity).toEqual({ x: 0, y: 0 });
+        expect(projected.workstationId).toBe(agent.workstationId);
+    });
+
+    it('releases a working agent workstation when work is cancelled or replaced', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const assigned = assignPrototypeWork(graph, agent, 500);
+        expect(assigned).not.toBeNull();
+        if (!assigned || assigned.task.kind !== 'work') return;
+        const working = {
+            ...assigned,
+            route: null,
+            movementState: 'arrived' as const,
+            activityState: 'working-at-desk' as const,
+            velocity: { x: 0, y: 0 },
+            task: { ...assigned.task, phase: 'working' as const },
+        };
+
+        const cancelled = assignPrototypeIdle(working, 1_500);
+        expect(cancelled.task.kind).toBe('idle');
+        expect(cancelled.activityState).toBe('idle');
+        expect(cancelled.movementState).toBe('idle');
+        expect(cancelled.workstationId).toBeUndefined();
+
+        const replacement = assignPrototypeWander(graph, working, 7, 2_000);
+        expect(replacement).not.toBeNull();
+        expect(replacement?.task.kind).toBe('wander');
+        expect(replacement?.activityState).toBe('walking');
+        expect(replacement?.workstationId).toBeUndefined();
     });
 
     it('routes talk partners toward distinct valid nodes and exposes reciprocal IDs', () => {
