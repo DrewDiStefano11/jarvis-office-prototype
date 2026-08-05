@@ -1,4 +1,5 @@
 import { lazy, PointerEvent as ReactPointerEvent, Suspense, WheelEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { OFFICE_ASSETS } from '../../office/assets';
 import { FLOOR1_CANDIDATE_REGISTRATION } from '../../office/floor1/candidateRegistration';
 import { constrainTransform, fitTransform, screenToOffice, zoomAtScreenPoint } from '../../office/coordinates';
@@ -29,12 +30,16 @@ const Floor1CandidateSimulation = import.meta.env.DEV
 
 type Props = Readonly<{
     active: boolean;
+    presentation?: 'inspection' | 'simulation';
     document: OfficeOverlayDocument;
     debug: boolean;
     reviewMode?: boolean;
     selectedId: string | null;
     hoveredId: string | null;
     visibleLayers: ReadonlySet<OfficeLayer>;
+    transformTelemetry?: ViewTransform;
+    pointerTelemetry?: Point | null;
+    onSetVisibleLayers?: (layers: ReadonlySet<OfficeLayer>) => void;
     onSelect: (id: string | null) => void;
     onHover: (id: string | null) => void;
     onPointerOfficePoint: (point: Point | null) => void;
@@ -43,16 +48,21 @@ type Props = Readonly<{
     developmentOverlayEnabled?: boolean;
     selectedDevelopmentAgentId?: string | null;
     onSelectDevelopmentAgent?: (agent: SpriteDemoAgent) => void;
+    onOpenDebugger?: () => void;
 }>;
 
 export function OfficeViewport({
     active,
+    presentation = 'inspection',
     document,
     debug,
     reviewMode = false,
     selectedId,
     hoveredId,
     visibleLayers,
+    transformTelemetry,
+    pointerTelemetry = null,
+    onSetVisibleLayers = () => undefined,
     onSelect,
     onHover,
     onPointerOfficePoint,
@@ -61,6 +71,7 @@ export function OfficeViewport({
     developmentOverlayEnabled = false,
     selectedDevelopmentAgentId = null,
     onSelectDevelopmentAgent = () => undefined,
+    onOpenDebugger = () => undefined,
 }: Props) {
     const viewportRef = useRef<HTMLDivElement>(null);
     const transformRef = useRef<ViewTransform>({ scale: 0.1, x: 0, y: 0 });
@@ -75,6 +86,8 @@ export function OfficeViewport({
     const [transform, setTransform] = useState(transformRef.current);
     const [viewport, setViewport] = useState<ViewportSize>({ width: 1, height: 1 });
     const [backgroundState, setBackgroundState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [candidateControlHost, setCandidateControlHost] = useState<HTMLDivElement | null>(null);
+    const [candidateOverlayHost, setCandidateOverlayHost] = useState<HTMLDivElement | null>(null);
     const [reducedMotion, setReducedMotion] = useState(
         () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     );
@@ -112,7 +125,9 @@ export function OfficeViewport({
                 onTransformChange(next);
                 firstMeasurement = false;
             } else {
-                const next = constrainTransform(transformRef.current, nextViewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
+                const next = reviewMode
+                    ? fitTransform(nextViewport)
+                    : constrainTransform(transformRef.current, nextViewport, OFFICE_SOURCE_WIDTH, OFFICE_SOURCE_HEIGHT, DEFAULT_VIEWPORT_OPTIONS.boundaryPadding);
                 transformRef.current = next;
                 setTransform(next);
                 onTransformChange(next);
@@ -120,7 +135,7 @@ export function OfficeViewport({
         });
         observer.observe(element);
         return () => observer.disconnect();
-    }, [onTransformChange]);
+    }, [onTransformChange, reviewMode]);
 
     useEffect(() => () => {
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
@@ -274,13 +289,22 @@ export function OfficeViewport({
         commitTransform(zoomAtScreenPoint(transform, center, nextScale));
     };
 
+    const focusPoint = useCallback((point: Point) => {
+        const scale = Math.max(transformRef.current.scale, Math.min(0.34, DEFAULT_VIEWPORT_OPTIONS.maximumZoom));
+        commitTransform({
+            scale,
+            x: viewport.width / 2 - point.x * scale,
+            y: viewport.height / 2 - point.y * scale,
+        });
+    }, [commitTransform, viewport]);
+
     return (
-        <div className="office-viewport-shell">
+        <div className={`office-viewport-shell ${reviewMode ? 'office-viewport-shell--candidate' : ''} office-viewport-shell--${presentation}`}>
             <div className="viewport-controls" aria-label="Viewport controls">
                 <button type="button" onClick={() => zoomBy(DEFAULT_VIEWPORT_OPTIONS.zoomStep)} aria-label="Zoom in">+</button>
                 <button type="button" onClick={() => zoomBy(1 / DEFAULT_VIEWPORT_OPTIONS.zoomStep)} aria-label="Zoom out">−</button>
-                <button type="button" onClick={fit}>Fit</button>
-                <button type="button" onClick={fit}>Reset</button>
+                <button type="button" onClick={fit}>Fit office</button>
+                <button type="button" onClick={fit}>Reset view</button>
             </div>
             <div
                 ref={viewportRef}
@@ -351,8 +375,23 @@ export function OfficeViewport({
                         </Suspense>
                     )}
                     {Floor1CandidateSimulation && reviewMode && (
-                        <Suspense fallback={null}>
-                            <Floor1CandidateSimulation active={active} reducedMotion={reducedMotion} registration={FLOOR1_CANDIDATE_REGISTRATION} />
+                        <Suspense fallback={candidateControlHost ? createPortal(<div className="candidate-panel-loading" role="status">Building sandbox graph and simulation agentsâ€¦</div>, candidateControlHost) : null}>
+                            <Floor1CandidateSimulation
+                                active={active}
+                                reducedMotion={reducedMotion}
+                                registration={FLOOR1_CANDIDATE_REGISTRATION}
+                                controlHost={candidateControlHost}
+                                overlayHost={candidateOverlayHost}
+                                presentation={presentation}
+                                visibleLayers={visibleLayers}
+                                transform={transformTelemetry ?? transform}
+                                viewport={viewport}
+                                pointer={pointerTelemetry}
+                                onSetVisibleLayers={onSetVisibleLayers}
+                                onFitOffice={fit}
+                                onFocusPoint={focusPoint}
+                                onOpenDebugger={onOpenDebugger}
+                            />
                         </Suspense>
                     )}
                 </div>
@@ -363,7 +402,9 @@ export function OfficeViewport({
                     </div>
                 )}
                 {debug && <div className="debug-layer-order">Layers: {LAYER_ORDER.join(' → ')}</div>}
+                {reviewMode && <div ref={setCandidateOverlayHost} className="floor1-candidate-overlay-host" data-testid="floor1-candidate-overlay-host" />}
             </div>
+            {reviewMode && <div ref={setCandidateControlHost} className="floor1-candidate-control-host" data-testid="floor1-candidate-control-host" />}
         </div>
     );
 }

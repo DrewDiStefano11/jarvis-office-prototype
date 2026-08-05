@@ -40,6 +40,7 @@ function fixtureGraph(accessMode = 'open'): CandidateNavigationGraph {
         roomDiagnostics: [],
         nodeCount: 8,
         edgeCount: 2,
+        verificationMode: 'reviewed',
         navigationAvailable: true,
     } as CandidateNavigationGraph;
 }

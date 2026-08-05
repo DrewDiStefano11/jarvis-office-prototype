@@ -1,271 +1,122 @@
-import { useEffect, useMemo, useState } from 'react';
-import { NON_PRODUCTION_OVERLAY } from '../../domain/seed';
-import type { SpriteDemoAgent } from '../../domain/seed';
-import {
-    candidateEntityCounts,
-    FLOOR1_CANDIDATE_LABEL,
-    FLOOR1_CANDIDATE_LAYER_CONTROLS,
-    FLOOR1_CANDIDATE_LAYERS,
-    loadFloor1CandidateOverlay,
-} from '../../office/floor1/candidateReview';
-import {
-    isFloor1CandidateReviewRequested,
-    loadVerifiedProductionOverlay,
-} from '../../office/floor1/runtime';
-import { reconcileSelection, toggleLayerVisibility } from '../../office/interaction';
-import { LAYER_ORDER } from '../../office/layers';
+import { useEffect, useState } from 'react';
+import { loadVerifiedProductionOverlay } from '../../office/floor1/runtime';
+import { loadFloor1CandidateOverlay } from '../../office/floor1/candidateReview';
+import { NON_PRODUCTION_OVERLAY } from '../../office/sampleOverlay';
 import { OfficeLayer, OfficeOverlayDocument, Point, ViewTransform } from '../../office/types';
-import { EntityInspector } from './EntityInspector';
-import { OfficeViewport } from './OfficeViewport';
-import './office-engine.css';
+import { OfficeEngineCore } from './OfficeEngineCore';
 
-const EMPTY_REVIEW_DOCUMENT: OfficeOverlayDocument = {
-    schemaVersion: 1,
-    source: { width: 8192, height: 5460 },
-    production: false,
-    entities: [],
-    pathNodes: [],
-};
+const CANDIDATE_LOAD_TIMEOUT_MS = 10_000;
 
-type Props = Readonly<{
+type OfficeLoadState =
+    | Readonly<{ status: 'loading'; stage: string }>
+    | Readonly<{ status: 'loaded'; document: OfficeOverlayDocument; dataSource: 'approved-production' | 'candidate-review' | 'sample-fallback' }>
+    | Readonly<{ status: 'error'; stage: string; message: string }>;
+
+interface OfficeEngineProps {
     active: boolean;
+    presentation?: 'inspection' | 'simulation';
     candidateLoader?: () => Promise<OfficeOverlayDocument>;
-}>;
+    onOpenDebugger?: () => void;
+}
 
-export function OfficeEngine({ active, candidateLoader }: Props) {
-    const candidateReviewRequested = isFloor1CandidateReviewRequested(window.location.search);
-    const spriteDemoRequested = import.meta.env.DEV
-        && new URLSearchParams(window.location.search).get('spriteDemo') === 'agents'
-        && !candidateReviewRequested;
-    const [document, setDocument] = useState<OfficeOverlayDocument>(
-        candidateReviewRequested ? EMPTY_REVIEW_DOCUMENT : NON_PRODUCTION_OVERLAY,
-    );
-    const [dataSource, setDataSource] = useState<'sample' | 'candidate-review' | 'approved-production'>(
-        candidateReviewRequested ? 'candidate-review' : 'sample',
-    );
-    const [loadError, setLoadError] = useState<string | null>(null);
-    const [debug, setDebug] = useState(false);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [showScopeOverlays, setShowScopeOverlays] = useState(true);
+function candidateModeRequested(): boolean {
+    return import.meta.env.DEV;
+}
+
+function messageFrom(error: unknown, fallback: string): string {
+    return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise.then(
+            value => { window.clearTimeout(timeout); resolve(value); },
+            error => { window.clearTimeout(timeout); reject(error); },
+        );
+    });
+}
+
+export function OfficeEngine({ active, presentation = 'inspection', candidateLoader, onOpenDebugger }: OfficeEngineProps) {
+    const candidateRequested = presentation === 'simulation' || candidateModeRequested();
+    const [loadState, setLoadState] = useState<OfficeLoadState>({ status: 'loading', stage: candidateRequested ? 'candidate-data' : 'production-data' });
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
     const [pointer, setPointer] = useState<Point | null>(null);
-    const [transform, setTransform] = useState<ViewTransform>({ scale: 1, x: 0, y: 0 });
-    const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<OfficeLayer>>(
-        () => new Set(candidateReviewRequested ? FLOOR1_CANDIDATE_LAYERS : LAYER_ORDER),
-    );
     const [focusRequest, setFocusRequest] = useState(0);
-    const [selectedDemoAgent, setSelectedDemoAgent] = useState<SpriteDemoAgent | null>(null);
-    const selected = useMemo(
-        () => document.entities.find(entity => entity.id === selectedId) ?? null,
-        [document.entities, selectedId],
+    const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<OfficeLayer>>(
+        () => new Set<OfficeLayer>(),
     );
-    const hovered = useMemo(
-        () => document.entities.find(entity => entity.id === hoveredId) ?? null,
-        [document.entities, hoveredId],
-    );
-    const inspected = selected ?? hovered;
-    const counts = useMemo(() => candidateEntityCounts(document), [document]);
-    const renderedVisibleLayers = candidateReviewRequested && !showScopeOverlays
-        ? new Set<OfficeLayer>()
-        : visibleLayers;
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
-        setSelectedId(previous => reconcileSelection(previous, document.entities));
-        setHoveredId(previous => reconcileSelection(previous, document.entities));
-    }, [document.entities]);
+        setVisibleLayers(new Set<OfficeLayer>());
+    }, [candidateRequested]);
 
     useEffect(() => {
-        let cancelled = false;
-        setLoadError(null);
+        let stale = false;
+        setLoadState({ status: 'loading', stage: candidateRequested ? 'candidate-data' : 'production-data' });
 
-        if (candidateReviewRequested) {
-            const loadCandidate = candidateLoader ?? loadFloor1CandidateOverlay;
-            loadCandidate().then(candidate => {
-                if (cancelled) return;
-                setDocument(candidate);
-                setDataSource('candidate-review');
-                setVisibleLayers(new Set(FLOOR1_CANDIDATE_LAYERS));
-            }).catch(error => {
-                if (cancelled) return;
-                setLoadError(error instanceof Error ? error.message : 'Floor 1 candidate data failed validation.');
-            });
-            return () => { cancelled = true; };
+        if (candidateRequested) {
+            const loader = candidateLoader ?? loadFloor1CandidateOverlay;
+            withTimeout(loader(), CANDIDATE_LOAD_TIMEOUT_MS, 'Candidate data loading timed out after 10 seconds.')
+                .then(document => {
+                    if (!stale) setLoadState({ status: 'loaded', document, dataSource: 'candidate-review' });
+                })
+                .catch(error => {
+                    if (stale) return;
+                    const message = messageFrom(error, 'Floor 1 candidate data failed validation.');
+                    console.error('[Floor 1 candidate][candidate-data]', error);
+                    setLoadState({ status: 'error', stage: 'candidate-data', message });
+                });
+        } else {
+            loadVerifiedProductionOverlay()
+                .then(document => {
+                    if (stale) return;
+                    setLoadState(document
+                        ? { status: 'loaded', document, dataSource: 'approved-production' }
+                        : { status: 'loaded', document: NON_PRODUCTION_OVERLAY, dataSource: 'sample-fallback' });
+                })
+                .catch(error => {
+                    if (stale) return;
+                    const message = messageFrom(error, 'Approved Floor 1 data failed validation.');
+                    console.error('[Office engine][production-data]', error);
+                    setLoadState({ status: 'error', stage: 'production-data', message });
+                });
         }
 
-        loadVerifiedProductionOverlay().then(production => {
-            if (cancelled || !production) return;
-            setDocument(production);
-            setDataSource('approved-production');
-        }).catch(error => {
-            if (cancelled) return;
-            setLoadError(error instanceof Error ? error.message : 'Approved Floor 1 data failed validation.');
-        });
-        return () => { cancelled = true; };
-    }, [candidateLoader, candidateReviewRequested]);
+        return () => { stale = true; };
+    }, [candidateLoader, candidateRequested, loadAttempt]);
 
-    const toggleLayer = (layer: OfficeLayer) => {
-        setVisibleLayers(previous => toggleLayerVisibility(previous, layer));
-    };
-
-    const toggleScopeOverlays = (visible: boolean) => {
-        setShowScopeOverlays(visible);
-        if (!visible) {
-            setSelectedId(null);
-            setHoveredId(null);
-        }
-    };
-
-    const focusInspected = () => {
-        if (!inspected) return;
-        setSelectedId(inspected.id);
-        setFocusRequest(value => value + 1);
-    };
-
+    const dataSource = loadState.status === 'loaded' ? loadState.dataSource : candidateRequested ? 'candidate-review' : 'sample-fallback';
     const statusLabel = dataSource === 'approved-production'
         ? 'Approved production Floor 1'
-        : candidateReviewRequested
-            ? FLOOR1_CANDIDATE_LABEL
+        : dataSource === 'candidate-review'
+            ? 'Candidate sandbox — unverified / not production approved'
             : 'Sample fallback — not production Floor 1';
 
     return (
-        <main className={`office-engine ${sidebarOpen ? '' : 'office-engine--collapsed'}`}>
-            <header className="engine-header">
-                <div>
-                    <p className="eyebrow">Jarvis office prototype</p>
-                    <h1>Interactive office engine</h1>
-                </div>
-                <div className="header-actions">
-                    <span
-                        className={`sample-badge ${candidateReviewRequested ? 'sample-badge--candidate' : ''}`}
-                        data-testid="floor1-runtime-status"
-                    >
-                        {spriteDemoRequested ? 'Sprite demonstration — positions are not assignments' : statusLabel}
-                    </span>
-                    {candidateReviewRequested && (
-                        <label className="debug-toggle">
-                            <input
-                                type="checkbox"
-                                checked={showScopeOverlays}
-                                onChange={event => toggleScopeOverlays(event.target.checked)}
-                            />
-                            Show scope overlays
-                        </label>
-                    )}
-                    <label className="debug-toggle">
-                        <input type="checkbox" checked={debug} onChange={event => setDebug(event.target.checked)} />
-                        Debug overlays
-                    </label>
-                    <button type="button" onClick={() => setSidebarOpen(value => !value)} aria-expanded={sidebarOpen}>
-                        {sidebarOpen ? 'Hide inspector' : 'Show inspector'}
-                    </button>
-                </div>
-            </header>
-            <section className="engine-workspace">
-                {loadError && (
-                    <p className="asset-status asset-status--error" role="alert">
-                        {loadError} {candidateReviewRequested
-                            ? 'Candidate review remains empty; sample data was not loaded.'
-                            : 'Existing sample data remains active.'}
-                    </p>
-                )}
-                <OfficeViewport
-                    active={active}
-                    document={document}
-                    debug={debug}
-                    reviewMode={candidateReviewRequested}
-                    selectedId={selectedId}
-                    hoveredId={hoveredId}
-                    visibleLayers={renderedVisibleLayers}
-                    onSelect={setSelectedId}
-                    onHover={setHoveredId}
-                    onPointerOfficePoint={setPointer}
-                    onTransformChange={setTransform}
-                    focusRequest={focusRequest}
-                    developmentOverlayEnabled={spriteDemoRequested}
-                    selectedDevelopmentAgentId={selectedDemoAgent?.id ?? null}
-                    onSelectDevelopmentAgent={setSelectedDemoAgent}
-                />
-                <aside className="engine-sidebar" aria-hidden={!sidebarOpen}>
-                    {spriteDemoRequested && (
-                        <section className="engine-panel" aria-label="Sprite demonstration inspector">
-                            <h2>Sprite demonstration</h2>
-                            <p className="muted">Deterministic review positions only. No Floor 1 assignments or candidate data are modified.</p>
-                            <strong>{selectedDemoAgent?.displayName ?? 'Select an agent'}</strong>
-                            {selectedDemoAgent && (
-                                <p>{selectedDemoAgent.state} · provisional profile-to-art mapping</p>
-                            )}
-                        </section>
-                    )}
-                    {candidateReviewRequested && (
-                        <section className="engine-panel candidate-layers" aria-label="Floor 1 candidate layer visibility">
-                            <div className="panel-heading">
-                                <div>
-                                    <h2>Candidate scope layers</h2>
-                                    <p className="muted">{document.entities.length} entities loaded</p>
-                                </div>
-                                <div className="layer-actions">
-                                    <button type="button" onClick={() => setVisibleLayers(new Set(FLOOR1_CANDIDATE_LAYERS))}>All</button>
-                                    <button type="button" onClick={() => setVisibleLayers(new Set())}>None</button>
-                                </div>
-                            </div>
-                            <div className="layer-grid">
-                                {FLOOR1_CANDIDATE_LAYER_CONTROLS.map(control => (
-                                    <label key={control.category}>
-                                        <input
-                                            type="checkbox"
-                                            aria-label={control.label}
-                                            checked={visibleLayers.has(control.layer)}
-                                            onChange={() => toggleLayer(control.layer)}
-                                        />
-                                        <span>{control.label}</span>
-                                        <small>{counts[control.category]}</small>
-                                    </label>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                    {debug && !candidateReviewRequested && (
-                        <section className="engine-panel">
-                            <div className="panel-heading">
-                                <h2>Layer visibility</h2>
-                                <div className="layer-actions">
-                                    <button type="button" onClick={() => setVisibleLayers(new Set(LAYER_ORDER))}>All</button>
-                                    <button type="button" onClick={() => setVisibleLayers(new Set())}>None</button>
-                                </div>
-                            </div>
-                            <div className="layer-grid">
-                                {LAYER_ORDER.map(layer => (
-                                    <label key={layer}>
-                                        <input type="checkbox" checked={visibleLayers.has(layer)} onChange={() => toggleLayer(layer)} />
-                                        {layer}
-                                    </label>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                    {debug && (
-                        <section className="engine-panel">
-                            <h2>Debug readout</h2>
-                            <div className="debug-readout">
-                                <span>Zoom <strong>{transform.scale.toFixed(4)}×</strong></span>
-                                <span>Pointer <strong>{pointer ? `${pointer.x.toFixed(1)}, ${pointer.y.toFixed(1)}` : '—'}</strong></span>
-                                <span>Hovered <strong>{hovered?.id ?? '—'}</strong></span>
-                                <span>Selected <strong>{selected?.id ?? '—'}</strong></span>
-                            </div>
-                        </section>
-                    )}
-                    <EntityInspector entity={inspected} onFocus={focusInspected} />
-                    <section className="engine-panel access-legend">
-                        <h2>Access semantics</h2>
-                        <p><i className="green" /> Green · general access</p>
-                        <p><i className="blue" /> Blue · member or role restricted</p>
-                        <p><i className="yellow" /> Yellow · temporarily reserved</p>
-                        <p><i className="red" /> Red · blocked</p>
-                        <small>For seats only: yellow means priority; red means standard.</small>
-                    </section>
-                </aside>
-            </section>
-        </main>
+        <OfficeEngineCore
+            active={active}
+            presentation={presentation}
+            loadState={loadState}
+            statusLabel={statusLabel}
+            dataSource={dataSource}
+            selectedId={selectedId}
+            hoveredId={hoveredId}
+            focusRequest={focusRequest}
+            visibleLayers={visibleLayers}
+            transform={transform}
+            pointer={pointer}
+            onSelectId={setSelectedId}
+            onHoverId={setHoveredId}
+            onPointerOfficePoint={setPointer}
+            onTransformChange={setTransform}
+            onSetVisibleLayers={setVisibleLayers}
+            onFocusRequest={() => setFocusRequest(value => value + 1)}
+            onRetry={() => setLoadAttempt(value => value + 1)}
+            onOpenDebugger={onOpenDebugger}
+        />
     );
 }

@@ -14,6 +14,22 @@ afterEach(() => {
 const clockSnapshot = (elapsedMs: number, restartGeneration = 0) => ({ elapsedMs, restartGeneration });
 
 describe('SpritePlayer texture failure', () => {
+    it('uses an external elapsed time without subscribing to a second animation clock', async () => {
+        const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;
+        const runtime = {
+            textures: { load: vi.fn().mockResolvedValue(image) },
+            clock: { subscribe: vi.fn() },
+        } as unknown as SpriteSurfaceRuntime;
+        const { container, rerender } = render(
+            <SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" externalElapsedMs={0} />,
+        );
+        const frame = () => container.querySelector<HTMLElement>('.sprite-player__frame');
+        await waitFor(() => expect(frame()?.style.backgroundPosition).toBe('0px 0px'));
+        rerender(<SpritePlayer manifest={AGENT_SPRITE_MANIFEST} runtime={runtime} assetId="agent-sheet-01" state="walking" externalElapsedMs={250} />);
+        await waitFor(() => expect(frame()?.style.backgroundPosition).toBe('-362px 0px'));
+        expect(runtime.clock.subscribe).not.toHaveBeenCalled();
+    });
+
     it('reports explicit unavailability and logs the development-only diagnostic', async () => {
         const failure = new Error('generated texture unavailable');
         const runtime = {

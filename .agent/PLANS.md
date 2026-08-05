@@ -1990,3 +1990,268 @@ the build passes,
 the plan reflects reality,
 and remaining limitations are reported honestly.
 ```
+
+---
+
+# Floor 1 Candidate Runtime Repair (2026-08-04)
+
+## Goal and current state
+
+Repair the development-only `?floor1Review=candidate` flow from starting commit
+`98d1389074daab604ce06cf28e5204716d116616`. Browser reproduction shows an empty
+DOM caused by `OfficeViewport` reading `document.entities` while the candidate
+document is still `null`. All nine candidate middleware endpoints return HTTP
+200, so loading must be modeled explicitly and bounded rather than hidden behind
+a nullable document.
+
+## Scope
+
+- Direct-refresh candidate loading, terminal errors, and stale-load cleanup.
+- An explicit unverified-sandbox graph builder that preserves the original
+  registration and shares construction with the strict reviewed builder.
+- One candidate simulation mounted inside the authoritative office surface,
+  with an explicit control host supplied by `OfficeViewport`.
+- Useful initial route, agent, destination, graph/door visibility, movement
+  controls, reset and playback speed.
+- Regression, trust-boundary, lifecycle, viewport, and production-exclusion
+  tests plus real Chromium QA at 1920x1080 and 1366x768.
+
+## Out of scope
+
+- Approving registration evidence or changing candidate geometry.
+- Production navigation activation, new candidate records, or sprite artwork.
+- Changes to PR #24 or its branch.
+
+## Architecture decision
+
+Use a discriminated `idle | loading | loaded | error` load state in
+`OfficeEngine`. Only a loaded document may mount `OfficeViewport`. Candidate URL
+mode automatically enables the existing candidate simulation; manual debug mode
+remains separate. Split navigation building into shared structural validation,
+strict reviewed validation, explicit sandbox validation, and shared construction.
+Both graph results carry a verification mode. Render simulation world graphics
+as children of `.office-surface` so the background and overlays share one CSS
+transform. Pass a concrete toolbar host element from `OfficeViewport`; do not
+query the DOM opportunistically.
+
+## Data model and trust boundary
+
+- Strict public builder defaults to reviewed validation and returns only
+  `verificationMode: 'reviewed'`.
+- Development-only sandbox builder accepts the original unmodified provisional
+  registration after shape, provenance, coordinate-space, dimensions, transform,
+  bounds and dataset-wrapper checks, then returns
+  `verificationMode: 'unverified-sandbox'`.
+- No registration field is synthesized, cloned into an approved state, or
+  mutated. Production entry points cannot import or select sandbox mode.
+
+## Milestones and acceptance
+
+1. Loading repair: candidate starts with visible status, resolves to office or a
+   stage-specific bounded error, ignores stale loads, and never mounts a null
+   viewport.
+2. Trust repair: strict builder rejects current registration; sandbox builder
+   accepts it unchanged and constructs real agents/destinations.
+3. Integration repair: direct URL automatically displays office, warning,
+   toolbar, at least two agents, labels, destination marker and route preview.
+4. Runtime controls: select, preview, begin, pause, resume, reset, speed and door
+   semantics use existing navigation/advance functions with one cleaned-up RAF.
+5. Verification: required npm checks pass; Chromium refresh, responsive sizing,
+   pan/zoom alignment and view switching pass with clean console/network state.
+
+## Test and visual-validation strategy
+
+Add focused Vitest component/unit coverage for loading transitions, stale loads,
+graph verification modes and immutability, simulation startup/controls, explicit
+host mounting, transforms and cleanup. Run `npm ci`, typecheck, lint, Vitest,
+production build and all three generated/bundle checks. Use the actual Vite
+server and browser DOM, console, network and bounding-box assertions at both
+required viewports. Keep screenshots and temporary browser scripts outside the
+repository.
+
+## Risks, assumptions, and rollback
+
+The candidate geometry remains intentionally unverified and may contain routing
+limitations; the persistent warning must say so. Large 8K image decode can be
+slower than JSON loading, so data loading has a bounded failure while image
+loading reports its own terminal error. The repair is isolated to the candidate
+development path and can be rolled back as one branch commit without changing
+generated data or registration evidence.
+
+## Decision and progress log
+
+- 2026-08-04 CI determinism repair: GitHub Actions run 30915790866 failed
+  `check:floor1-generated` on Node 20 because the committed manifest described
+  the Windows CRLF checkout of `alignment-assistance.json` (654 bytes), while
+  the Git blob and Ubuntu checkout are LF (653 bytes). The generator hashes
+  existing evidence files without first normalizing their text bytes.
+- CI repair architecture: declare LF for generated text in `.gitattributes`,
+  normalize generated JSON/Markdown/SVG text to LF before manifest hashing, and
+  add a focused CRLF-to-LF regression test. Regenerate the legitimate manifest,
+  run the complete requested validation matrix, push a follow-up commit, then
+  monitor every GitHub Actions matrix job to a terminal green result. No
+  registration geometry, approval evidence, or production trust state changes.
+- 2026-08-04: Implemented LF normalization before manifest hashing and LF Git
+  attributes for generated text. Regeneration now records the Linux-consistent
+  653-byte alignment artifact and 11,568,585-byte total. Clean-install local
+  validation passes typecheck, lint, 417 tests across 38 files, both generated
+  checks, production build, and production-bundle exclusion. Remaining: verify
+  the committed blobs in a clean LF checkout, push, and monitor both CI jobs.
+- 2026-08-04: CI run 30918791554 proved the Floor 1 generated check passes on
+  Ubuntu/Node 20. Node 18 exposed a fake-timer teardown race in the existing
+  OfficeEngine timeout test, while the new newline tests passed. Restore real
+  timers before Testing Library cleanup and unmount the timeout case explicitly,
+  then rerun the complete matrix and monitor the replacement CI run.
+- 2026-08-04: The timeout suite passes five repeated local runs and a direct
+  Node 18 run. The complete clean-install validation matrix passes again with
+  417 tests across 38 files. Remaining: commit/push the teardown fix and monitor
+  the replacement Node 18 and Node 20 jobs until both are green.
+
+- 2026-08-04: Started clean independent branch at required SHA.
+- 2026-08-04: Reproduced uncaught null-document crash in real Chromium.
+- 2026-08-04: Verified all nine development middleware responses settle with
+  HTTP 200 and JSON bodies.
+- 2026-08-04: Implementation, automated validation, browser QA, and the clean
+  repair commit are complete.
+- 2026-08-04: Replaced nullable loading with explicit loading/loaded/error states,
+  a ten-second terminal timeout, stale-load suppression, and normal sample fallback.
+- 2026-08-04: Split strict reviewed and unverified-sandbox validation; the
+  original candidate registration remains deeply unchanged and strict mode still
+  rejects it.
+- 2026-08-04: Consolidated on the existing candidate simulation inside the
+  authoritative office surface and removed the duplicate portal/RAF abstraction.
+- 2026-08-04: Vitest passes 415 tests across 37 files; typecheck and lint pass.
+- 2026-08-04: Chrome QA passes candidate direct load/refresh and full interaction
+  checks at 1920×1080 and 1366×768 plus normal office/legacy view switching.
+- 2026-08-04: Repaired the deterministic generated-manifest line-ending drift;
+  all required gates passed. Publication and post-commit smoke are the only
+  external handoff steps.
+
+---
+
+# Floor 1 Visible Debugger Repair (2026-08-04)
+
+## Goal and current repository state
+
+Continue draft PR #26 from exact head
+`5c672eede1faeed0ea8b20c4084c3bba41939761` and turn the development-only
+Floor 1 candidate route into a visibly usable office debugger. Real-browser
+reproduction at 1920 x 1080 found 2,066 visible overlay labels, all 40 fixture
+agents rendered simultaneously, and a 480 px control panel taller than the
+viewport. The separate legacy simulation renders a Phaser canvas with a valid
+1024 x 768 backing store but a computed CSS box of 0 x 0, producing the reported
+black screen.
+
+## Scope
+
+- Consolidate both navigation views on the same candidate office document,
+  viewport transform, route planner, runtime agents, doors, and animation loop.
+- Preserve two clearly differentiated presentations: Office engine for overlay
+  inspection and Agent simulation for focused route/movement testing.
+- Provide useful default layers, individually operable overlay controls,
+  readable non-scaling debug styles, two active demo agents by default, agent
+  and door inspection, grouped destinations, explicit route states, camera
+  controls, diagnostics, and visible terminal error recovery.
+- Validate actual on-screen geometry and interactions at 1920 x 1080 and
+  1366 x 768, then run the complete required npm and CI matrices.
+
+## Out of scope
+
+- Changing or approving candidate registration evidence or source geometry.
+- Enabling candidate navigation in production builds.
+- Adding new office artwork, inferred coordinates, or fabricated review proof.
+- Modifying another branch, opening another PR, or marking PR #26 ready.
+
+## Source files and assumptions
+
+Primary files are `src/App.tsx`, `src/components/office/OfficeEngine.tsx`,
+`OfficeEngineCore.tsx`, `OfficeViewport.tsx`, `OverlayRenderer.tsx`,
+`Floor1CandidateSimulation.tsx`, their CSS/tests, and the existing candidate
+navigation/runtime modules. The clean 8192 x 5460 office remains authoritative;
+candidate registration remains `unverified-sandbox`. Existing candidate graph,
+destination, door, sprite, and movement functions remain the data source.
+
+## Architecture decision and data model
+
+Mount only one `OfficeEngine` for the selected application view and pass an
+explicit debugger presentation (`inspection` or `simulation`). Keep authoritative
+candidate state inside that shared React runtime instead of retaining the
+disconnected Phaser implementation. Move layer visibility into mutable engine
+state and pass controls/camera telemetry through typed props. Candidate controls
+render in a dedicated workspace column adjacent to the viewport, while all map
+graphics remain children of the single transformed 8192 x 5460 office surface.
+Limit the initially active fixture set to two without removing the remaining
+fixture data. One requestAnimationFrame effect owns movement and cleans up on
+pause, view switch, and unmount.
+
+## Milestones and per-milestone acceptance
+
+1. Layout and rendering: office, warning, adjacent scrollable panel, two agents,
+   labels, nodes/edges, doors, destination, and route are visibly readable at
+   both target viewports with nonzero in-viewport boxes.
+2. Debug controls: every required category has a visible toggle and changes the
+   rendered count; initial defaults emphasize useful navigation data rather than
+   every entity label.
+3. Interaction: map/panel agent selection, grouped destination selection, route
+   preview, begin, pause, resume, reset, speed, door inspection/state override,
+   fit, wheel zoom, and pan all provide visible status and diagnostics.
+4. Consolidation and resilience: Agent simulation uses the same office runtime,
+   shows a focused simulation dashboard instead of black Phaser output, view
+   switching leaves no duplicate loop, fallback markers and a React error
+   boundary keep failures visible.
+5. Verification: focused tests cover visible defaults and interactions; complete
+   npm gates pass; exact-final-commit browser QA and the manual workflow pass at
+   both required viewport sizes; pushed CI is green on Node 18 and Node 20.
+
+## Test and visual-validation strategy
+
+Use Vitest for component/state contracts and an actual Vite browser for computed
+boxes, styles, rendered counts, movement deltas, layer count changes, canvas/SVG
+dimensions, refresh, and view switching. Capture before/after screenshots outside
+the repository. Check console errors and failed resource state during every
+browser pass. Run `npm ci`, typecheck, lint, all tests, both generated checks,
+build, and production-bundle check before and after the final commit as needed.
+
+## Risks, known unknowns, and rollback
+
+The unverified graph may still contain unreachable destinations; the UI must
+explain those failures without weakening strict reviewed validation. Thousands
+of source entities make all-layers-at-once inherently noisy, so defaults and
+labels are curated while preserving opt-in access to every category. Candidate
+code remains development-only. The repair is isolated to presentation/runtime
+components and can be reverted as one commit without changing generated or
+registration artifacts.
+
+## Decision and progress log
+
+- 2026-08-04: Reproduced candidate overload and measured the office viewport at
+  1920 x 973, background at 1459.86 x 973, 40 visible agents, 40 labels, one
+  route, one destination, and 2,066 visible text labels.
+- 2026-08-04: Reproduced Agent simulation black output; its canvas backing store
+  is 1024 x 768 but its computed CSS size is 0 x 0 inside the legacy grid.
+- Remaining: implement consolidation and visible debugger, add focused tests,
+  complete two-size browser/manual QA, run all gates, commit, push, and monitor
+  every PR matrix job.
+- 2026-08-04: Consolidated both navigation tabs on one OfficeEngine and removed
+  the disconnected legacy Phaser canvas, control panel, event bus, and scenes.
+- 2026-08-04: Candidate defaults now show paths, rooms, doors, lights, navigation
+  nodes/edges, route, destination, and two labeled agents. Generic entity labels
+  and vertex markers no longer flood the fitted map; every requested debug
+  category is independently toggleable from the adjacent scrollable panel.
+- 2026-08-04: Added grouped destinations, route state/reason, agent telemetry,
+  all-door inspection, runtime door controls, camera focus/fit, responsive refit,
+  initialization diagnostics, and a visible React recovery boundary.
+- 2026-08-04: Real browser interaction proved 34 room and 167 path entities
+  toggle, marker movement changes screen coordinates, pause holds position,
+  resume reaches arrival, reset restores origin, and Agent Simulation shows the
+  same nonzero office/agents/controls rather than a zero-size canvas.
+- 2026-08-04: Clean-install validation passes typecheck, lint, 417 tests across
+  39 files, both generated checks, production build, and production-bundle
+  exclusion. Remaining: commit, exact-commit two-size browser QA, push, and wait
+  for every Node 18/20 CI job.
+- 2026-08-04: CI run 30924774282 reached all assertions but the slower Linux
+  runner exceeded Vitest's five-second default while repeatedly rebuilding and
+  rendering the 10,000-element candidate graph in six component tests. Cache the
+  immutable graph by registration identity and give this intentionally heavy
+  visual component suite a bounded 15-second file-local timeout; retain every
+  visibility assertion and rerun the complete matrix.

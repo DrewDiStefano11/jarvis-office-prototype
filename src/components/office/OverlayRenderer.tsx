@@ -259,7 +259,7 @@ const OverlayEntityView = memo(function OverlayEntityView({
         >
             <EntityGeometry entity={entity} debug={debug} reviewMode={reviewMode} emphasized={emphasized} />
             <SeatPriorityMarker entity={entity} />
-            {debug && <VertexMarkers entity={entity} />}
+            {debug && emphasized && <VertexMarkers entity={entity} />}
             {entity.type === 'sprite_anchor' && <SpriteAnchor entity={entity} debug={debug} reducedMotion={reducedMotion} />}
             {interactive && <EntityHitArea entity={entity} />}
             {entity.type === 'label_anchor' && showLabels && (
@@ -319,7 +319,7 @@ export const OverlayRenderer = memo(function OverlayRenderer({
                     reviewMode={reviewMode}
                     selected={selectedId === entity.id}
                     hovered={hoveredId === entity.id}
-                    showLabels={showLabels}
+                    showLabels={showLabels && visibleLayers.has('labels')}
                     reducedMotion={reducedMotion}
                     onHover={onHover}
                     onSelect={onSelect}

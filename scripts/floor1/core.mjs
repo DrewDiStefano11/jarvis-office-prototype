@@ -39,9 +39,21 @@ export function canonical(value) {
     }
     return value;
 }
-export function writeJson(file, value) {
+const GENERATED_TEXT_EXTENSIONS = new Set(['.json', '.md', '.svg']);
+export function normalizeGeneratedTextFile(file) {
+    if (!GENERATED_TEXT_EXTENSIONS.has(path.extname(file).toLowerCase())) return false;
+    const current = fs.readFileSync(file, 'utf8');
+    const normalized = current.replace(/\r\n?/g, '\n');
+    if (normalized === current) return false;
+    fs.writeFileSync(file, normalized, 'utf8');
+    return true;
+}
+export function writeText(file, value) {
     mkdir(path.dirname(file));
-    fs.writeFileSync(file, `${JSON.stringify(canonical(value))}\n`);
+    fs.writeFileSync(file, value.replace(/\r\n?/g, '\n'), 'utf8');
+}
+export function writeJson(file, value) {
+    writeText(file, `${JSON.stringify(canonical(value))}\n`);
 }
 function text(buffer) { return buffer.toString('latin1'); }
 function objectEntries(buffer) {
@@ -753,9 +765,11 @@ export function generateArtifactManifest() {
         'Approved production data is generated only by the protected promotion command.', '',
     ].join('\n'));
     const roots = [path.join(DATA, 'raw-pdf'), path.join(DATA, 'classified'), path.join(DATA, 'provisional'), OUT];
-    const files = roots.flatMap(walkFiles)
+    const generatedFiles = roots.flatMap(walkFiles)
         .filter(file => file !== manifestPath && !file.includes(`${path.sep}production${path.sep}`))
-        .filter((file, index, values) => values.indexOf(file) === index)
+        .filter((file, index, values) => values.indexOf(file) === index);
+    generatedFiles.forEach(normalizeGeneratedTextFile);
+    const files = generatedFiles
         .map(file => {
             const bytes = fs.readFileSync(file);
             return {

@@ -7,9 +7,11 @@ import interactiveObjects from '../../data/floor1/provisional/interactive-object
 import walls from '../../data/floor1/provisional/walls.json';
 import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
+import { FLOOR1_CANDIDATE_REGISTRATION } from '../candidateRegistration';
 import type { CandidateNavigationGraph } from './candidateNavigation';
 import {
     buildCandidateNavigationGraph,
+    buildCandidateSandboxGraph,
     interpolateRoute,
     planCandidateRoute,
     pointInPolygon,
@@ -51,7 +53,24 @@ const testRoute = (
 
 
 describe('candidate Floor 1 navigation graph', () => {
+    it('keeps strict and sandbox verification modes explicit without mutating registration evidence', () => {
+        const before = structuredClone(FLOOR1_CANDIDATE_REGISTRATION);
+        const strict = buildCandidateNavigationGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, { registration: FLOOR1_CANDIDATE_REGISTRATION });
+        const sandbox = buildCandidateSandboxGraph({ rooms, positions, doors, computers, interactiveObjects, walls, objects, walkPaths }, FLOOR1_CANDIDATE_REGISTRATION);
+
+        expect(strict.navigationAvailable).toBe(false);
+        expect(strict.verificationMode).toBe('reviewed');
+        expect(sandbox.navigationAvailable).toBe(true);
+        expect(sandbox.verificationMode).toBe('unverified-sandbox');
+        expect(sandbox.agents.length).toBeGreaterThanOrEqual(2);
+        expect(sandbox.destinations.length).toBeGreaterThan(0);
+        expect(FLOOR1_CANDIDATE_REGISTRATION).toEqual(before);
+        expect(FLOOR1_CANDIDATE_REGISTRATION.status).toBe('unverified');
+        expect(FLOOR1_CANDIDATE_REGISTRATION.productionApproved).toBe(false);
+    });
+
     it('initializes deterministic provisional review agents without approving candidate data', () => {
+        expect(graph.verificationMode).toBe('reviewed');
         expect(graph.agents).toHaveLength(40);
         expect(graph.agents[0].id).toBe('floor1-review-agent-01');
         expect(graph.agents.every(agent => agent.provisionalSpriteAssignment)).toBe(true);

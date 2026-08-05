@@ -31,4 +31,4 @@
 
 ## Promotion boundary
 
-Only deterministic production candidates are copied into the generated runtime directory. The generated checksum must equal the inspected source checksum. Compass directions are not claimed because no authoritative row-direction metadata is committed.
+Only deterministic production candidates are copied into the generated runtime directory. The generated checksum must equal the inspected source checksum. The shared 6x8 agent-sheet layout authors cardinal rows as south=0, east=2, north=4, and west=6.
