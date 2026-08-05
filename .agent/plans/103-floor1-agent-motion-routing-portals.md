@@ -331,6 +331,8 @@ Consequences: a fresh exact-registration graph reports 30/47 doors provisional-v
 - Fresh-browser QA passed at 1920x1080 and 1366x768: 25 agents retained exactly 25 primary visuals, six representative clicks produced three routes and three accurate already-near outcomes, an additional invalid click returned a door-specific failure, zoom in/out and focused pan preserved alignment, and visible-agent labels stayed in bounds.
 - A fresh D01 route reported 97 nodes, 1098px, and D01; live diagnostics subsequently recorded 12 completed portal transitions with zero active/hidden remnants and no portal waits at that observation.
 - Global pause held all 25 agent styles stable for 1.2s and resume restored the shared clock.
+- The first exact-commit 20-agent soak was stopped at minute 7: Agents 17 and 18 remained statically blocked at unchanged feet positions because a collision-valid route was repeatedly accepted by stall replanning but rejected by swept-footprint movement.
+- Added a strict one-replan budget; a second static stall now fails to explicit `route-failed`, then automatic scheduling holds a 12s ambient break before rotating activity instead of immediately retrying the same work route.
 
 ## Unexpected Discoveries
 
@@ -359,6 +361,15 @@ Discovery: A browser graph retained across hot reload accepted the reproduced lo
 Impact: The earlier successful-click observation was not valid clean-start evidence.
 Decision: Preserve the fail-closed D47 result, expose its specific `transition-unavailable` reason and candidate-search diagnostics, and reserve positive click assertions for geometry that is reachable through complete endpoint pairs.
 Plan change: Fresh-page/exact-commit browser QA is mandatory before any success claim; no hot-reloaded result counts as final evidence.
+User review needed: No.
+
+### X-103-04 - Stall replanning could accept the same swept-footprint failure forever
+
+Date: 2026-08-05
+Discovery: During the first exact-commit 20-agent soak, Agents 17 and 18 stayed in `blocked` with `static-collision=blocked`, zero velocity, unchanged feet positions, and traveling work tasks for multiple minute samples.
+Impact: The existing cooldown bounded retry frequency but not retry count, so an accepted replacement route could restart the same collision indefinitely.
+Decision: Allow one automatic static-stall replan per task; if that route stalls again, fail visibly and clear the route/reservations. Automatic mode then observes the failure cooldown and takes a 12s ambient break before rotating activity.
+Plan change: Restart both full-duration soaks from a new exact commit; the failed seven-minute run does not count.
 User review needed: No.
 
 ## Manual Review Items

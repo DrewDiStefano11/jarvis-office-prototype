@@ -82,6 +82,7 @@ export type PrototypeAgent = Readonly<{
     reservedNodeId?: string;
     reservedEdgeKey?: string;
     replanCooldownMs: number;
+    replanAttempts: number;
     trafficOffset: Point;
     staticCollisionStatus: 'clear' | 'blocked';
     partnerAgentId?: string;
@@ -798,6 +799,7 @@ export function createPrototypeAgents(
             activityUntil: 4_000 + (index % 7) * 1_100,
             blockedDurationMs: 0,
             replanCooldownMs: 0,
+            replanAttempts: 0,
             trafficOffset: { x: 0, y: 0 },
             staticCollisionStatus: 'clear',
             partnerAgentId,
@@ -1175,6 +1177,7 @@ export function startPrototypeRoute(agent: PrototypeAgent, plan: PrototypeRouteP
         reservedNodeId: plan.route.nodeSequence[1] ?? plan.route.nodeSequence[0],
         reservedEdgeKey: undefined,
         replanCooldownMs: 0,
+        replanAttempts: 0,
         trafficOffset: { x: 0, y: 0 },
         portalTransition: undefined,
         staticCollisionStatus: 'clear',
@@ -1204,6 +1207,7 @@ export function assignPrototypeIdle(agent: PrototypeAgent, startedAtMs: number, 
         reservedNodeId: undefined,
         reservedEdgeKey: undefined,
         replanCooldownMs: 0,
+        replanAttempts: 0,
         trafficOffset: { x: 0, y: 0 },
         portalTransition: undefined,
         staticCollisionStatus: 'clear',
@@ -1340,6 +1344,7 @@ export function repositionPrototypeAgent(agent: PrototypeAgent, snap: PrototypeS
         reservedNodeId: undefined,
         reservedEdgeKey: undefined,
         replanCooldownMs: 0,
+        replanAttempts: 0,
         trafficOffset: { x: 0, y: 0 },
         portalTransition: undefined,
         staticCollisionStatus: 'clear',
@@ -1670,7 +1675,7 @@ export function advancePrototypeAgents(
         const stalledInTraffic = agent.movementState === 'waiting' && agent.blockedDurationMs >= 2_500;
         if ((!stalledAgainstStatic && !stalledInTraffic) || agent.replanCooldownMs > 0) return agent;
         if (metrics) metrics.routeReplans += 1;
-        if (graph && agent.targetPoint) {
+        if (graph && agent.targetPoint && agent.replanAttempts < 1) {
             const selection = findValidatedPrototypeRouteToPoint(graph, agent, agent.targetPoint, undefined, {
                 occupiedPoints: accepted.filter(other => other.fixture.id !== agent.fixture.id).map(other => other.point),
             });
@@ -1678,6 +1683,7 @@ export function advancePrototypeAgents(
                 return {
                     ...startPrototypeRoute(agent, selection.plan, agent.task),
                     replanCooldownMs: 2_500,
+                    replanAttempts: agent.replanAttempts + 1,
                 };
             }
         }
@@ -1750,6 +1756,7 @@ export function resetPrototypeAgent(agent: PrototypeAgent): PrototypeAgent {
         reservedNodeId: undefined,
         reservedEdgeKey: undefined,
         replanCooldownMs: 0,
+        replanAttempts: 0,
         trafficOffset: { x: 0, y: 0 },
         staticCollisionStatus: 'clear',
         partnerAgentId: undefined,

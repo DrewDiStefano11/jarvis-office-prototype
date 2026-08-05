@@ -371,6 +371,39 @@ describe('prototype runtime', () => {
         expect(Math.hypot(advanced[0].point.x - advanced[1].point.x, advanced[0].point.y - advanced[1].point.y)).toBeGreaterThanOrEqual(68);
     });
 
+    it('fails a repeatedly static-blocked route after one bounded replan', () => {
+        const agent = createPrototypeAgents(graph, 1, 'debug')[0];
+        const collisionPoint = graph.colliders.find(collider => collider.points.length > 0)!.points[0];
+        const target = { x: collisionPoint.x + 120, y: collisionPoint.y };
+        const route = {
+            status: 'valid' as const,
+            reason: 'Static-stall recovery fixture.',
+            points: [collisionPoint, target],
+            crossedDoorIds: [],
+            doorSteps: [],
+            nodeSequence: ['blocked-start', 'blocked-target'],
+            cost: 120,
+            length: 120,
+            expandedNodeCount: 1,
+        };
+        const stalled = {
+            ...agent,
+            point: collisionPoint,
+            route,
+            movementState: 'blocked' as const,
+            activityState: 'waiting' as const,
+            targetPoint: target,
+            staticCollisionStatus: 'blocked' as const,
+            blockedDurationMs: 800,
+            replanAttempts: 1,
+            task: { kind: 'walk' as const, phase: 'traveling' as const, destination: target, nodeId: 'blocked-target', startedAtMs: 0 },
+        };
+        const recovered = advancePrototypeAgents([stalled], 16, 180, false, prototypeOpenDoorRuntimes(graph), graph)[0];
+        expect(recovered.route).toBeNull();
+        expect(recovered.movementState).toBe('idle');
+        expect(recovered.task).toMatchObject({ kind: 'idle', reason: 'route-failed' });
+    });
+
     it('places overlapping agent labels on deterministic alternate sides', () => {
         const [first, second] = createPrototypeAgents(graph, 2, 'debug');
         const isolated = layoutPrototypeAgentLabels([first], 1);
