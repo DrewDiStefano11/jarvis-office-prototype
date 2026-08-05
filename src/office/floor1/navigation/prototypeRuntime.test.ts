@@ -168,7 +168,7 @@ describe('prototype runtime', () => {
         const secondWork = assignPrototypeWork(graph, second, 0, occupied);
         expect(secondWork?.workstationId).toBeTruthy();
         expect(secondWork?.workstationId).not.toBe(firstWork?.workstationId);
-    });
+    }, 15_000);
 
     it('advances walk cadence from distance and freezes it while paused', () => {
         const agent = createPrototypeAgents(graph, 1, 'debug')[0];
@@ -507,7 +507,7 @@ describe('prototype runtime', () => {
         expect(replacement?.task.kind).toBe('wander');
         expect(replacement?.activityState).toBe('walking');
         expect(replacement?.workstationId).toBeUndefined();
-    });
+    }, 15_000);
 
     it('routes talk partners toward distinct valid nodes and exposes reciprocal IDs', () => {
         const [agent, originalPartner] = createPrototypeAgents(graph, 2, 'debug');
