@@ -159,6 +159,18 @@ function validateAsset(
     }
     if (value.availability !== 'available' && value.availability !== 'blocked') issue(issues, `${path}.availability`, 'Invalid availability.');
     if (value.approval !== 'approved' && value.approval !== 'provisional') issue(issues, `${path}.approval`, 'Invalid approval.');
+    if (value.runtimeCapability !== 'limited-cardinal-idle-walk' && value.runtimeCapability !== 'complete-office-activities') {
+        issue(issues, `${path}.runtimeCapability`, 'Available assets must declare a supported reviewed runtime capability.');
+    }
+    if (!isRecord(value.frameIntegrity)
+        || typeof value.frameIntegrity.method !== 'string'
+        || !positiveInteger(value.frameIntegrity.inspectedFrameCount)
+        || (value.frameIntegrity.maximumBottomAnchorDeviationPixels !== null
+            && (typeof value.frameIntegrity.maximumBottomAnchorDeviationPixels !== 'number'
+                || !Number.isFinite(value.frameIntegrity.maximumBottomAnchorDeviationPixels)
+                || value.frameIntegrity.maximumBottomAnchorDeviationPixels < 0))) {
+        issue(issues, `${path}.frameIntegrity`, 'A valid per-frame integrity audit is required.');
+    }
     if (value.availability === 'available' && value.blockingReason !== null) {
         issue(issues, `${path}.blockingReason`, 'Available assets require a null blocking reason.');
     }
@@ -296,6 +308,9 @@ export function validateSpriteManifest(
             else seenAssetIds.add(asset.id);
             if (asset.availability !== 'blocked' || asset.approval !== 'provisional' || typeof asset.blockingReason !== 'string' || asset.blockingReason.trim() === '') {
                 issue(issues, `blockedAssets[${index}]`, 'Blocked assets require provisional status and a blocking reason.');
+            }
+            if (asset.runtimeCapability !== 'quarantined-fallback-only') {
+                issue(issues, `blockedAssets[${index}].runtimeCapability`, 'Blocked assets must be quarantined from directional runtime use.');
             }
             if (typeof asset.sourceAssetReference !== 'string' || asset.sourceAssetReference.trim() === '') {
                 issue(issues, `blockedAssets[${index}].sourceAssetReference`, 'Source reference is required.');

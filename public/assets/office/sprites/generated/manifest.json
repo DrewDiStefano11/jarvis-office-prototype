@@ -14,6 +14,237 @@
       },
       "approval": "approved",
       "authoredDirections": [
+        "none"
+      ],
+      "availability": "available",
+      "blockingReason": null,
+      "classification": "agent",
+      "clips": [
+        {
+          "direction": "none",
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "framesPerSecond": 4,
+          "id": "agent-activity-sheet-01:idle:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "idle",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "framesPerSecond": 5,
+          "id": "agent-activity-sheet-01:sitting:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 6,
+          "repeatDelayMs": 0,
+          "state": "sitting",
+          "staticFallbackFrame": 6,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          "framesPerSecond": 7,
+          "id": "agent-activity-sheet-01:typing:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 12,
+          "repeatDelayMs": 0,
+          "state": "typing",
+          "staticFallbackFrame": 12,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          "framesPerSecond": 7,
+          "id": "agent-activity-sheet-01:working:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 12,
+          "repeatDelayMs": 0,
+          "state": "working",
+          "staticFallbackFrame": 12,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            18,
+            19,
+            20,
+            21,
+            22,
+            23
+          ],
+          "framesPerSecond": 5,
+          "id": "agent-activity-sheet-01:talking:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 18,
+          "repeatDelayMs": 0,
+          "state": "talking",
+          "staticFallbackFrame": 18,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            24,
+            25,
+            26,
+            27,
+            28,
+            29
+          ],
+          "framesPerSecond": 3,
+          "id": "agent-activity-sheet-01:waiting:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 24,
+          "repeatDelayMs": 0,
+          "state": "waiting",
+          "staticFallbackFrame": 24,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            24,
+            25,
+            26,
+            27,
+            28,
+            29
+          ],
+          "framesPerSecond": 3,
+          "id": "agent-activity-sheet-01:blocked:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 24,
+          "repeatDelayMs": 0,
+          "state": "blocked",
+          "staticFallbackFrame": 24,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            30,
+            31,
+            32,
+            33,
+            34,
+            35
+          ],
+          "framesPerSecond": 4,
+          "id": "agent-activity-sheet-01:thinking:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 30,
+          "repeatDelayMs": 0,
+          "state": "thinking",
+          "staticFallbackFrame": 30,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            30,
+            31,
+            32,
+            33,
+            34,
+            35
+          ],
+          "framesPerSecond": 4,
+          "id": "agent-activity-sheet-01:reviewing:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 30,
+          "repeatDelayMs": 0,
+          "state": "reviewing",
+          "staticFallbackFrame": 30,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-activity-sheet-01:offline:none",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        }
+      ],
+      "columns": 6,
+      "frameCount": 36,
+      "frameHeight": 209,
+      "frameIntegrity": {
+        "inspectedFrameCount": 18,
+        "maximumBottomAnchorDeviationPixels": 1,
+        "method": "per-cell alpha-bounds-v1"
+      },
+      "frameWidth": 209,
+      "generatedAssetUrl": "assets/office/sprites/generated/agent-activity-sheet-01.png",
+      "generatedChecksum": "c4b3c0f8b322030a3609b93ead984af84cde1bbbade7e56943ca2d67826bd214",
+      "horizontalFlipDirections": [],
+      "id": "agent-activity-sheet-01",
+      "pixelArt": true,
+      "rows": 6,
+      "runtimeCapability": "complete-office-activities",
+      "sourceAssetReference": "agent-activity-sheet-01.png",
+      "sourceChecksum": "c4b3c0f8b322030a3609b93ead984af84cde1bbbade7e56943ca2d67826bd214",
+      "visualScale": 1
+    },
+    {
+      "agentProfileCompatibility": [
+        "jarvis",
+        "atlas",
+        "scout",
+        "archive",
+        "sentinel"
+      ],
+      "anchor": {
+        "x": 0.5,
+        "y": 0.94
+      },
+      "approval": "approved",
+      "authoredDirections": [
         "south",
         "east",
         "north",
@@ -215,6 +446,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 1,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-01.png",
       "generatedChecksum": "514b2e3b830792b40f43a58a8a0415bfe46b4bbd2377d24f8f44b63435efc12c",
@@ -222,6 +458,7 @@
       "id": "agent-sheet-01",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "791eeb5a-09f5-4c81-b691-271f59b258d0.png",
       "sourceChecksum": "514b2e3b830792b40f43a58a8a0415bfe46b4bbd2377d24f8f44b63435efc12c",
       "visualScale": 1
@@ -441,6 +678,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 0,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-02.png",
       "generatedChecksum": "f10878dc8a398eb927052269d265e900ac136705bedee43f4883a3c0984143c8",
@@ -448,6 +690,7 @@
       "id": "agent-sheet-02",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0.png",
       "sourceChecksum": "f10878dc8a398eb927052269d265e900ac136705bedee43f4883a3c0984143c8",
       "visualScale": 1
@@ -667,6 +910,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 14,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-03.png",
       "generatedChecksum": "09ad9303f40cd49d1262d27803784b470b32005c15dbf7cc737a7662692137ba",
@@ -674,6 +922,7 @@
       "id": "agent-sheet-03",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (1).png",
       "sourceChecksum": "09ad9303f40cd49d1262d27803784b470b32005c15dbf7cc737a7662692137ba",
       "visualScale": 1
@@ -893,6 +1142,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 6,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-04.png",
       "generatedChecksum": "3ef6c971c63adec462b1af59f8e92f1c77425d5136b209d25db7ae0b8349981d",
@@ -900,234 +1154,9 @@
       "id": "agent-sheet-04",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (2).png",
       "sourceChecksum": "3ef6c971c63adec462b1af59f8e92f1c77425d5136b209d25db7ae0b8349981d",
-      "visualScale": 1
-    },
-    {
-      "agentProfileCompatibility": [
-        "jarvis",
-        "atlas",
-        "scout",
-        "archive",
-        "sentinel"
-      ],
-      "anchor": {
-        "x": 0.5,
-        "y": 0.94
-      },
-      "approval": "approved",
-      "authoredDirections": [
-        "south",
-        "east",
-        "north",
-        "west"
-      ],
-      "availability": "available",
-      "blockingReason": null,
-      "classification": "agent",
-      "clips": [
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:idle:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-05:walking:south",
-          "loop": true,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:offline:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:idle:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12,
-            13,
-            14,
-            15,
-            16,
-            17
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-05:walking:east",
-          "loop": true,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:offline:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:idle:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24,
-            25,
-            26,
-            27,
-            28,
-            29
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-05:walking:north",
-          "loop": true,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:offline:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:idle:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36,
-            37,
-            38,
-            39,
-            40,
-            41
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-05:walking:west",
-          "loop": true,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-05:offline:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        }
-      ],
-      "columns": 6,
-      "frameCount": 48,
-      "frameHeight": 181,
-      "frameWidth": 181,
-      "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-05.png",
-      "generatedChecksum": "322b2d2141f288c7bc32a8e6ad725ba3a8feec1839320dd725c155bddf6921b7",
-      "horizontalFlipDirections": [],
-      "id": "agent-sheet-05",
-      "pixelArt": true,
-      "rows": 8,
-      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (3).png",
-      "sourceChecksum": "322b2d2141f288c7bc32a8e6ad725ba3a8feec1839320dd725c155bddf6921b7",
       "visualScale": 1
     },
     {
@@ -1345,6 +1374,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 11,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-06.png",
       "generatedChecksum": "7e87267ef85a4c1b8a65d109eeae32cf0d15b9b354e0d83379a74e80e22b4004",
@@ -1352,6 +1386,7 @@
       "id": "agent-sheet-06",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (4).png",
       "sourceChecksum": "7e87267ef85a4c1b8a65d109eeae32cf0d15b9b354e0d83379a74e80e22b4004",
       "visualScale": 1
@@ -1571,6 +1606,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 0,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-07.png",
       "generatedChecksum": "52e3f5ecc75c78df834b7ec9245964f1dec2832d41b640081df24d5aaf776967",
@@ -1578,6 +1618,7 @@
       "id": "agent-sheet-07",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (5).png",
       "sourceChecksum": "52e3f5ecc75c78df834b7ec9245964f1dec2832d41b640081df24d5aaf776967",
       "visualScale": 1
@@ -1797,6 +1838,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 0,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-08.png",
       "generatedChecksum": "1f6a786a86ac07ce007c7ac7d80244dda4c2f8a3e73e5cf25e33c53dee447e82",
@@ -1804,6 +1850,7 @@
       "id": "agent-sheet-08",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (6).png",
       "sourceChecksum": "1f6a786a86ac07ce007c7ac7d80244dda4c2f8a3e73e5cf25e33c53dee447e82",
       "visualScale": 1
@@ -2023,6 +2070,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 3,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-09.png",
       "generatedChecksum": "869ef5b61d0235593e8598480aa346aadc28b36d89e078557549aa1a96ebcb19",
@@ -2030,6 +2082,7 @@
       "id": "agent-sheet-09",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (7).png",
       "sourceChecksum": "869ef5b61d0235593e8598480aa346aadc28b36d89e078557549aa1a96ebcb19",
       "visualScale": 1
@@ -2249,6 +2302,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 0,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-10.png",
       "generatedChecksum": "18bc53e5d0b0a617883cd4f8b1ee47232acd1c6821f2f42ad03e70fea9fb003c",
@@ -2256,6 +2314,7 @@
       "id": "agent-sheet-10",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (8).png",
       "sourceChecksum": "18bc53e5d0b0a617883cd4f8b1ee47232acd1c6821f2f42ad03e70fea9fb003c",
       "visualScale": 1
@@ -2475,6 +2534,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 0,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-11.png",
       "generatedChecksum": "d2eacd0339f6579b4794a02e5aaebc52ba3ec18c2e76fbbef1f3de52f1c6f74c",
@@ -2482,460 +2546,9 @@
       "id": "agent-sheet-11",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (9).png",
       "sourceChecksum": "d2eacd0339f6579b4794a02e5aaebc52ba3ec18c2e76fbbef1f3de52f1c6f74c",
-      "visualScale": 1
-    },
-    {
-      "agentProfileCompatibility": [
-        "jarvis",
-        "atlas",
-        "scout",
-        "archive",
-        "sentinel"
-      ],
-      "anchor": {
-        "x": 0.5,
-        "y": 0.94
-      },
-      "approval": "approved",
-      "authoredDirections": [
-        "south",
-        "east",
-        "north",
-        "west"
-      ],
-      "availability": "available",
-      "blockingReason": null,
-      "classification": "agent",
-      "clips": [
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:idle:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-12:walking:south",
-          "loop": true,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:offline:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:idle:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12,
-            13,
-            14,
-            15,
-            16,
-            17
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-12:walking:east",
-          "loop": true,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:offline:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:idle:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24,
-            25,
-            26,
-            27,
-            28,
-            29
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-12:walking:north",
-          "loop": true,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:offline:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:idle:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36,
-            37,
-            38,
-            39,
-            40,
-            41
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-12:walking:west",
-          "loop": true,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-12:offline:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        }
-      ],
-      "columns": 6,
-      "frameCount": 48,
-      "frameHeight": 181,
-      "frameWidth": 181,
-      "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-12.png",
-      "generatedChecksum": "b04570ccf864d2bcce5435b036471c059947b215f8b8c1008491e2c7ba200e5a",
-      "horizontalFlipDirections": [],
-      "id": "agent-sheet-12",
-      "pixelArt": true,
-      "rows": 8,
-      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (10).png",
-      "sourceChecksum": "b04570ccf864d2bcce5435b036471c059947b215f8b8c1008491e2c7ba200e5a",
-      "visualScale": 1
-    },
-    {
-      "agentProfileCompatibility": [
-        "jarvis",
-        "atlas",
-        "scout",
-        "archive",
-        "sentinel"
-      ],
-      "anchor": {
-        "x": 0.5,
-        "y": 0.94
-      },
-      "approval": "approved",
-      "authoredDirections": [
-        "south",
-        "east",
-        "north",
-        "west"
-      ],
-      "availability": "available",
-      "blockingReason": null,
-      "classification": "agent",
-      "clips": [
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:idle:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-13:walking:south",
-          "loop": true,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:offline:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:idle:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12,
-            13,
-            14,
-            15,
-            16,
-            17
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-13:walking:east",
-          "loop": true,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:offline:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:idle:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24,
-            25,
-            26,
-            27,
-            28,
-            29
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-13:walking:north",
-          "loop": true,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:offline:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:idle:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36,
-            37,
-            38,
-            39,
-            40,
-            41
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-13:walking:west",
-          "loop": true,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-13:offline:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        }
-      ],
-      "columns": 6,
-      "frameCount": 48,
-      "frameHeight": 181,
-      "frameWidth": 181,
-      "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-13.png",
-      "generatedChecksum": "2ffd137cf1e0016c0a8d5f45c68602be7af2be81695311721868746e1dc8e38f",
-      "horizontalFlipDirections": [],
-      "id": "agent-sheet-13",
-      "pixelArt": true,
-      "rows": 8,
-      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (11).png",
-      "sourceChecksum": "2ffd137cf1e0016c0a8d5f45c68602be7af2be81695311721868746e1dc8e38f",
       "visualScale": 1
     },
     {
@@ -3153,6 +2766,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 0,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-14.png",
       "generatedChecksum": "e8fdcb17954c60402db25f73f40fade971208411d99c02077f1e6054980f7315",
@@ -3160,6 +2778,7 @@
       "id": "agent-sheet-14",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (12).png",
       "sourceChecksum": "e8fdcb17954c60402db25f73f40fade971208411d99c02077f1e6054980f7315",
       "visualScale": 1
@@ -3379,6 +2998,11 @@
       "columns": 6,
       "frameCount": 48,
       "frameHeight": 181,
+      "frameIntegrity": {
+        "inspectedFrameCount": 24,
+        "maximumBottomAnchorDeviationPixels": 2,
+        "method": "per-cell alpha-bounds-v1"
+      },
       "frameWidth": 181,
       "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-15.png",
       "generatedChecksum": "aa9ff8b2ddfc6c17ee6650003942bdadba3c79ef767ebfdbba97ce27e5fad49a",
@@ -3386,234 +3010,9 @@
       "id": "agent-sheet-15",
       "pixelArt": true,
       "rows": 8,
+      "runtimeCapability": "limited-cardinal-idle-walk",
       "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (13).png",
       "sourceChecksum": "aa9ff8b2ddfc6c17ee6650003942bdadba3c79ef767ebfdbba97ce27e5fad49a",
-      "visualScale": 1
-    },
-    {
-      "agentProfileCompatibility": [
-        "jarvis",
-        "atlas",
-        "scout",
-        "archive",
-        "sentinel"
-      ],
-      "anchor": {
-        "x": 0.5,
-        "y": 0.94
-      },
-      "approval": "approved",
-      "authoredDirections": [
-        "south",
-        "east",
-        "north",
-        "west"
-      ],
-      "availability": "available",
-      "blockingReason": null,
-      "classification": "agent",
-      "clips": [
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:idle:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-16:walking:south",
-          "loop": true,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "south",
-          "frames": [
-            0
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:offline:south",
-          "loop": false,
-          "reducedMotionFallbackFrame": 0,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 0,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:idle:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12,
-            13,
-            14,
-            15,
-            16,
-            17
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-16:walking:east",
-          "loop": true,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "east",
-          "frames": [
-            12
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:offline:east",
-          "loop": false,
-          "reducedMotionFallbackFrame": 12,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 12,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:idle:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24,
-            25,
-            26,
-            27,
-            28,
-            29
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-16:walking:north",
-          "loop": true,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "north",
-          "frames": [
-            24
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:offline:north",
-          "loop": false,
-          "reducedMotionFallbackFrame": 24,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 24,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:idle:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "idle",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36,
-            37,
-            38,
-            39,
-            40,
-            41
-          ],
-          "framesPerSecond": 8,
-          "id": "agent-sheet-16:walking:west",
-          "loop": true,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "walking",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        },
-        {
-          "direction": "west",
-          "frames": [
-            36
-          ],
-          "framesPerSecond": 1,
-          "id": "agent-sheet-16:offline:west",
-          "loop": false,
-          "reducedMotionFallbackFrame": 36,
-          "repeatDelayMs": 0,
-          "state": "offline",
-          "staticFallbackFrame": 36,
-          "yoyo": false
-        }
-      ],
-      "columns": 6,
-      "frameCount": 48,
-      "frameHeight": 181,
-      "frameWidth": 181,
-      "generatedAssetUrl": "assets/office/sprites/generated/agent-sheet-16.png",
-      "generatedChecksum": "70f3f8759c57b524027691f08499f8b5df7ac77dc43f2385e80957b23b5b8a55",
-      "horizontalFlipDirections": [],
-      "id": "agent-sheet-16",
-      "pixelArt": true,
-      "rows": 8,
-      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (14).png",
-      "sourceChecksum": "70f3f8759c57b524027691f08499f8b5df7ac77dc43f2385e80957b23b5b8a55",
       "visualScale": 1
     }
   ],
@@ -3621,8 +3020,41 @@
     {
       "approval": "provisional",
       "availability": "blocked",
+      "blockingReason": "Authored directional frames contain multiple major disconnected body regions: 12, 13, 14, 15, 16, 17.",
+      "id": "agent-sheet-05",
+      "runtimeCapability": "quarantined-fallback-only",
+      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (3).png"
+    },
+    {
+      "approval": "provisional",
+      "availability": "blocked",
+      "blockingReason": "Authored directional frames touch a cell edge: 0, 1, 12, 13, 24, 25, 36, 37.",
+      "id": "agent-sheet-12",
+      "runtimeCapability": "quarantined-fallback-only",
+      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (10).png"
+    },
+    {
+      "approval": "provisional",
+      "availability": "blocked",
+      "blockingReason": "Authored directional frames touch a cell edge: 0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 24, 25, 26, 27, 28, 29, 36, 37, 38, 39, 40, 41. Authored directional frames contain multiple major disconnected body regions: 2, 3, 4, 13, 14, 15, 16, 24, 27, 28, 38, 39, 40.",
+      "id": "agent-sheet-13",
+      "runtimeCapability": "quarantined-fallback-only",
+      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (11).png"
+    },
+    {
+      "approval": "provisional",
+      "availability": "blocked",
+      "blockingReason": "Authored directional frames touch a cell edge: 0.",
+      "id": "agent-sheet-16",
+      "runtimeCapability": "quarantined-fallback-only",
+      "sourceAssetReference": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (14).png"
+    },
+    {
+      "approval": "provisional",
+      "availability": "blocked",
       "blockingReason": "The 1254x1254 source is not evenly divisible by the apparent frame rows and columns. No authoritative per-frame rectangles or playback order are committed.",
       "id": "nexus-tube-reference",
+      "runtimeCapability": "quarantined-fallback-only",
       "sourceAssetReference": "Nexus Tube Sprite.png"
     },
     {
@@ -3630,6 +3062,7 @@
       "availability": "blocked",
       "blockingReason": "Opaque presentation board contains title, numbering, job labels, palette, margins, and notes. It is a role/art reference, not a runtime sprite sheet.",
       "id": "agent-jobs-reference",
+      "runtimeCapability": "quarantined-fallback-only",
       "sourceAssetReference": "Sprite Jobs.png"
     }
   ],
@@ -3639,7 +3072,10 @@
     "idle": null,
     "offline": null,
     "reviewing": "working",
+    "sitting": "working",
+    "talking": "idle",
     "thinking": "idle",
+    "typing": "working",
     "waiting": "idle",
     "walking": "idle",
     "working": "idle"

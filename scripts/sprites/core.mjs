@@ -171,6 +171,102 @@ function inspectPixels(decoded) {
   };
 }
 
+function inspectFrameGrid(decoded, rows, columns) {
+  const frameWidth = decoded.width / columns;
+  const frameHeight = decoded.height / rows;
+  const frames = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      let minX = frameWidth;
+      let minY = frameHeight;
+      let maxX = -1;
+      let maxY = -1;
+      let alphaPixels = 0;
+      let touchesCellEdge = false;
+      let touchesLateralCellEdge = false;
+      const occupied = new Uint8Array(frameWidth * frameHeight);
+      for (let localY = 0; localY < frameHeight; localY += 1) {
+        for (let localX = 0; localX < frameWidth; localX += 1) {
+          const x = column * frameWidth + localX;
+          const y = row * frameHeight + localY;
+          const alpha = decoded.rgba[(y * decoded.width + x) * 4 + 3];
+          if (alpha < 16) continue;
+          alphaPixels += 1;
+          occupied[localY * frameWidth + localX] = 1;
+          minX = Math.min(minX, localX);
+          minY = Math.min(minY, localY);
+          maxX = Math.max(maxX, localX);
+          maxY = Math.max(maxY, localY);
+          if (localX === 0 || localY === 0 || localX === frameWidth - 1 || localY === frameHeight - 1) touchesCellEdge = true;
+          if (localX === 0 || localX === frameWidth - 1) touchesLateralCellEdge = true;
+        }
+      }
+      const componentSizes = [];
+      for (let pixelIndex = 0; pixelIndex < occupied.length; pixelIndex += 1) {
+        if (occupied[pixelIndex] !== 1) continue;
+        occupied[pixelIndex] = 2;
+        const queue = [pixelIndex];
+        let size = 0;
+        while (queue.length > 0) {
+          const current = queue.pop();
+          size += 1;
+          const x = current % frameWidth;
+          const y = Math.floor(current / frameWidth);
+          const neighbors = [
+            x > 0 ? current - 1 : -1,
+            x < frameWidth - 1 ? current + 1 : -1,
+            y > 0 ? current - frameWidth : -1,
+            y < frameHeight - 1 ? current + frameWidth : -1,
+          ];
+          for (const neighbor of neighbors) {
+            if (neighbor < 0 || occupied[neighbor] !== 1) continue;
+            occupied[neighbor] = 2;
+            queue.push(neighbor);
+          }
+        }
+        componentSizes.push(size);
+      }
+      componentSizes.sort((a, b) => b - a);
+      const largestComponentRatio = alphaPixels === 0 ? 0 : (componentSizes[0] ?? 0) / alphaPixels;
+      const significantDetachedComponentCount = componentSizes.slice(1).filter(size => size >= Math.max(12, alphaPixels * 0.05)).length;
+      frames.push({
+        index: row * columns + column,
+        row,
+        column,
+        alphaPixels,
+        occupancyRatio: alphaPixels / (frameWidth * frameHeight),
+        contentBounds: maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+        bottomOffset: maxY < 0 ? null : frameHeight - 1 - maxY,
+        touchesCellEdge,
+        touchesLateralCellEdge,
+        connectedComponentCount: componentSizes.length,
+        largestComponentRatio,
+        significantDetachedComponentCount,
+      });
+    }
+  }
+  const authoredRows = [0, 2, 4, 6].filter(row => row < rows);
+  const authoredFrames = frames.filter(frame => authoredRows.includes(frame.row));
+  const bottoms = authoredFrames.map(frame => frame.bottomOffset).filter(value => value !== null);
+  const minimumBottom = bottoms.length > 0 ? Math.min(...bottoms) : null;
+  const maximumBottom = bottoms.length > 0 ? Math.max(...bottoms) : null;
+  const emptyFrameIndexes = authoredFrames.filter(frame => frame.alphaPixels === 0).map(frame => frame.index);
+  const edgeBleedFrameIndexes = authoredFrames.filter(frame => frame.touchesLateralCellEdge).map(frame => frame.index);
+  const fragmentedFrameIndexes = authoredFrames
+    .filter(frame => frame.largestComponentRatio < 0.72 && frame.significantDetachedComponentCount > 0)
+    .map(frame => frame.index);
+  return {
+    method: 'per-cell alpha-bounds-v1',
+    authoredDirectionalRows: authoredRows,
+    inspectedFrameCount: authoredFrames.length,
+    emptyFrameIndexes,
+    edgeBleedFrameIndexes,
+    fragmentedFrameIndexes,
+    maximumBottomAnchorDeviationPixels: minimumBottom === null || maximumBottom === null ? null : maximumBottom - minimumBottom,
+    frames,
+  };
+}
+
 export function inspectPngBytes(bytes, sourcePath = 'memory.png') {
   const decoded = decodePng(bytes, sourcePath);
   return {
@@ -214,6 +310,7 @@ export async function buildInventory() {
     const blockingIssues = [...(source.blockingIssues ?? [])];
     let frameWidth = null;
     let frameHeight = null;
+    let frameIntegrity = null;
     if (source.rows !== undefined || source.columns !== undefined) {
       if (!Number.isInteger(source.rows) || !Number.isInteger(source.columns) || source.rows <= 0 || source.columns <= 0) {
         blockingIssues.push('Declared rows and columns must be positive integers.');
@@ -222,6 +319,19 @@ export async function buildInventory() {
       } else {
         frameWidth = decoded.width / source.columns;
         frameHeight = decoded.height / source.rows;
+        frameIntegrity = inspectFrameGrid(decoded, source.rows, source.columns);
+        if (frameIntegrity.emptyFrameIndexes.length > 0) {
+          blockingIssues.push(`Authored directional frames are empty: ${frameIntegrity.emptyFrameIndexes.join(', ')}.`);
+        }
+        if (frameIntegrity.edgeBleedFrameIndexes.length > 0) {
+          blockingIssues.push(`Authored directional frames touch a cell edge: ${frameIntegrity.edgeBleedFrameIndexes.join(', ')}.`);
+        }
+        if (source.runtimeLayout !== 'office-activities' && frameIntegrity.fragmentedFrameIndexes.length > 0) {
+          blockingIssues.push(`Authored directional frames contain multiple major disconnected body regions: ${frameIntegrity.fragmentedFrameIndexes.join(', ')}.`);
+        }
+        if ((frameIntegrity.maximumBottomAnchorDeviationPixels ?? 0) > frameHeight * 0.25) {
+          blockingIssues.push(`Directional foot anchors vary by ${frameIntegrity.maximumBottomAnchorDeviationPixels}px.`);
+        }
       }
     }
     if (source.status === 'production_candidate' && decoded.colorType !== 4 && decoded.colorType !== 6) {
@@ -253,9 +363,16 @@ export async function buildInventory() {
       proposedFrameWidth: frameWidth,
       proposedFrameHeight: frameHeight,
       frameCount: frameWidth && frameHeight ? source.rows * source.columns : null,
+      frameIntegrity,
       embeddedMarkings: source.embeddedMarkings === true,
-      status: approvedForGeneration ? 'production_candidate' : source.status,
+      status: approvedForGeneration
+        ? 'production_candidate'
+        : source.status === 'production_candidate' ? 'unusable_without_manual_editing' : source.status,
       confidence: approvedForGeneration ? 'deterministic' : 'explicitly_blocked',
+      runtimeCapability: approvedForGeneration
+        ? source.runtimeLayout === 'office-activities' ? 'complete-office-activities' : 'limited-cardinal-idle-walk'
+        : 'quarantined-fallback-only',
+      runtimeLayout: source.runtimeLayout ?? 'cardinal-idle-walk',
       blockingIssues,
       duplicateOf: null,
       generatedAssetDestination: approvedForGeneration
@@ -326,6 +443,18 @@ export async function writeInventory(root = REPO_ROOT) {
 
 function runtimeManifest(inventory) {
   const cardinalRows = [['south', 0], ['east', 2], ['north', 4], ['west', 6]];
+  const activityRows = [
+    ['idle', 0, 4],
+    ['sitting', 1, 5],
+    ['typing', 2, 7],
+    ['working', 2, 7],
+    ['talking', 3, 5],
+    ['waiting', 4, 3],
+    ['blocked', 4, 3],
+    ['thinking', 5, 4],
+    ['reviewing', 5, 4],
+    ['offline', 0, 1],
+  ];
   const assets = inventory.records
     .filter(record => record.status === 'production_candidate' && record.blockingIssues.length === 0)
     .map(record => ({
@@ -345,11 +474,30 @@ function runtimeManifest(inventory) {
       availability: 'available',
       approval: 'approved',
       blockingReason: null,
+      runtimeCapability: record.runtimeCapability,
+      frameIntegrity: {
+        method: record.frameIntegrity?.method ?? null,
+        inspectedFrameCount: record.frameIntegrity?.inspectedFrameCount ?? 0,
+        maximumBottomAnchorDeviationPixels: record.frameIntegrity?.maximumBottomAnchorDeviationPixels ?? null,
+      },
       agentProfileCompatibility: PROFILE_IDS,
       classification: 'agent',
-      authoredDirections: cardinalRows.map(([direction]) => direction),
+      authoredDirections: record.runtimeLayout === 'office-activities'
+        ? ['none']
+        : cardinalRows.map(([direction]) => direction),
       horizontalFlipDirections: [],
-      clips: cardinalRows.flatMap(([direction, row]) => {
+      clips: record.runtimeLayout === 'office-activities'
+        ? activityRows.map(([state, row, framesPerSecond]) => {
+          const firstFrame = row * record.proposedColumns;
+          return {
+            id: `${record.id}:${state}:none`,
+            state, direction: 'none',
+            frames: Array.from({ length: record.proposedColumns }, (_, column) => firstFrame + column),
+            framesPerSecond, loop: state !== 'offline', repeatDelayMs: 0, yoyo: false,
+            reducedMotionFallbackFrame: firstFrame, staticFallbackFrame: firstFrame,
+          };
+        })
+        : cardinalRows.flatMap(([direction, row]) => {
         const firstFrame = row * record.proposedColumns;
         return [
           {
@@ -370,7 +518,7 @@ function runtimeManifest(inventory) {
             repeatDelayMs: 0, yoyo: false, reducedMotionFallbackFrame: firstFrame, staticFallbackFrame: firstFrame,
           },
         ];
-      }),
+        }),
     }));
   return {
     schemaVersion: 1,
@@ -379,6 +527,9 @@ function runtimeManifest(inventory) {
       idle: null,
       walking: 'idle',
       working: 'idle',
+      sitting: 'working',
+      typing: 'working',
+      talking: 'idle',
       thinking: 'idle',
       reviewing: 'working',
       waiting: 'idle',
@@ -395,6 +546,7 @@ function runtimeManifest(inventory) {
         availability: 'blocked',
         approval: 'provisional',
         blockingReason: record.blockingIssues.join(' '),
+        runtimeCapability: record.runtimeCapability,
       })),
   };
 }

@@ -308,4 +308,20 @@ describe('OfficeViewport pointer interactions', () => {
         fireEvent.click(container.querySelector('[aria-label="Zoom out"]') as HTMLButtonElement);
         expect(surface.style.transform).toBe(fittedTransform);
     });
+
+    it('handles wheel zoom through a cancelable non-passive listener', () => {
+        const { onTransformChange, viewport } = renderViewport();
+        const initialTransformCalls = onTransformChange.mock.calls.length;
+        const wheel = new Event('wheel', { bubbles: true, cancelable: true }) as WheelEvent;
+        Object.defineProperties(wheel, {
+            clientX: { value: 600 },
+            clientY: { value: 400 },
+            deltaY: { value: -240 },
+        });
+
+        act(() => expect(viewport.dispatchEvent(wheel)).toBe(false));
+
+        expect(wheel.defaultPrevented).toBe(true);
+        expect(onTransformChange.mock.calls.length).toBeGreaterThan(initialTransformCalls);
+    });
 });

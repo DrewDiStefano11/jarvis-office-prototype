@@ -16,7 +16,7 @@ function clips(asset: Record<string, unknown>): Record<string, unknown>[] {
 
 describe('sprite manifest validation', () => {
     it('accepts the generated manifest in production mode', () => {
-        expect(assertValidSpriteManifest(rawManifest, { productionMode: true }).assets).toHaveLength(16);
+        expect(assertValidSpriteManifest(rawManifest, { productionMode: true }).assets).toHaveLength(13);
     });
 
     it.each([
@@ -34,6 +34,8 @@ describe('sprite manifest validation', () => {
         ['invalid classification', (value: Record<string, unknown>) => { assets(value)[0].classification = 'vehicle'; }],
         ['invalid profile compatibility', (value: Record<string, unknown>) => { assets(value)[0].agentProfileCompatibility = ['jarvis', 1]; }],
         ['invalid available blocking reason', (value: Record<string, unknown>) => { assets(value)[0].blockingReason = 'not null'; }],
+        ['missing frame integrity audit', (value: Record<string, unknown>) => { delete assets(value)[0].frameIntegrity; }],
+        ['invalid runtime capability', (value: Record<string, unknown>) => { assets(value)[0].runtimeCapability = 'quarantined-fallback-only'; }],
         ['missing generator identity', (value: Record<string, unknown>) => { delete value.generatedBy; }],
         ['missing blocked source reference', (value: Record<string, unknown>) => {
             delete (value.blockedAssets as Record<string, unknown>[])[0].sourceAssetReference;

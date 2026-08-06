@@ -1,4 +1,4 @@
-import { lazy, PointerEvent as ReactPointerEvent, Suspense, WheelEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, PointerEvent as ReactPointerEvent, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { OFFICE_ASSETS } from '../../office/assets';
 import { FLOOR1_CANDIDATE_REGISTRATION } from '../../office/floor1/candidateRegistration';
@@ -160,6 +160,21 @@ export function OfficeViewport({
     }, [active, onSelect]);
 
     useEffect(() => {
+        const element = viewportRef.current;
+        if (!element) return;
+        const handleWheel = (event: globalThis.WheelEvent) => {
+            event.preventDefault();
+            const rect = element.getBoundingClientRect();
+            const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+            const multiplier = Math.exp(-event.deltaY * 0.0015);
+            const nextScale = Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, Math.max(minimumZoom, transformRef.current.scale * multiplier));
+            commitTransform(zoomAtScreenPoint(transformRef.current, point, nextScale));
+        };
+        element.addEventListener('wheel', handleWheel, { passive: false });
+        return () => element.removeEventListener('wheel', handleWheel);
+    }, [commitTransform, minimumZoom]);
+
+    useEffect(() => {
         const entity = selectedId ? document.entities.find(item => item.id === selectedId) : undefined;
         const resolution = resolveFocusRequest(
             focusRequest,
@@ -189,14 +204,6 @@ export function OfficeViewport({
         const element = viewportRef.current;
         if (!element?.hasPointerCapture(pointerId)) return;
         element.releasePointerCapture(pointerId);
-    };
-
-    const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-        event.preventDefault();
-        const point = localPoint(event.clientX, event.clientY);
-        const multiplier = Math.exp(-event.deltaY * 0.0015);
-        const nextScale = Math.min(DEFAULT_VIEWPORT_OPTIONS.maximumZoom, Math.max(minimumZoom, transformRef.current.scale * multiplier));
-        commitTransform(zoomAtScreenPoint(transformRef.current, point, nextScale));
     };
 
     const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -309,7 +316,6 @@ export function OfficeViewport({
             <div
                 ref={viewportRef}
                 className="office-viewport"
-                onWheel={handleWheel}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={releasePointer}

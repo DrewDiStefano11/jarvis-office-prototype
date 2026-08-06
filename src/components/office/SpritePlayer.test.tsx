@@ -235,7 +235,8 @@ describe('SpritePlayer texture failure', () => {
 
     it('unsubscribes when a one-shot clip reaches its final frame', async () => {
         const manifest = structuredClone(AGENT_SPRITE_MANIFEST);
-        const walking = manifest.assets[0].clips.find(clip => clip.state === 'walking');
+        const walkingAsset = manifest.assets.find(asset => asset.id === 'agent-sheet-01');
+        const walking = walkingAsset?.clips.find(clip => clip.state === 'walking');
         if (!walking) throw new Error('Expected the generated walking clip.');
         (walking as { loop: boolean }).loop = false;
         const image = { naturalWidth: 1086, naturalHeight: 1448 } as HTMLImageElement;

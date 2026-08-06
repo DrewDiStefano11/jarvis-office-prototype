@@ -1,6 +1,7 @@
 {
   "version": 1,
   "sources": [
+    { "id": "agent-activity-sheet-01", "path": "agent-activity-sheet-01.png", "kind": "agent", "rows": 6, "columns": 6, "status": "production_candidate", "runtimeLayout": "office-activities" },
     { "id": "agent-sheet-01", "path": "791eeb5a-09f5-4c81-b691-271f59b258d0.png", "kind": "agent", "rows": 8, "columns": 6, "status": "production_candidate" },
     { "id": "agent-sheet-02", "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0.png", "kind": "agent", "rows": 8, "columns": 6, "status": "production_candidate" },
     { "id": "agent-sheet-03", "path": "d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (1).png", "kind": "agent", "rows": 8, "columns": 6, "status": "production_candidate" },
