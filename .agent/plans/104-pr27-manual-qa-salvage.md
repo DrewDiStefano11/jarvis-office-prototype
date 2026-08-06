@@ -1,6 +1,6 @@
 # PR #27 Manual-QA Salvage
 
-Status: ready_for_user_manual_review
+Status: finalized_as_draft_for_user_manual_review
 Plan ID: 104
 Owner: Codex
 Reviewer: User
@@ -194,7 +194,7 @@ Acceptance: 60–75% work/sit/type, 10–25% moving, small talk/wait/idle group;
 
 ### Milestone 7 — Exact Final Validation and Publication
 
-Status: validation_complete_publication_deferred
+Status: complete
 
 Acceptance: all required local commands, real browser QA, two ten-minute runs, exact local/remote SHA, all Node 18/20 CI steps, updated truthful draft PR; PR remains unmerged and user manual approval remains pending.
 
@@ -211,7 +211,7 @@ Acceptance: all required local commands, real browser QA, two ten-minute runs, e
 | T-104-07 | Generate/review/integrate complete sprite assets | done | T-104-03 | Generated assets/manifests current; browser observed all required activity states |
 | T-104-08 | Implement purposeful staggered scheduler | done | T-104-04,T-104-07 | Prevalidated cached patrol scheduling; work/talk/idle distribution and active traces |
 | T-104-09 | Clean visuals and validate 50-agent performance | done | T-104-05,T-104-06,T-104-08 | 50-agent 600-second run, 6,002 samples, maximum gap 142.5 ms |
-| T-104-10 | Exact final validation, push and CI | publication_deferred | all | Local gates pass; user explicitly prohibited commit/push; PR remains draft/unmerged |
+| T-104-10 | Exact final validation, push and CI | done | all | Logical commits pushed normally; exact remote SHA verified; Node 18/20 CI passed; PR remains draft/unmerged |
 
 ## Validation Strategy
 
@@ -324,6 +324,7 @@ Affected Files: runtime, simulation, renderer, diagnostics.
 - Final local validation passes: TypeScript, ESLint, 472/472 Vitest tests, generated sprite check, generated Floor 1 check, production build, and production-bundle exclusion check.
 - Preserved the uncommitted salvage work, live server, clean Chrome profile, draft PR state, and unmerged branch; no stage, commit, reset, push, or dependency change was performed.
 - Finalization audit retained the repository-appropriate CDP runner and compact JSON evidence, and removed redundant full-resolution screenshots plus the exploratory browser dump before commit. No browser profile, cache, secret, or machine-specific path entered the tree.
+- After explicit user authorization, committed the validated salvage in logical commits, pushed normally, verified the remote branch matched the local SHA, and confirmed every required GitHub Actions step passed on Node 18 and Node 20. PR #27 remained open, draft, and unmerged.
 
 ## Unexpected Discoveries
 
@@ -395,9 +396,9 @@ User review needed: Only for any future request to support D46 or approve the un
 - [ ] Plan/PR/final report separate automated, Codex visual, and pending user evidence.
 
 ### Build
-- [x] Current uncommitted tree passes all local commands.
-- [ ] Commit/push, exact remote SHA, and Node 18/20 CI are intentionally deferred by the user's no-commit/no-push instruction.
+- [x] Current exact tree passes all local commands.
+- [x] Logical commits were pushed normally; the exact remote SHA matched locally; Node 18 and Node 20 CI passed every required step.
 
 ## Final Report
 
-Terminal-browser QA is complete and the candidate is ready for optional user review. Durable evidence is stored in `artifacts/debug/pr27-terminal-browser-qa/qa-report.json`; the reusable development-only runner is `artifacts/debug/pr27-terminal-browser-qa.mjs`. D46 remains explicitly unsupported; candidate registration remains unverified and is not production-approved. Publication/CI was initially deferred by user instruction and then explicitly authorized for finalization on 2026-08-06. PR #27 must remain open, draft, and unmerged.
+Terminal-browser QA and publication validation are complete, and the candidate is ready for optional user review. Durable evidence is stored in `artifacts/debug/pr27-terminal-browser-qa/qa-report.json`; the reusable development-only runner is `artifacts/debug/pr27-terminal-browser-qa.mjs`. D46 remains explicitly unsupported; candidate registration remains unverified and is not production-approved. Publication/CI was explicitly authorized on 2026-08-06, completed normally, and independently verified. PR #27 remains open, draft, and unmerged.
