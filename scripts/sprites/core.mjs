@@ -645,7 +645,14 @@ async function fileMap(directory) {
     for (const entry of await readdir(current, { withFileTypes: true })) {
       const absolute = join(current, entry.name);
       if (entry.isDirectory()) await visit(absolute);
-      else map.set(relative(directory, absolute).replaceAll('\\', '/'), sha256(await readFile(absolute)));
+      else {
+        const relativePath = relative(directory, absolute).replaceAll('\\', '/');
+        const bytes = await readFile(absolute);
+        const normalized = /\.(?:json|md)$/i.test(relativePath)
+          ? Buffer.from(bytes.toString('utf8').replace(/\r\n?/g, '\n'), 'utf8')
+          : bytes;
+        map.set(relativePath, sha256(normalized));
+      }
     }
   };
   await visit(directory);
