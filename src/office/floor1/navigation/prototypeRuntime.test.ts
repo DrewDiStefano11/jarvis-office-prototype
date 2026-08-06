@@ -437,6 +437,22 @@ describe('prototype runtime', () => {
         expect(Math.hypot(advanced[0].point.x - advanced[1].point.x, advanced[0].point.y - advanced[1].point.y)).toBeGreaterThanOrEqual(68);
     });
 
+    it('keeps temporary destination congestion recoverable instead of permanently failing the request', () => {
+        const [movingAgent, occupyingAgent] = createPrototypeAgents(graph, 2, 'debug');
+        const target = occupyingAgent.point;
+        const selection = selectPrototypeRouteToPoint(graph, movingAgent, target);
+        expect(selection.status).toBe('accepted');
+        if (selection.status !== 'accepted') return;
+        let active = [
+            startPrototypeRoute(movingAgent, selection.plan, { kind: 'walk', phase: 'traveling', destination: selection.plan.snappedPoint, nodeId: selection.plan.snappedNodeId, startedAtMs: 0 }),
+            assignPrototypeIdle(occupyingAgent, 0),
+        ];
+        const doorStates = prototypeOpenDoorRuntimes(graph);
+        for (let index = 0; index < 90; index += 1) active = [...advancePrototypeAgents(active, 500, 180, false, doorStates, graph)];
+        expect(active[0].task).not.toMatchObject({ kind: 'idle', reason: 'route-failed' });
+        expect(active[0].replanAttempts).toBeLessThanOrEqual(8);
+    }, 15_000);
+
     it('fails a repeatedly static-blocked route after one bounded replan', () => {
         const agent = createPrototypeAgents(graph, 1, 'debug')[0];
         const collisionPoint = graph.colliders.find(collider => collider.points.length > 0)!.points[0];

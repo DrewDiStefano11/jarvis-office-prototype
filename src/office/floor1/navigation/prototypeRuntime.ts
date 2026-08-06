@@ -15,6 +15,14 @@ import {
     type CandidateNavigationGraph,
     type CandidateRouteResult,
 } from './candidateNavigation';
+import {
+    BoundedNavigationCache,
+    buildContinuousNavigationField,
+    continuousNavigationSegmentIsValid,
+    planContinuousNavigationRoute,
+    type ContinuousNavigationField,
+    type ContinuousNavigationRoute,
+} from './continuousNavigation';
 
 export const PROTOTYPE_AGENT_LIMIT = 50;
 export const PROTOTYPE_ACTIVITY_SPRITE_ASSET_ID = 'agent-activity-sheet-01';
@@ -40,6 +48,8 @@ export const PROTOTYPE_D01_ROOM_BRIDGE = [
 ] as const satisfies readonly Point[];
 const PROTOTYPE_TRAFFIC_CELL_SIZE = 160;
 const PROTOTYPE_TRAFFIC_CLEARANCE = PROTOTYPE_AGENT_DIAMETER + 4;
+const PROTOTYPE_STATIC_REPLAN_LIMIT = 3;
+const PROTOTYPE_TRAFFIC_REPLAN_LIMIT = 8;
 const PROTOTYPE_MOTION_SPRITE_ASSETS = AGENT_SPRITE_MANIFEST.assets
     .filter(asset => asset.runtimeCapability === 'limited-cardinal-idle-walk');
 
@@ -125,6 +135,14 @@ export type PrototypeRuntimeMetrics = {
     stateCommits: number;
     portalTransitions: number;
     portalWaits: number;
+    routeCacheHits: number;
+    routeCacheMisses: number;
+    routeCacheSize: number;
+    routeSuccessfulPlans: number;
+    routeProjectedDestinations: number;
+    routeStartRecoveries: number;
+    routeFailures: number;
+    longestRoutePlanMs: number;
 };
 
 export function createPrototypeRuntimeMetrics(): PrototypeRuntimeMetrics {
@@ -143,6 +161,14 @@ export function createPrototypeRuntimeMetrics(): PrototypeRuntimeMetrics {
         stateCommits: 0,
         portalTransitions: 0,
         portalWaits: 0,
+        routeCacheHits: 0,
+        routeCacheMisses: 0,
+        routeCacheSize: 0,
+        routeSuccessfulPlans: 0,
+        routeProjectedDestinations: 0,
+        routeStartRecoveries: 0,
+        routeFailures: 0,
+        longestRoutePlanMs: 0,
     };
 }
 
@@ -161,6 +187,8 @@ export type PrototypeRoutePlan = Readonly<{
     snapDistance: number;
     candidatesEvaluated: number;
     searchRadius: number;
+    requestId?: string;
+    navigationRevision?: string;
 }>;
 
 export type PrototypeLabelSide = 'above' | 'upper-left' | 'upper-right' | 'below' | 'lower-left' | 'lower-right';
@@ -1086,7 +1114,8 @@ export function createPrototypeAgents(
     return seedAmbientMovement(graph, agents);
 }
 
-export function selectPrototypeRouteToPoint(
+/** @deprecated Diagnostic baseline only; runtime callers use selectPrototypeRouteToPoint. */
+export function selectSparsePrototypeRouteToPoint(
     graph: CandidateNavigationGraph,
     agent: PrototypeAgent,
     clickedPoint: Point,
@@ -1325,6 +1354,101 @@ export function selectPrototypeRouteToPoint(
     return { status: 'accepted', plan };
 }
 
+const CONTINUOUS_NAVIGATION_FIELDS = new WeakMap<object, ContinuousNavigationField>();
+const CONTINUOUS_ROUTE_CACHES = new WeakMap<object, BoundedNavigationCache<ContinuousNavigationRoute>>();
+
+export function continuousPrototypeNavigationField(
+    graph: CandidateNavigationGraph,
+    metrics?: PrototypeRuntimeMetrics,
+): ContinuousNavigationField {
+    const cached = CONTINUOUS_NAVIGATION_FIELDS.get(graph);
+    if (cached) return cached;
+    const field = buildContinuousNavigationField(graph);
+    CONTINUOUS_NAVIGATION_FIELDS.set(graph, field);
+    if (metrics) metrics.graphBuilds += 1;
+    return field;
+}
+
+/**
+ * The prototype-facing compatibility adapter. Motion, tasks, portal presentation,
+ * and traffic continue to consume CandidateRouteResult while route authority is
+ * the revisioned continuous clearance field.
+ */
+export function selectPrototypeRouteToPoint(
+    graph: CandidateNavigationGraph,
+    agent: PrototypeAgent,
+    clickedPoint: Point,
+    metrics?: PrototypeRuntimeMetrics,
+): PrototypeRouteSelection {
+    if (metrics) metrics.routePlans += 1;
+    const field = continuousPrototypeNavigationField(graph, metrics);
+    const requestId = `${agent.fixture.id}:${agent.revision}:${clickedPoint.x.toFixed(3)}:${clickedPoint.y.toFixed(3)}`;
+    let cache = CONTINUOUS_ROUTE_CACHES.get(graph);
+    if (!cache) {
+        cache = new BoundedNavigationCache<ContinuousNavigationRoute>(256);
+        CONTINUOUS_ROUTE_CACHES.set(graph, cache);
+    }
+    const cacheKey = `${field.navigationRevision}:${requestId}:${agent.point.x.toFixed(3)}:${agent.point.y.toFixed(3)}`;
+    let result = cache.get(cacheKey);
+    if (result) {
+        if (metrics) metrics.routeCacheHits += 1;
+    } else {
+        if (metrics) metrics.routeCacheMisses += 1;
+        const planningStarted = runtimeNow();
+        result = planContinuousNavigationRoute(field, {
+            requestId,
+            navigationRevision: field.navigationRevision,
+            start: agent.point,
+            destination: clickedPoint,
+        });
+        if (metrics) metrics.longestRoutePlanMs = Math.max(metrics.longestRoutePlanMs, runtimeNow() - planningStarted);
+        cache.set(cacheKey, result);
+    }
+    if (metrics) metrics.routeCacheSize = cache.size;
+    if (result.status !== 'valid') {
+        if (metrics) metrics.routeFailures += 1;
+        const outside = result.destinationProjection.reason === 'outside-office';
+        const disconnected = result.reason.includes('component');
+        return {
+            status: 'rejected',
+            reason: outside ? 'outside-office' : disconnected ? 'different-component' : 'no-route',
+            message: result.reason,
+            candidatesEvaluated: field.cells.length,
+            searchRadius: Number.POSITIVE_INFINITY,
+        };
+    }
+    if (metrics) {
+        metrics.routeSuccessfulPlans += 1;
+        if (!result.destinationProjection.exact) metrics.routeProjectedDestinations += 1;
+        if (!result.startRecovery.exact) metrics.routeStartRecoveries += 1;
+    }
+    const snappedNodeId = result.cellSequence[result.cellSequence.length - 1] ?? `continuous:${result.projectedDestination.x.toFixed(3)}:${result.projectedDestination.y.toFixed(3)}`;
+    return {
+        status: 'accepted',
+        plan: {
+            route: {
+                status: 'valid',
+                reason: result.reason,
+                points: result.points,
+                crossedDoorIds: result.crossedDoorIds,
+                doorSteps: result.doorSteps,
+                nodeSequence: result.cellSequence,
+                cost: result.metrics.totalDistance,
+                length: result.metrics.totalDistance,
+                expandedNodeCount: result.metrics.expandedCellCount,
+            },
+            clickedPoint,
+            snappedPoint: result.projectedDestination,
+            snappedNodeId,
+            snapDistance: result.destinationProjection.distance,
+            candidatesEvaluated: field.cells.length,
+            searchRadius: Number.POSITIVE_INFINITY,
+            requestId,
+            navigationRevision: field.navigationRevision,
+        },
+    };
+}
+
 function resolvePrototypeVelocity(previous: Point, actual: Point, deltaMs: number): Point {
     if (Math.hypot(actual.x, actual.y) < PROTOTYPE_DIRECTION_VELOCITY_EPSILON * 0.35) return { x: 0, y: 0 };
     const alpha = 1 - Math.exp(-Math.max(0, deltaMs) / 90);
@@ -1409,7 +1533,8 @@ export function validatePrototypeRouteSegments(
     return null;
 }
 
-export function findValidatedPrototypeRouteToPoint(
+/** @deprecated Sparse 620px fallback retained only for baseline comparison. */
+export function findSparseValidatedPrototypeRouteToPoint(
     graph: CandidateNavigationGraph,
     agent: PrototypeAgent,
     clickedPoint: Point,
@@ -1492,6 +1617,59 @@ export function findValidatedPrototypeRouteToPoint(
         candidatesEvaluated,
         searchRadius: PROTOTYPE_CLICK_SNAP_LIMIT,
     };
+}
+
+export function findValidatedPrototypeRouteToPoint(
+    graph: CandidateNavigationGraph,
+    agent: PrototypeAgent,
+    clickedPoint: Point,
+    metrics?: PrototypeRuntimeMetrics,
+    context: Readonly<{ occupiedPoints?: readonly Point[] }> = {},
+): PrototypeRouteSelection {
+    const initial = selectPrototypeRouteToPoint(graph, agent, clickedPoint, metrics);
+    if (initial.status === 'rejected') return initial;
+    const planFailure = (plan: PrototypeRoutePlan): string | null => {
+        if (!plan.navigationRevision) return validatePrototypeRouteSegments(graph, plan.route)?.reason ?? null;
+        const field = continuousPrototypeNavigationField(graph);
+        if (plan.navigationRevision !== field.navigationRevision) return 'The route plan references a stale navigation revision.';
+        for (let index = 1; index < plan.route.points.length; index += 1) {
+            const a = plan.route.points[index - 1];
+            const b = plan.route.points[index];
+            const portalSegment = plan.route.doorSteps.some(step =>
+                (distance(a, step.approachPoint) < 0.001 && distance(b, step.thresholdPoint) < 0.001)
+                || (distance(a, step.thresholdPoint) < 0.001 && distance(b, step.exitPoint) < 0.001));
+            if (!portalSegment && !continuousNavigationSegmentIsValid(field, a, b)) return `Continuous route segment ${index} is no longer collision-clear.`;
+        }
+        return null;
+    };
+    const failure = planFailure(initial.plan);
+    if (failure) return { status: 'rejected', reason: 'collision-blocked', message: failure, candidatesEvaluated: 1, searchRadius: initial.plan.snapDistance };
+    const occupied = context.occupiedPoints?.some(point => distance(point, initial.plan.snappedPoint) < PROTOTYPE_TRAFFIC_CLEARANCE);
+    if (!occupied) return { status: 'accepted', plan: { ...initial.plan, candidatesEvaluated: 1, searchRadius: initial.plan.snapDistance } };
+
+    const alternatives: PrototypeRoutePlan[] = [];
+    const radii = [PROTOTYPE_TRAFFIC_CLEARANCE, PROTOTYPE_TRAFFIC_CLEARANCE * 1.5, PROTOTYPE_TRAFFIC_CLEARANCE * 2.25];
+    for (const radius of radii) {
+        for (let direction = 0; direction < 16; direction += 1) {
+            const angle = direction / 16 * Math.PI * 2;
+            const candidatePoint = { x: clickedPoint.x + Math.cos(angle) * radius, y: clickedPoint.y + Math.sin(angle) * radius };
+            const selection = selectPrototypeRouteToPoint(graph, agent, candidatePoint, metrics);
+            if (selection.status === 'rejected' || planFailure(selection.plan)) continue;
+            if (context.occupiedPoints?.some(point => distance(point, selection.plan.snappedPoint) < PROTOTYPE_TRAFFIC_CLEARANCE)) continue;
+            alternatives.push({
+                ...selection.plan,
+                clickedPoint,
+                snapDistance: distance(clickedPoint, selection.plan.snappedPoint),
+                candidatesEvaluated: 1 + alternatives.length,
+                searchRadius: radius,
+            });
+        }
+        if (alternatives.length > 0) break;
+    }
+    const best = alternatives.sort((a, b) => a.snapDistance - b.snapDistance || a.route.cost - b.route.cost || a.snappedNodeId.localeCompare(b.snappedNodeId))[0];
+    return best
+        ? { status: 'accepted', plan: { ...best, candidatesEvaluated: 1 + alternatives.length } }
+        : { status: 'rejected', reason: 'destination-occupied', message: 'The requested destination is temporarily occupied; the request remains retryable.', candidatesEvaluated: 49, searchRadius: radii[radii.length - 1] };
 }
 
 export function startPrototypeRoute(agent: PrototypeAgent, plan: PrototypeRoutePlan, task?: PrototypeTask): PrototypeAgent {
@@ -2019,17 +2197,27 @@ export function advancePrototypeAgents(
         const stalledInTraffic = agent.movementState === 'waiting' && agent.blockedDurationMs >= 2_500;
         if ((!stalledAgainstStatic && !stalledInTraffic) || agent.replanCooldownMs > 0) return agent;
         if (metrics) metrics.routeReplans += 1;
-        if (graph && agent.targetPoint && agent.replanAttempts < 1) {
+        const replanLimit = stalledInTraffic ? PROTOTYPE_TRAFFIC_REPLAN_LIMIT : PROTOTYPE_STATIC_REPLAN_LIMIT;
+        if (graph && agent.targetPoint && agent.replanAttempts < replanLimit) {
             const selection = findValidatedPrototypeRouteToPoint(graph, agent, agent.targetPoint, undefined, {
                 occupiedPoints: accepted.filter(other => other.fixture.id !== agent.fixture.id).map(other => other.point),
             });
             if (selection.status === 'accepted' && selection.plan.route.length > 1) {
                 return {
                     ...startPrototypeRoute(agent, selection.plan, agent.task),
-                    replanCooldownMs: 2_500,
+                    replanCooldownMs: Math.min(8_000, 750 * 2 ** agent.replanAttempts),
                     replanAttempts: agent.replanAttempts + 1,
                 };
             }
+        }
+        if (stalledInTraffic) {
+            return {
+                ...agent,
+                movementState: 'waiting' as const,
+                activityState: 'waiting' as const,
+                replanCooldownMs: Math.min(8_000, 750 * 2 ** Math.min(agent.replanAttempts, PROTOTYPE_TRAFFIC_REPLAN_LIMIT - 1)),
+                replanAttempts: Math.min(PROTOTYPE_TRAFFIC_REPLAN_LIMIT, agent.replanAttempts + 1),
+            };
         }
         const failed = assignPrototypeIdle(agent, agent.task.startedAtMs + agent.blockedDurationMs);
         return {

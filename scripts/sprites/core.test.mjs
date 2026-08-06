@@ -87,6 +87,21 @@ describe('sprite inventory and generation', () => {
     }
   }, 30_000);
 
+  it('compares canonical generated text independent of checkout line endings', async () => {
+    const rootA = await mkdtemp(join(tmpdir(), 'sprite-eol-a-'));
+    const rootB = await mkdtemp(join(tmpdir(), 'sprite-eol-b-'));
+    try {
+      await writeFile(join(rootA, 'manifest.json'), '{\n  "ok": true\n}\n');
+      await writeFile(join(rootB, 'manifest.json'), '{\r\n  "ok": true\r\n}\r\n');
+      expect(await compareTrees(rootA, rootB)).toEqual([]);
+      await writeFile(join(rootB, 'manifest.json'), '{\r\n  "ok": false\r\n}\r\n');
+      expect(await compareTrees(rootA, rootB)).toEqual(['manifest.json']);
+    } finally {
+      await rm(rootA, { recursive: true, force: true });
+      await rm(rootB, { recursive: true, force: true });
+    }
+  });
+
   it('cleans partial staging and preserves the last valid output on failure', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sprite-generation-failure-'));
     try {

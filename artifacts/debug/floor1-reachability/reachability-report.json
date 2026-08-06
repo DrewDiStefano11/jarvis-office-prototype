@@ -1,0 +1,544 @@
+{
+  "schemaVersion": 1,
+  "navigationRevision": "nav-b08b92ce",
+  "sourceGeometryRevision": "floor1-ccf7e515",
+  "generatedAt": "deterministic",
+  "sampleSpacing": 96,
+  "totalSamples": 55748,
+  "validSamples": 15901,
+  "expectedComponentSamples": 15901,
+  "validCoveragePercentage": 100,
+  "excludedSamples": 39847,
+  "exclusionCounts": {
+    "outside-source": 770,
+    "collision": 34164,
+    "outside-positive-space": 4217,
+    "collision-enclosed": 71,
+    "exterior-isolated": 625
+  },
+  "sampleKindCounts": {
+    "uniform": 4829,
+    "room-boundary": 1805,
+    "collider-corner": 41300,
+    "door-aperture": 126,
+    "anchor": 221,
+    "narrow-offset": 7467
+  },
+  "interiorComponentId": 0,
+  "interiorComponentCellCount": 7467,
+  "rawComponentCount": 6,
+  "excludedComponents": [
+    {
+      "componentId": 1,
+      "size": 110,
+      "classification": "exterior-isolated",
+      "roomIds": [
+        "ROOM_RM5"
+      ],
+      "reason": "Positive geometry belongs only to a room whose modeled doorway leads to nonexistent exterior/service space."
+    },
+    {
+      "componentId": 2,
+      "size": 1,
+      "classification": "collision-enclosed",
+      "roomIds": [
+        "ROOM_EXECUTIVE_COMMAND"
+      ],
+      "reason": "Positive geometry is enclosed from the expected interior component by collision geometry and is excluded from authoritative walkable space."
+    },
+    {
+      "componentId": 3,
+      "size": 1,
+      "classification": "collision-enclosed",
+      "roomIds": [
+        "ROOM_EXECUTIVE_BOARDROOM"
+      ],
+      "reason": "Positive geometry is enclosed from the expected interior component by collision geometry and is excluded from authoritative walkable space."
+    },
+    {
+      "componentId": 4,
+      "size": 2,
+      "classification": "collision-enclosed",
+      "roomIds": [
+        "ROOM_EXECUTIVE_COMMAND"
+      ],
+      "reason": "Positive geometry is enclosed from the expected interior component by collision geometry and is excluded from authoritative walkable space."
+    },
+    {
+      "componentId": 5,
+      "size": 148,
+      "classification": "exterior-isolated",
+      "roomIds": [
+        "ROOM_RM8"
+      ],
+      "reason": "Positive geometry belongs only to a room whose modeled doorway leads to nonexistent exterior/service space."
+    }
+  ],
+  "reversibleInteriorDoors": 40,
+  "nonReversibleInteriorDoorIds": [],
+  "representativeRoutes": [
+    {
+      "id": "representative-01",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 5551.559111111111,
+        "y": 230.5137777777783
+      },
+      "destination": {
+        "x": 3344,
+        "y": 1856
+      },
+      "crossedDoorIds": [],
+      "forwardDistance": 3056.4819696993777,
+      "reverseDistance": 3064.690920880632,
+      "forwardMetrics": {
+        "turns": 6,
+        "expandedCells": 261,
+        "smoothingReductionPercentage": 6.54197748633146
+      },
+      "reverseMetrics": {
+        "turns": 5,
+        "expandedCells": 597,
+        "smoothingReductionPercentage": 6.29097245770153
+      }
+    },
+    {
+      "id": "representative-02",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 1328,
+        "y": 752
+      },
+      "destination": {
+        "x": 1241.5178666666668,
+        "y": 3767.1905777777774
+      },
+      "crossedDoorIds": [
+        "D02",
+        "D06"
+      ],
+      "forwardDistance": 4832.604602798721,
+      "reverseDistance": 4921.571144171123,
+      "forwardMetrics": {
+        "turns": 12,
+        "expandedCells": 1222,
+        "smoothingReductionPercentage": 2.661667423281194
+      },
+      "reverseMetrics": {
+        "turns": 12,
+        "expandedCells": 1471,
+        "smoothingReductionPercentage": 0.8697031505798992
+      }
+    },
+    {
+      "id": "representative-03",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 6288,
+        "y": 1008
+      },
+      "destination": {
+        "x": 2576,
+        "y": 1280
+      },
+      "crossedDoorIds": [
+        "D42"
+      ],
+      "forwardDistance": 4261.595458966902,
+      "reverseDistance": 4233.365449686809,
+      "forwardMetrics": {
+        "turns": 9,
+        "expandedCells": 957,
+        "smoothingReductionPercentage": 4.35954396736498
+      },
+      "reverseMetrics": {
+        "turns": 10,
+        "expandedCells": 1087,
+        "smoothingReductionPercentage": 4.993093300554873
+      }
+    },
+    {
+      "id": "representative-04",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 2576,
+        "y": 1280
+      },
+      "destination": {
+        "x": 7136,
+        "y": 3104
+      },
+      "crossedDoorIds": [
+        "D42",
+        "D28"
+      ],
+      "forwardDistance": 5719.654913737273,
+      "reverseDistance": 5694.036177517673,
+      "forwardMetrics": {
+        "turns": 14,
+        "expandedCells": 2514,
+        "smoothingReductionPercentage": 5.050854651519841
+      },
+      "reverseMetrics": {
+        "turns": 15,
+        "expandedCells": 1445,
+        "smoothingReductionPercentage": 5.476138544629703
+      }
+    },
+    {
+      "id": "representative-05",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 5478.961777777777,
+        "y": 1541.4044444444444
+      },
+      "destination": {
+        "x": 1328,
+        "y": 752
+      },
+      "crossedDoorIds": [
+        "D42"
+      ],
+      "forwardDistance": 4757.968836115093,
+      "reverseDistance": 4753.438668768974,
+      "forwardMetrics": {
+        "turns": 10,
+        "expandedCells": 1534,
+        "smoothingReductionPercentage": 4.26198861704643
+      },
+      "reverseMetrics": {
+        "turns": 11,
+        "expandedCells": 843,
+        "smoothingReductionPercentage": 4.353142894825069
+      }
+    },
+    {
+      "id": "representative-06",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 3344,
+        "y": 1856
+      },
+      "destination": {
+        "x": 5264,
+        "y": 2576
+      },
+      "crossedDoorIds": [],
+      "forwardDistance": 2268.7075405825044,
+      "reverseDistance": 2314.349045961583,
+      "forwardMetrics": {
+        "turns": 4,
+        "expandedCells": 430,
+        "smoothingReductionPercentage": 6.590453682047244
+      },
+      "reverseMetrics": {
+        "turns": 4,
+        "expandedCells": 391,
+        "smoothingReductionPercentage": 4.711254960102894
+      }
+    },
+    {
+      "id": "representative-07",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 1472,
+        "y": 2096
+      },
+      "destination": {
+        "x": 4871.8062222222225,
+        "y": 4530.311644444444
+      },
+      "crossedDoorIds": [
+        "D01",
+        "D28",
+        "D18"
+      ],
+      "forwardDistance": 7069.526380513854,
+      "reverseDistance": 7104.346490848362,
+      "forwardMetrics": {
+        "turns": 19,
+        "expandedCells": 4773,
+        "smoothingReductionPercentage": 3.5461480446228646
+      },
+      "reverseMetrics": {
+        "turns": 18,
+        "expandedCells": 2148,
+        "smoothingReductionPercentage": 3.0710760827256776
+      }
+    },
+    {
+      "id": "representative-08",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 5061.9875555555545,
+        "y": 2322.794666666666
+      },
+      "destination": {
+        "x": 1472,
+        "y": 2096
+      },
+      "crossedDoorIds": [
+        "D01"
+      ],
+      "forwardDistance": 3772.629969661653,
+      "reverseDistance": 3792.2271594540534,
+      "forwardMetrics": {
+        "turns": 6,
+        "expandedCells": 986,
+        "smoothingReductionPercentage": 5.684244411843632
+      },
+      "reverseMetrics": {
+        "turns": 7,
+        "expandedCells": 722,
+        "smoothingReductionPercentage": 5.194314634065704
+      }
+    },
+    {
+      "id": "representative-09",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 5264,
+        "y": 2576
+      },
+      "destination": {
+        "x": 4928,
+        "y": 3968
+      },
+      "crossedDoorIds": [
+        "D28",
+        "D19"
+      ],
+      "forwardDistance": 2855.5077731394217,
+      "reverseDistance": 2867.456651455426,
+      "forwardMetrics": {
+        "turns": 12,
+        "expandedCells": 1001,
+        "smoothingReductionPercentage": 4.52234427996012
+      },
+      "reverseMetrics": {
+        "turns": 12,
+        "expandedCells": 334,
+        "smoothingReductionPercentage": 4.122817827667607
+      }
+    },
+    {
+      "id": "representative-10",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 3296,
+        "y": 2912
+      },
+      "destination": {
+        "x": 5478.961777777777,
+        "y": 1541.4044444444444
+      },
+      "crossedDoorIds": [],
+      "forwardDistance": 2699.392122976435,
+      "reverseDistance": 2712.1972975783124,
+      "forwardMetrics": {
+        "turns": 3,
+        "expandedCells": 435,
+        "smoothingReductionPercentage": 5.610106163693342
+      },
+      "reverseMetrics": {
+        "turns": 3,
+        "expandedCells": 462,
+        "smoothingReductionPercentage": 5.162346439961955
+      }
+    },
+    {
+      "id": "representative-11",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 7136,
+        "y": 3104
+      },
+      "destination": {
+        "x": 6608,
+        "y": 3344
+      },
+      "crossedDoorIds": [],
+      "forwardDistance": 686.5365732222708,
+      "reverseDistance": 716.4944970637441,
+      "forwardMetrics": {
+        "turns": 1,
+        "expandedCells": 35,
+        "smoothingReductionPercentage": 5.996865002402019
+      },
+      "reverseMetrics": {
+        "turns": 1,
+        "expandedCells": 48,
+        "smoothingReductionPercentage": 1.894914911236183
+      }
+    },
+    {
+      "id": "representative-12",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 6608,
+        "y": 3344
+      },
+      "destination": {
+        "x": 6288,
+        "y": 1008
+      },
+      "crossedDoorIds": [
+        "D28"
+      ],
+      "forwardDistance": 4114.821500780897,
+      "reverseDistance": 4134.030453186173,
+      "forwardMetrics": {
+        "turns": 10,
+        "expandedCells": 1534,
+        "smoothingReductionPercentage": 5.647372731489926
+      },
+      "reverseMetrics": {
+        "turns": 10,
+        "expandedCells": 1120,
+        "smoothingReductionPercentage": 5.206912525337697
+      }
+    },
+    {
+      "id": "representative-13",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 1241.5178666666668,
+        "y": 3767.1905777777774
+      },
+      "destination": {
+        "x": 3296,
+        "y": 2912
+      },
+      "crossedDoorIds": [
+        "D15"
+      ],
+      "forwardDistance": 3012.3630575278476,
+      "reverseDistance": 2995.923555488221,
+      "forwardMetrics": {
+        "turns": 8,
+        "expandedCells": 503,
+        "smoothingReductionPercentage": 4.6240534645994
+      },
+      "reverseMetrics": {
+        "turns": 8,
+        "expandedCells": 806,
+        "smoothingReductionPercentage": 4.367705594095939
+      }
+    },
+    {
+      "id": "representative-14",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 4928,
+        "y": 3968
+      },
+      "destination": {
+        "x": 5551.559111111111,
+        "y": 230.5137777777783
+      },
+      "crossedDoorIds": [
+        "D19",
+        "D28",
+        "D35"
+      ],
+      "forwardDistance": 5301.351697469755,
+      "reverseDistance": 5319.175335702149,
+      "forwardMetrics": {
+        "turns": 18,
+        "expandedCells": 918,
+        "smoothingReductionPercentage": 4.56597828480019
+      },
+      "reverseMetrics": {
+        "turns": 18,
+        "expandedCells": 2044,
+        "smoothingReductionPercentage": 4.245120214031905
+      }
+    },
+    {
+      "id": "representative-15",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 6704,
+        "y": 4160
+      },
+      "destination": {
+        "x": 5061.9875555555545,
+        "y": 2322.794666666666
+      },
+      "crossedDoorIds": [
+        "D28"
+      ],
+      "forwardDistance": 2968.450554277021,
+      "reverseDistance": 2948.4693809793944,
+      "forwardMetrics": {
+        "turns": 8,
+        "expandedCells": 444,
+        "smoothingReductionPercentage": 3.6536176804659433
+      },
+      "reverseMetrics": {
+        "turns": 8,
+        "expandedCells": 424,
+        "smoothingReductionPercentage": 4.302142466891072
+      }
+    },
+    {
+      "id": "representative-16",
+      "status": "valid",
+      "forwardValid": true,
+      "reverseValid": true,
+      "start": {
+        "x": 4871.8062222222225,
+        "y": 4530.311644444444
+      },
+      "destination": {
+        "x": 6704,
+        "y": 4160
+      },
+      "crossedDoorIds": [
+        "D18"
+      ],
+      "forwardDistance": 2235.870616671522,
+      "reverseDistance": 2260.7542040544668,
+      "forwardMetrics": {
+        "turns": 6,
+        "expandedCells": 220,
+        "smoothingReductionPercentage": 4.681726217461661
+      },
+      "reverseMetrics": {
+        "turns": 6,
+        "expandedCells": 182,
+        "smoothingReductionPercentage": 3.620904282071602
+      }
+    }
+  ]
+}

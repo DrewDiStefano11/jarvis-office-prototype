@@ -19,7 +19,6 @@ import {
 import {
     advancePrototypeAgents,
     assignPrototypeAmbientPatrol,
-    auditPrototypeDoorConnectivity,
     auditPrototypePortalEndpoints,
     assignPrototypeIdle,
     assignPrototypeTalk,
@@ -27,12 +26,12 @@ import {
     assignPrototypeWork,
     createPrototypeRuntimeMetrics,
     createPrototypeAgents,
+    continuousPrototypeNavigationField,
     layoutPrototypeAgentLabels,
     findValidatedPrototypeRouteToPoint,
     PROTOTYPE_AGENT_LIMIT,
     PROTOTYPE_AGENT_RADIUS,
     PROTOTYPE_CLICK_SNAP_LIMIT,
-    PROTOTYPE_D01_ROOM_BRIDGE,
     PROTOTYPE_DOOR_POLICY,
     PROTOTYPE_SPRITE_WORLD_SIZE,
     prototypeOpenDoorRuntimes,
@@ -44,10 +43,10 @@ import {
     prototypeTaskSummary,
     prototypeWorkstations,
     resetPrototypeAgent,
-    snapPrototypePoint,
     startPrototypeRoute,
     type PrototypeActivityState,
     type PrototypeAgent,
+    type PrototypeRoutePlan,
     type PrototypeRuntimeMetrics,
 } from '../../office/floor1/navigation/prototypeRuntime';
 import { AGENT_SPRITE_MANIFEST } from '../../office/sprites/manifest';
@@ -137,7 +136,7 @@ type DragState = Readonly<{
     originalAgent: PrototypeAgent;
     preview: Point;
     active: boolean;
-    snap: ReturnType<typeof snapPrototypePoint>;
+    plan: PrototypeRoutePlan | null;
 }>;
 const NO_LOCAL_OVERLAYS: LocalOverlays = {
     nodes: false,
@@ -244,6 +243,16 @@ export function Floor1CandidateSimulation({
     const lastRenderSnapshotRef = useRef(0);
     const frameDurationsRef = useRef<number[]>([]);
     const runtimeMetricsRef = useRef(createPrototypeRuntimeMetrics());
+    const navigationField = useMemo(() => continuousPrototypeNavigationField(graph, runtimeMetricsRef.current), [graph]);
+    const continuousOverlay = useMemo(() => {
+        if (!localOverlays.nodes && !localOverlays.edges) return { cells: [], edges: [] };
+        const cells = navigationField.cells.filter((_cell, index) => index % 2 === 0);
+        const edges = [...navigationField.adjacency.entries()].flatMap(([fromId, adjacency]) => adjacency
+            .filter(edge => fromId.localeCompare(edge.to) < 0)
+            .map(edge => ({ from: navigationField.cellById.get(fromId)!, to: navigationField.cellById.get(edge.to)!, doorId: edge.doorId })))
+            .filter((_edge, index) => index % 4 === 0);
+        return { cells, edges };
+    }, [localOverlays.edges, localOverlays.nodes, navigationField]);
     const previousOverlayRef = useRef<OverlaySnapshot | null>(null);
     const previousLabelPlacementsRef = useRef<ReturnType<typeof layoutPrototypeAgentLabels>>(new Map());
     const labelLayoutUpdatedAtRef = useRef(0);
@@ -266,8 +275,9 @@ export function Floor1CandidateSimulation({
     const portalEndpointAudit = useMemo(() => auditPrototypePortalEndpoints(graph), [graph]);
     const d46RegistrationOverlay = useMemo(() => {
         const door = graph.doors.find(candidate => candidate.id === 'D46');
+        const repairedLink = navigationField.doorLinks.find(candidate => candidate.doorId === 'D46');
         const room = graph.rooms.find(candidate => candidate.id === 'ROOM_FOCUS_D');
-        if (!door || !room) return null;
+        if (!door || !room || !repairedLink) return null;
         const nearestForZone = (zoneId: string) => graph.walkNodes
             .filter(node => node.roomId === zoneId || node.roomIds.includes(zoneId))
             .filter(node => candidatePointHasStaticClearance(graph, node.point))
@@ -296,13 +306,9 @@ export function Floor1CandidateSimulation({
             interiorPoint,
             nearbyColliders,
             audit: portalEndpointAudit.find(item => item.doorId === 'D46') ?? null,
+            repairedLink,
         };
-    }, [graph, portalEndpointAudit]);
-    const d01ConnectivityOverlay = useMemo(() => auditPrototypeDoorConnectivity(
-        graph,
-        'D01',
-        { x: 1022.4833777777777, y: 1805.5217777777784 },
-    ), [graph]);
+    }, [graph, navigationField, portalEndpointAudit]);
     const labelPlacements = useMemo(() => {
         const contextKey = `${selectedAgentId ?? ''}:${transform.scale}:${transform.x}:${transform.y}:${viewport.width}:${viewport.height}:${agents.length}`;
         const now = typeof performance === 'undefined' ? Date.now() : performance.now();
@@ -402,7 +408,8 @@ export function Floor1CandidateSimulation({
                     changed = true;
                     continue;
                 }
-                const wander = assignPrototypeAmbientPatrol(graph, agent, now);
+                const wander = assignPrototypeAmbientPatrol(graph, agent, now)
+                    ?? (mode === 'debug' ? assignPrototypeWander(graph, agent, index + agent.revision, now, runtimeMetricsRef.current) : null);
                 if (wander && (wander.route?.length ?? 0) > 20) {
                     next[index] = { ...wander, activityUntil: 0 };
                     plannedThisTick = true;
@@ -706,6 +713,35 @@ export function Floor1CandidateSimulation({
         setFeedback(`${selectedAgent.fixture.label} is wandering on the navigation graph.`);
     };
 
+    const assignNavigationProbe = (kind: 'long' | 'projection' | 'd46' | 'exterior') => {
+        if (!selectedAgent) return;
+        const d46 = navigationField.doorLinks.find(link => link.doorId === 'D46');
+        const d46Cells = d46 ? [d46.approachCellId, d46.exitCellId].flatMap(id => id ? [navigationField.cellById.get(id)] : []).filter((cell): cell is NonNullable<typeof cell> => Boolean(cell)) : [];
+        const d46FocusCell = d46Cells.find(cell => cell.roomIds.includes('ROOM_FOCUS_D'));
+        const d46Rm10Cell = d46Cells.find(cell => cell.id !== d46FocusCell?.id);
+        const atD46Rm10Approach = Boolean(d46Rm10Cell && Math.hypot(selectedAgent.point.x - d46Rm10Cell.point.x, selectedAgent.point.y - d46Rm10Cell.point.y) <= PROTOTYPE_AGENT_RADIUS * 2);
+        const targets = {
+            long: navigationField.cells.find(cell => navigationField.componentByCellId.get(cell.id) === navigationField.interiorComponentId && cell.point.x < 1_200 && cell.point.y < 1_800)?.point,
+            projection: graph.colliders.find(collider => collider.kind === 'object' && collider.points.length > 0)?.points[0],
+            d46: (atD46Rm10Approach ? d46FocusCell : d46Rm10Cell)?.point ?? d46?.thresholdPoint,
+            exterior: graph.rooms.find(room => room.id === 'ROOM_RM5')?.center,
+        } satisfies Record<typeof kind, Point | undefined>;
+        const target = targets[kind];
+        if (!target) { setFeedback(`${kind} probe is unavailable because its geometry is missing.`); return; }
+        const selection = findValidatedPrototypeRouteToPoint(graph, selectedAgent, target, runtimeMetricsRef.current, {
+            occupiedPoints: agentsRef.current.filter(agent => agent.fixture.id !== selectedAgent.fixture.id).map(agent => agent.point),
+        });
+        if (selection.status === 'rejected') {
+            setFeedback(`${kind} probe rejected safely: ${selection.message}`);
+            return;
+        }
+        const plan = selection.plan;
+        commitAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id
+            ? startPrototypeRoute(agent, plan, { kind: 'walk', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs: simulationElapsedRef.current })
+            : agent));
+        setFeedback(`${kind} probe accepted on ${plan.navigationRevision ?? 'the current navigation revision'}; ${plan.route.crossedDoorIds.join(', ') || 'no door transition'}.`);
+    };
+
     const beginDrag = (event: PointerEvent<HTMLButtonElement>, agentId: string) => {
         if (mode !== 'debug' || event.button !== 0) return;
         const agent = agentsRef.current.find(candidate => candidate.fixture.id === agentId);
@@ -720,7 +756,7 @@ export function Floor1CandidateSimulation({
             originalAgent: agent,
             preview: agent.point,
             active: false,
-            snap: null,
+            plan: null,
         };
         dragRef.current = next;
         setDragState(next);
@@ -738,8 +774,10 @@ export function Floor1CandidateSimulation({
             x: (local.x - transform.x) / Math.max(0.001, transform.scale),
             y: (local.y - transform.y) / Math.max(0.001, transform.scale),
         };
-        const occupiedNodeIds = new Set(agentsRef.current.filter(agent => agent.fixture.id !== agentId).map(agent => agent.currentNodeId));
-        const next: DragState = { ...current, active: true, preview, snap: snapPrototypePoint(graph, preview, PROTOTYPE_CLICK_SNAP_LIMIT, occupiedNodeIds) };
+        const selection = findValidatedPrototypeRouteToPoint(graph, current.originalAgent, preview, runtimeMetricsRef.current, {
+            occupiedPoints: agentsRef.current.filter(agent => agent.fixture.id !== agentId).map(agent => agent.point),
+        });
+        const next: DragState = { ...current, active: true, preview, plan: selection.status === 'accepted' ? selection.plan : null };
         if (!current.active) {
             setSelectedAgentId(agentId);
             setCardOpen(false);
@@ -747,7 +785,7 @@ export function Floor1CandidateSimulation({
         }
         dragRef.current = next;
         setDragState(next);
-        setFeedback(next.snap ? `Reachable destination preview: ${next.snap.nodeId}. Release to walk there.` : 'Invalid destination. Release to keep the agent at its original point.');
+        setFeedback(next.plan ? `Reachable continuous destination preview. Release to walk there.` : 'Invalid destination. Release to keep the agent at its original point.');
     };
 
     const finishDrag = (event: PointerEvent<HTMLButtonElement>, agentId: string, canceled = false) => {
@@ -758,24 +796,16 @@ export function Floor1CandidateSimulation({
         dragRef.current = null;
         setDragState(null);
         if (!current.active) return;
-        if (canceled || !current.snap) {
+        if (canceled || !current.plan) {
             setFeedback(canceled ? 'Destination drag canceled.' : 'Invalid destination. Agent remained at its original point.');
             return;
         }
-        const selection = findValidatedPrototypeRouteToPoint(graph, current.originalAgent, current.preview, runtimeMetricsRef.current, {
-            occupiedPoints: agentsRef.current.filter(agent => agent.fixture.id !== agentId).map(agent => agent.point),
-        });
-        if (selection.status === 'rejected') {
-            setClickRouteDiagnostic({
-                screen: { x: event.clientX, y: event.clientY }, viewportLocal: current.preview, world: current.preview,
-                candidatesEvaluated: selection.candidatesEvaluated ?? 0,
-                searchRadius: selection.searchRadius ?? PROTOTYPE_CLICK_SNAP_LIMIT,
-                acceptedEndpoint: null, rejectionReason: selection.message, routeCost: null, clickOffset: null,
-            });
-            setFeedback(`${selection.message} Agent remained at its original point.`);
+        const liveAgent = agentsRef.current.find(agent => agent.fixture.id === agentId);
+        if (!liveAgent || liveAgent.revision !== current.originalAgent.revision) {
+            setFeedback('Destination preview became stale because the agent changed. Drag again to assign a current route.');
             return;
         }
-        const { plan } = selection;
+        const plan = current.plan;
         setClickRouteDiagnostic({
             screen: { x: event.clientX, y: event.clientY }, viewportLocal: current.preview, world: current.preview,
             candidatesEvaluated: plan.candidatesEvaluated, searchRadius: plan.searchRadius,
@@ -899,9 +929,9 @@ export function Floor1CandidateSimulation({
         </aside>
     ) : null;
     const interactionBanner = (mode === 'debug' || commandMode || dragState?.active) ? (
-        <div className={`prototype-command-banner ${dragState?.active && !dragState.snap ? 'is-invalid' : ''}`}>
+        <div className={`prototype-command-banner ${dragState?.active && !dragState.plan ? 'is-invalid' : ''}`}>
             {dragState?.active
-                ? `Route ${selectedAgent?.fixture.label ?? 'agent'} · ${dragState.snap ? 'release to walk' : 'invalid destination'} · Esc cancels`
+                ? `Route ${selectedAgent?.fixture.label ?? 'agent'} · ${dragState.plan ? 'release to walk' : 'invalid destination'} · Esc cancels`
                 : commandMode === 'talk' ? 'Choose a conversation partner · Esc cancels'
                     : selectedAgent ? 'Agent click: inspect · agent drag: preview and assign route · empty drag: pan' : 'Agent click: inspect · empty drag: pan'}
         </div>
@@ -911,7 +941,8 @@ export function Floor1CandidateSimulation({
         <details className="prototype-advanced">
             <summary>Advanced diagnostics</summary>
             <dl>
-                <dt>Graph</dt><dd>{graph.nodeCount} nodes · {graph.edgeCount} edges</dd>
+                <dt>Continuous graph</dt><dd>{navigationField.cells.length} cells · {navigationField.componentSizes[navigationField.interiorComponentId]} authoritative · revision {navigationField.navigationRevision}</dd>
+                <dt>Connectivity</dt><dd>1 interior component · {navigationField.excludedComponents.length} classified exclusions · {navigationField.doorLinks.filter(link => link.classification === 'interior').length} reversible doors</dd>
                 <dt>Transform</dt><dd>zoom {transform.scale.toFixed(3)} · pan {Math.round(transform.x)}, {Math.round(transform.y)}</dd>
                 <dt>Viewport</dt><dd>{Math.round(viewport.width)} × {Math.round(viewport.height)}</dd>
                 <dt>Pointer</dt><dd>{coordinate(pointer)}</dd>
@@ -922,12 +953,15 @@ export function Floor1CandidateSimulation({
                 <dt>Route</dt><dd>{selectedAgent?.route ? `${selectedAgent.route.nodeSequence.length} nodes · ${selectedAgent.route.length}px · ${selectedAgent.route.crossedDoorIds.join(', ') || 'no doors'}` : 'none'}</dd>
                 <dt>Door policy</dt><dd>{PROTOTYPE_DOOR_POLICY} · {graph.doors.length}/{graph.doors.length} open</dd>
                 <dt>Door endpoints</dt><dd>{portalEndpointAudit.filter(item => item.status === 'provisional-valid').length}/{portalEndpointAudit.length} provisional-valid</dd>
-                <dt>Disabled doors</dt><dd>{portalEndpointAudit.filter(item => item.status === 'disabled-incomplete').map(item => item.doorId).join(', ') || 'none'}</dd>
+                <dt>Door classifications</dt><dd>{navigationField.doorLinks.filter(item => item.classification === 'interior').length} interior · {navigationField.doorLinks.filter(item => item.classification === 'exterior').length} exterior · {navigationField.doorLinks.filter(item => item.classification === 'malformed').length} malformed</dd>
+                <dt>D46 repair</dt><dd>{navigationField.doorLinks.find(item => item.doorId === 'D46')?.reason ?? 'missing'}</dd>
                 <dt>Loop</dt><dd>1 RAF · {runtimeDiagnostics.fps.toFixed(1)} fps · median {runtimeDiagnostics.medianFrameMs.toFixed(1)}ms · p95 {runtimeDiagnostics.p95FrameMs.toFixed(1)}ms</dd>
                 <dt>Tick</dt><dd>{runtimeDiagnostics.lastTickMs.toFixed(2)}ms · max {runtimeDiagnostics.longestTickMs.toFixed(2)}ms · frame max {runtimeDiagnostics.longestFrameMs.toFixed(1)}ms</dd>
                 <dt>Traffic</dt><dd>{movingCount} moving · {waitingCount} waiting · {runtimeDiagnostics.collisionChecks} checks · {runtimeDiagnostics.collisionConflicts} conflicts</dd>
                 <dt>Portals</dt><dd>{agents.filter(agent => Boolean(agent.portalTransition)).length} active · {runtimeDiagnostics.portalTransitions} transitions · {runtimeDiagnostics.portalWaits} waits</dd>
                 <dt>Planning</dt><dd>{runtimeDiagnostics.graphBuilds} graph builds · {runtimeDiagnostics.routePlans} plans · {runtimeDiagnostics.routeReplans} replans</dd>
+                <dt>Route outcomes</dt><dd>{runtimeDiagnostics.routeSuccessfulPlans} successful · {runtimeDiagnostics.routeProjectedDestinations} projected · {runtimeDiagnostics.routeStartRecoveries} recovered starts · {runtimeDiagnostics.routeFailures} rejected · max {runtimeDiagnostics.longestRoutePlanMs.toFixed(1)}ms</dd>
+                <dt>Route cache</dt><dd>{runtimeDiagnostics.routeCacheHits} hits · {runtimeDiagnostics.routeCacheMisses} misses · {runtimeDiagnostics.routeCacheSize}/256 entries</dd>
                 <dt>Commits</dt><dd>{runtimeDiagnostics.stateCommits} agent snapshots · 30/s maximum</dd>
                 <dt>Last message</dt><dd>{feedback}</dd>
                 <dt>Last pause</dt><dd>{runtimeDiagnostics.lastGlobalPauseMs.toFixed(1)}ms</dd>
@@ -988,6 +1022,12 @@ export function Floor1CandidateSimulation({
                         <button type="button" onClick={resetSelected}>Reset</button>
                         <button type="button" className="prototype-destructive" onClick={removeSelected}>Remove</button>
                     </div>
+                    <div className="prototype-inline-actions" aria-label="Navigation probes">
+                        <button type="button" onClick={() => assignNavigationProbe('long')}>Long route probe</button>
+                        <button type="button" onClick={() => assignNavigationProbe('projection')}>Projection probe</button>
+                        <button type="button" onClick={() => assignNavigationProbe('d46')}>D46 probe</button>
+                        <button type="button" onClick={() => assignNavigationProbe('exterior')}>Exterior probe</button>
+                    </div>
                 </> : <p className="prototype-muted">No agent selected. Add an agent to begin.</p>}
             </section>
 
@@ -1013,7 +1053,7 @@ export function Floor1CandidateSimulation({
                         }} /> {control.label}</label>
                     ))}
                     {([
-                        ['nodes', 'Navigation nodes'], ['edges', 'Navigation edges'], ['colliders', 'Modeled colliders'], ['doors', 'Open door state'],
+                        ['nodes', 'Continuous clearance cells'], ['edges', 'Continuous navigation edges'], ['colliders', 'Modeled colliders'], ['doors', 'Door classifications'],
                         ['routes', 'Route previews'], ['destinations', 'Destinations'], ['labels', 'Agent labels'], ['agentBounds', 'Agent debug bounds'],
                         ['workstations', 'Workstation anchors'],
                     ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={localOverlays[key]} onChange={() => toggleLocalOverlay(key)} /> {label}</label>)}
@@ -1060,15 +1100,18 @@ export function Floor1CandidateSimulation({
             )}
             {(localOverlays.nodes || localOverlays.edges || localOverlays.doors) && (
                 <svg className="floor1-candidate-debug floor1-candidate-debug--graph" aria-hidden="true">
-                    {localOverlays.edges && graph.walkSegments.map(segment => <line key={segment.id} className="edge" x1={segment.a.x} y1={segment.a.y} x2={segment.b.x} y2={segment.b.y} />)}
-                    {localOverlays.nodes && graph.walkNodes.map(node => <circle key={node.id} className="node" cx={node.point.x} cy={node.point.y} r="18" />)}
-                    {localOverlays.doors && graph.doors.map(door => <g key={door.id} data-door-id={door.id} data-door-state="open"><circle className="door door--open" cx={door.point.x} cy={door.point.y} r="32" />{localOverlays.labels && <text x={door.point.x + 38} y={door.point.y}>{door.id}</text>}</g>)}
+                    {localOverlays.edges && continuousOverlay.edges.map((edge, index) => <line key={`${edge.from.id}:${edge.to.id}:${index}`} className={edge.doorId ? 'edge edge--door' : 'edge'} x1={edge.from.point.x} y1={edge.from.point.y} x2={edge.to.point.x} y2={edge.to.point.y} />)}
+                    {localOverlays.nodes && continuousOverlay.cells.map(cell => <circle key={cell.id} className={navigationField.componentByCellId.get(cell.id) === navigationField.interiorComponentId ? 'node' : 'node node--excluded'} cx={cell.point.x} cy={cell.point.y} r="12" />)}
+                    {localOverlays.doors && navigationField.doorLinks.map(door => <g key={door.doorId} data-door-id={door.doorId} data-door-classification={door.classification}><circle className={`door door--${door.classification}`} cx={door.thresholdPoint.x} cy={door.thresholdPoint.y} r="32" />{localOverlays.labels && <text x={door.thresholdPoint.x + 38} y={door.thresholdPoint.y}>{door.doorId}</text>}</g>)}
                 </svg>
             )}
             {localOverlays.doors && d46RegistrationOverlay && (
                 <svg className="floor1-candidate-debug floor1-candidate-debug--d46" aria-label="D46 provisional registration audit">
                     <polygon className="room" points={d46RegistrationOverlay.room.polygon.map(point => `${point.x},${point.y}`).join(' ')} />
                     <circle className="envelope" cx={d46RegistrationOverlay.door.point.x} cy={d46RegistrationOverlay.door.point.y} r={PROTOTYPE_CLICK_SNAP_LIMIT} />
+                    <line className="proposal" x1={d46RegistrationOverlay.door.point.x} y1={d46RegistrationOverlay.door.point.y} x2={d46RegistrationOverlay.repairedLink.thresholdPoint.x} y2={d46RegistrationOverlay.repairedLink.thresholdPoint.y} />
+                    <circle className="approach" cx={d46RegistrationOverlay.repairedLink.thresholdPoint.x} cy={d46RegistrationOverlay.repairedLink.thresholdPoint.y} r="42" />
+                    <text x={d46RegistrationOverlay.repairedLink.thresholdPoint.x + 50} y={d46RegistrationOverlay.repairedLink.thresholdPoint.y - 45}>D46 image-guided repair</text>
                     {d46RegistrationOverlay.nearbyColliders.map(collider => collider.closed
                         ? <polygon className="collision" key={collider.id} points={collider.points.map(point => `${point.x},${point.y}`).join(' ')} strokeWidth={collider.thickness} />
                         : <polyline className="collision" key={collider.id} points={collider.points.map(point => `${point.x},${point.y}`).join(' ')} strokeWidth={collider.thickness} fill="none" />)}
@@ -1085,29 +1128,8 @@ export function Floor1CandidateSimulation({
                     <circle className="threshold" cx={d46RegistrationOverlay.door.point.x} cy={d46RegistrationOverlay.door.point.y} r="42" />
                     <text x={d46RegistrationOverlay.door.point.x + 54} y={d46RegistrationOverlay.door.point.y + 72}>D46 registered threshold · unsupported</text>
                     <text className="status" x={d46RegistrationOverlay.door.point.x - 570} y={d46RegistrationOverlay.door.point.y + 700}>
-                        620px envelope · {d46RegistrationOverlay.audit?.status ?? 'audit missing'}
+                        legacy 620px baseline · {d46RegistrationOverlay.audit?.status ?? 'audit missing'} · repaired continuous threshold shown
                     </text>
-                </svg>
-            )}
-            {localOverlays.doors && d01ConnectivityOverlay && (
-                <svg className="floor1-candidate-debug floor1-candidate-debug--d01" aria-label="D01 A21 connectivity audit">
-                    <circle className="envelope" cx={d01ConnectivityOverlay.doorPoint.x} cy={d01ConnectivityOverlay.doorPoint.y} r={PROTOTYPE_CLICK_SNAP_LIMIT} />
-                    {d01ConnectivityOverlay.zones.flatMap(zone => zone.nearbyNodes.slice(0, 12).map(node => (
-                        <circle key={`${zone.zoneId}:${node.id}`} className="endpoint" cx={node.point.x} cy={node.point.y} r="22" />
-                    )))}
-                    {d01ConnectivityOverlay.probeNodePoint && <>
-                        <circle className="probe" cx={d01ConnectivityOverlay.probeNodePoint.x} cy={d01ConnectivityOverlay.probeNodePoint.y} r="38" />
-                        <text x={d01ConnectivityOverlay.probeNodePoint.x + 46} y={d01ConnectivityOverlay.probeNodePoint.y - 42}>A21 reproduced start · component {d01ConnectivityOverlay.probeComponentId}</text>
-                    </>}
-                    <polyline className="reviewed-bridge" points={PROTOTYPE_D01_ROOM_BRIDGE.map(point => `${point.x},${point.y}`).join(' ')} />
-                    {PROTOTYPE_D01_ROOM_BRIDGE.map((point, index) => (
-                        <circle key={`d01-reviewed:${index}`} className="reviewed-point" cx={point.x} cy={point.y} r="25" />
-                    ))}
-                    <text x={PROTOTYPE_D01_ROOM_BRIDGE[2].x + 40} y={PROTOTYPE_D01_ROOM_BRIDGE[2].y + 82}>
-                        reviewed lower-aisle bridge · collision-clear
-                    </text>
-                    <circle className="threshold" cx={d01ConnectivityOverlay.doorPoint.x} cy={d01ConnectivityOverlay.doorPoint.y} r="42" />
-                    <text x={d01ConnectivityOverlay.doorPoint.x + 52} y={d01ConnectivityOverlay.doorPoint.y - 48}>D01 threshold</text>
                 </svg>
             )}
             {localOverlays.routes && selectedRoute?.status === 'valid' && (
@@ -1135,7 +1157,7 @@ export function Floor1CandidateSimulation({
                 <svg className="floor1-candidate-drag-feedback" aria-label="Agent route destination preview">
                     <circle className="origin" cx={dragState.origin.x} cy={dragState.origin.y} r="58" />
                     <line x1={dragState.origin.x} y1={dragState.origin.y} x2={dragState.preview.x} y2={dragState.preview.y} />
-                    {dragState.snap && <circle className="snap" cx={dragState.snap.point.x} cy={dragState.snap.point.y} r="48" />}
+                    {dragState.plan && <circle className="snap" cx={dragState.plan.snappedPoint.x} cy={dragState.plan.snappedPoint.y} r="48" />}
                 </svg>
             )}
             <div className="prototype-agent-layer">

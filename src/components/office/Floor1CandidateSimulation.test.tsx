@@ -265,15 +265,15 @@ describe('Agent Simulation usability', () => {
         expect(agent.querySelector('[aria-label^="agent-sheet-01"]')).toBe(sprite);
     });
 
-    it('fails a talk command clearly when the partner has no safe transition', async () => {
+    it('routes a talk command across the continuous navigation field', async () => {
         render(<Floor1CandidateSimulation active reducedMotion presentation="simulation" registration={TEST_REGISTRATION} viewport={{ width: 1200, height: 800 }} transform={{ x: 0, y: 0, scale: 0.1 }} />);
         await screen.findByLabelText('Agent simulation controls');
         fireEvent.click(screen.getByRole('button', { name: 'Add 5' }));
         fireEvent.click(screen.getByRole('button', { name: 'Talk to agent' }));
         expect(screen.getByText(/Choose a conversation partner/)).toBeTruthy();
         fireEvent.click(screen.getByLabelText(/Agent 02\. idle\./));
-        expect(screen.getByRole('status').textContent).toBe('No reachable conversation approach near Agent 02.');
-        expect(screen.getByLabelText(/Agent 01\. idle\./)).toBeTruthy();
+        expect(screen.getByRole('status').textContent).toBe('Agent 01 is heading to talk with Agent 02.');
+        expect(screen.getByLabelText(/Agent 01\. walking\./)).toBeTruthy();
     });
 
     it('requires concise confirmation before card removal', async () => {

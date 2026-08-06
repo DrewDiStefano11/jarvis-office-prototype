@@ -1,0 +1,3935 @@
+{
+  "schemaVersion": 1,
+  "mode": "pr27-sparse-baseline",
+  "startingSha": "14ccd4f937c2b0b67d24627e86776ca9373d3af1",
+  "navigationRevision": "pr27-sparse-unrevisioned",
+  "sourceGeometryRevision": "src/office/data/floor1/provisional/*.json",
+  "mapBounds": {
+    "width": 8192,
+    "height": 5460
+  },
+  "footprint": {
+    "radius": 34
+  },
+  "sampleStrategy": {
+    "kind": "uniform-baseline-grid",
+    "spacing": 192,
+    "note": "Final certification will replace this coarse baseline with adaptive boundary, corner, door, anchor, and narrow-passage sampling."
+  },
+  "graph": {
+    "walkNodes": 1601,
+    "walkSegments": 19538,
+    "colliders": 260,
+    "rooms": 34
+  },
+  "sparseComponents": {
+    "count": 1836,
+    "largestSize": 769,
+    "sizeHistogram": {
+      "1": 1632,
+      "2": 1,
+      "3": 1,
+      "5": 1,
+      "6": 2,
+      "7": 1,
+      "8": 2,
+      "9": 1,
+      "10": 1,
+      "11": 5,
+      "12": 4,
+      "13": 3,
+      "14": 1,
+      "15": 4,
+      "16": 2,
+      "17": 2,
+      "18": 1,
+      "19": 3,
+      "20": 4,
+      "22": 2,
+      "23": 2,
+      "25": 3,
+      "26": 3,
+      "27": 1,
+      "28": 2,
+      "31": 2,
+      "32": 1,
+      "34": 4,
+      "35": 1,
+      "36": 2,
+      "37": 4,
+      "38": 4,
+      "39": 5,
+      "41": 2,
+      "42": 2,
+      "43": 2,
+      "44": 3,
+      "45": 2,
+      "46": 1,
+      "47": 2,
+      "48": 3,
+      "49": 2,
+      "52": 1,
+      "53": 2,
+      "54": 1,
+      "56": 1,
+      "57": 1,
+      "58": 1,
+      "59": 2,
+      "61": 1,
+      "63": 1,
+      "64": 2,
+      "66": 3,
+      "67": 2,
+      "68": 2,
+      "69": 2,
+      "70": 2,
+      "71": 2,
+      "72": 3,
+      "75": 1,
+      "78": 1,
+      "79": 1,
+      "80": 1,
+      "81": 2,
+      "82": 1,
+      "83": 1,
+      "84": 1,
+      "85": 2,
+      "92": 1,
+      "93": 3,
+      "94": 2,
+      "95": 3,
+      "97": 2,
+      "98": 2,
+      "100": 1,
+      "101": 1,
+      "103": 1,
+      "104": 1,
+      "106": 1,
+      "107": 1,
+      "109": 1,
+      "111": 1,
+      "113": 1,
+      "114": 1,
+      "118": 1,
+      "124": 1,
+      "125": 2,
+      "131": 4,
+      "133": 1,
+      "142": 1,
+      "146": 2,
+      "147": 1,
+      "148": 1,
+      "149": 1,
+      "155": 2,
+      "158": 1,
+      "159": 2,
+      "161": 1,
+      "164": 1,
+      "175": 1,
+      "177": 1,
+      "182": 1,
+      "183": 1,
+      "185": 1,
+      "201": 2,
+      "207": 1,
+      "212": 1,
+      "220": 1,
+      "233": 2,
+      "257": 1,
+      "259": 1,
+      "274": 1,
+      "291": 1,
+      "304": 1,
+      "339": 1,
+      "353": 1,
+      "361": 1,
+      "370": 1,
+      "416": 1,
+      "419": 1,
+      "498": 1,
+      "769": 1
+    }
+  },
+  "samples": {
+    "valid": 448,
+    "withinSnapEnvelope": 448,
+    "outsideSnapEnvelope": 0,
+    "maximumSupportDistance": 323.0629518992798,
+    "maximumNodeDistance": 329.23688172259745,
+    "routeOutcomes": {
+      "accepted": 44,
+      "different-component": 91,
+      "transition-unavailable": 313
+    }
+  },
+  "roomCoverage": [
+    {
+      "roomId": "ROOM_AGENT_PLATFORM_AND_MODELS",
+      "roomName": "Agent Platform & Models",
+      "validSamples": 29,
+      "withinSnapEnvelope": 29,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 256.62981033926167
+    },
+    {
+      "roomId": "ROOM_CENTRAL_NEXUS",
+      "roomName": "Central Nexus",
+      "validSamples": 52,
+      "withinSnapEnvelope": 52,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 301.3251956423307
+    },
+    {
+      "roomId": "ROOM_CONFERENCE_1",
+      "roomName": "Conference 1",
+      "validSamples": 9,
+      "withinSnapEnvelope": 9,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 112.695554861839
+    },
+    {
+      "roomId": "ROOM_CONFERENCE_2",
+      "roomName": "Conference 2",
+      "validSamples": 12,
+      "withinSnapEnvelope": 12,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 133.47764975578494
+    },
+    {
+      "roomId": "ROOM_DATA_MEMORY_KNOWLEDGE",
+      "roomName": "Data, Memory, Knowledge",
+      "validSamples": 20,
+      "withinSnapEnvelope": 20,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 149.86505556914383
+    },
+    {
+      "roomId": "ROOM_ENTRANCE",
+      "roomName": "Entrance",
+      "validSamples": 5,
+      "withinSnapEnvelope": 5,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 19.887662222223298
+    },
+    {
+      "roomId": "ROOM_EXECUTIVE_BOARDROOM",
+      "roomName": "Executive Boardroom",
+      "validSamples": 7,
+      "withinSnapEnvelope": 7,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 100.79047236963308
+    },
+    {
+      "roomId": "ROOM_EXECUTIVE_COMMAND",
+      "roomName": "Executive Command",
+      "validSamples": 16,
+      "withinSnapEnvelope": 16,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 199.28936658878231
+    },
+    {
+      "roomId": "ROOM_FOCUS_A",
+      "roomName": "Focus A",
+      "validSamples": 3,
+      "withinSnapEnvelope": 3,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 71.62222571246946
+    },
+    {
+      "roomId": "ROOM_FOCUS_B",
+      "roomName": "Focus B",
+      "validSamples": 3,
+      "withinSnapEnvelope": 3,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 57.524799999999686
+    },
+    {
+      "roomId": "ROOM_FOCUS_C",
+      "roomName": "Focus C",
+      "validSamples": 4,
+      "withinSnapEnvelope": 4,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 48.38845089542636
+    },
+    {
+      "roomId": "ROOM_FOCUS_D",
+      "roomName": "Focus D",
+      "validSamples": 4,
+      "withinSnapEnvelope": 4,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 70.69409176283943
+    },
+    {
+      "roomId": "ROOM_MAIN_CONNECTING_WALKWAY",
+      "roomName": "Main Connecting Walkway",
+      "validSamples": 111,
+      "withinSnapEnvelope": 111,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 323.0629518992798
+    },
+    {
+      "roomId": "ROOM_PLUGINS_AND_AUTOMATION",
+      "roomName": "Plugins & Automation",
+      "validSamples": 25,
+      "withinSnapEnvelope": 25,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 188.10263619578177
+    },
+    {
+      "roomId": "ROOM_PROJECT_AND_RELEASE_MGMT",
+      "roomName": "Project & Release MGMT",
+      "validSamples": 24,
+      "withinSnapEnvelope": 24,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 138.27322428822467
+    },
+    {
+      "roomId": "ROOM_RELIABILITY_AND_OPERATIONS",
+      "roomName": "Reliability & Operations",
+      "validSamples": 20,
+      "withinSnapEnvelope": 20,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 190.41621227792564
+    },
+    {
+      "roomId": "ROOM_RM1",
+      "roomName": "RM1",
+      "validSamples": 4,
+      "withinSnapEnvelope": 4,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 100.26212330036817
+    },
+    {
+      "roomId": "ROOM_RM10",
+      "roomName": "RM10",
+      "validSamples": 6,
+      "withinSnapEnvelope": 6,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 91.09166453204548
+    },
+    {
+      "roomId": "ROOM_RM2",
+      "roomName": "RM2",
+      "validSamples": 4,
+      "withinSnapEnvelope": 4,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 80.60782222222224
+    },
+    {
+      "roomId": "ROOM_RM3",
+      "roomName": "RM3",
+      "validSamples": 6,
+      "withinSnapEnvelope": 6,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 191.54211648003516
+    },
+    {
+      "roomId": "ROOM_RM4",
+      "roomName": "RM4",
+      "validSamples": 3,
+      "withinSnapEnvelope": 3,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 32.590222222222565
+    },
+    {
+      "roomId": "ROOM_RM5",
+      "roomName": "RM5",
+      "validSamples": 7,
+      "withinSnapEnvelope": 7,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 128.9510918586111
+    },
+    {
+      "roomId": "ROOM_RM6",
+      "roomName": "RM6",
+      "validSamples": 6,
+      "withinSnapEnvelope": 6,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 135.20035555555614
+    },
+    {
+      "roomId": "ROOM_RM7",
+      "roomName": "RM7",
+      "validSamples": 3,
+      "withinSnapEnvelope": 3,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 93.44786741781945
+    },
+    {
+      "roomId": "ROOM_RM8",
+      "roomName": "RM8",
+      "validSamples": 6,
+      "withinSnapEnvelope": 6,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 47.6373345348021
+    },
+    {
+      "roomId": "ROOM_RM9",
+      "roomName": "RM9",
+      "validSamples": 3,
+      "withinSnapEnvelope": 3,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 52.06743621947548
+    },
+    {
+      "roomId": "ROOM_SANDBOX_1",
+      "roomName": "Sandbox 1",
+      "validSamples": 10,
+      "withinSnapEnvelope": 10,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 74.35787762840296
+    },
+    {
+      "roomId": "ROOM_SANDBOX_2",
+      "roomName": "Sandbox 2",
+      "validSamples": 12,
+      "withinSnapEnvelope": 12,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 141.73304528177124
+    },
+    {
+      "roomId": "ROOM_SECURITY_A",
+      "roomName": "Security A",
+      "validSamples": 9,
+      "withinSnapEnvelope": 9,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 93.65004363765745
+    },
+    {
+      "roomId": "ROOM_SECURITY_AND_GOVERNANCE",
+      "roomName": "Security & Governance",
+      "validSamples": 24,
+      "withinSnapEnvelope": 24,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 226.66383395179807
+    },
+    {
+      "roomId": "ROOM_SECURITY_B",
+      "roomName": "Security B",
+      "validSamples": 6,
+      "withinSnapEnvelope": 6,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 90.53069527194317
+    },
+    {
+      "roomId": "ROOM_SOFTWARE_ENG",
+      "roomName": "Software Eng",
+      "validSamples": 37,
+      "withinSnapEnvelope": 37,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 146.3746383483319
+    },
+    {
+      "roomId": "ROOM_STAIRS1",
+      "roomName": "Stairs1",
+      "validSamples": 4,
+      "withinSnapEnvelope": 4,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 61.17688888888824
+    },
+    {
+      "roomId": "ROOM_STAIRS2",
+      "roomName": "Stairs2",
+      "validSamples": 6,
+      "withinSnapEnvelope": 6,
+      "outsideSnapEnvelope": 0,
+      "maximumSupportDistance": 48.65101367347629
+    }
+  ],
+  "doors": {
+    "total": 47,
+    "provisionalValid": 46,
+    "unsupportedIds": [
+      "D46"
+    ]
+  },
+  "d46": {
+    "doorId": "D46",
+    "approachPoint": null,
+    "exitPoint": {
+      "x": 7018.9226666666655,
+      "y": 3864.207644444444
+    },
+    "status": "disabled-incomplete",
+    "reason": "A collision-clear registered walk node was not found for both connected zones."
+  },
+  "continuous": {
+    "navigationRevision": "nav-b08b92ce",
+    "sourceGeometryRevision": "floor1-ccf7e515",
+    "cells": 7729,
+    "components": 6,
+    "componentSizes": [
+      7467,
+      148,
+      110,
+      2,
+      1,
+      1
+    ],
+    "componentDetails": [
+      {
+        "componentId": 0,
+        "size": 7467,
+        "roomIds": [
+          "ROOM_AGENT_PLATFORM_AND_MODELS",
+          "ROOM_CENTRAL_NEXUS",
+          "ROOM_CONFERENCE_1",
+          "ROOM_CONFERENCE_2",
+          "ROOM_DATA_MEMORY_KNOWLEDGE",
+          "ROOM_ENTRANCE",
+          "ROOM_EXECUTIVE_BOARDROOM",
+          "ROOM_EXECUTIVE_COMMAND",
+          "ROOM_FOCUS_A",
+          "ROOM_FOCUS_B",
+          "ROOM_FOCUS_C",
+          "ROOM_FOCUS_D",
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_PLUGINS_AND_AUTOMATION",
+          "ROOM_PROJECT_AND_RELEASE_MGMT",
+          "ROOM_RELIABILITY_AND_OPERATIONS",
+          "ROOM_RM1",
+          "ROOM_RM10",
+          "ROOM_RM2",
+          "ROOM_RM3",
+          "ROOM_RM4",
+          "ROOM_RM6",
+          "ROOM_RM7",
+          "ROOM_RM9",
+          "ROOM_SANDBOX_1",
+          "ROOM_SANDBOX_2",
+          "ROOM_SECURITY_A",
+          "ROOM_SECURITY_AND_GOVERNANCE",
+          "ROOM_SECURITY_B",
+          "ROOM_SOFTWARE_ENG",
+          "ROOM_STAIRS1",
+          "ROOM_STAIRS2"
+        ]
+      },
+      {
+        "componentId": 5,
+        "size": 148,
+        "roomIds": [
+          "ROOM_RM8"
+        ]
+      },
+      {
+        "componentId": 1,
+        "size": 110,
+        "roomIds": [
+          "ROOM_RM5"
+        ]
+      },
+      {
+        "componentId": 4,
+        "size": 2,
+        "roomIds": [
+          "ROOM_EXECUTIVE_COMMAND"
+        ]
+      },
+      {
+        "componentId": 2,
+        "size": 1,
+        "roomIds": [
+          "ROOM_EXECUTIVE_COMMAND"
+        ]
+      },
+      {
+        "componentId": 3,
+        "size": 1,
+        "roomIds": [
+          "ROOM_EXECUTIVE_BOARDROOM"
+        ]
+      }
+    ],
+    "doorClassifications": {
+      "interior": 40,
+      "exterior": 7,
+      "malformed": 0
+    },
+    "doorLinks": [
+      {
+        "doorId": "D01",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 2553.944,
+          "y": 2183.315555555556
+        },
+        "thresholdPoint": {
+          "x": 2553.944,
+          "y": 2183.315555555556
+        },
+        "approachCellId": "cell:050:045",
+        "exitCellId": "cell:054:045",
+        "connectedRoomIds": [
+          "ROOM_AGENT_PLATFORM_AND_MODELS",
+          "ROOM_MAIN_CONNECTING_WALKWAY"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D02",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 1611.5906666666665,
+          "y": 1186.728
+        },
+        "thresholdPoint": {
+          "x": 1611.5906666666665,
+          "y": 1186.728
+        },
+        "approachCellId": "cell:037:034",
+        "exitCellId": "cell:030:025",
+        "connectedRoomIds": [
+          "ROOM_AGENT_PLATFORM_AND_MODELS",
+          "ROOM_STAIRS2"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D03",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 838.9250666666666,
+          "y": 2651.2586666666666
+        },
+        "thresholdPoint": {
+          "x": 838.9250666666666,
+          "y": 2651.2586666666666
+        },
+        "approachCellId": "cell:017:052",
+        "exitCellId": "cell:017:056",
+        "connectedRoomIds": [
+          "ROOM_AGENT_PLATFORM_AND_MODELS"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D04",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 978.5228444444443,
+          "y": 3148.8995555555557
+        },
+        "thresholdPoint": {
+          "x": 978.5228444444443,
+          "y": 3148.8995555555557
+        },
+        "approachCellId": "cell:022:066",
+        "exitCellId": "cell:020:066",
+        "connectedRoomIds": [
+          "ROOM_PLUGINS_AND_AUTOMATION",
+          "ROOM_RM3"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D05",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 681.2312888888888,
+          "y": 3566.3998222222226
+        },
+        "thresholdPoint": {
+          "x": 681.2312888888888,
+          "y": 3566.3998222222226
+        },
+        "approachCellId": "cell:014:077",
+        "exitCellId": "cell:014:073",
+        "connectedRoomIds": [
+          "ROOM_RM3",
+          "ROOM_SANDBOX_2"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D06",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 1063.8325333333332,
+          "y": 4047.2367111111107
+        },
+        "thresholdPoint": {
+          "x": 1063.8325333333332,
+          "y": 4047.2367111111107
+        },
+        "approachCellId": "cell:020:086",
+        "exitCellId": "cell:023:084",
+        "connectedRoomIds": [
+          "ROOM_RM2",
+          "ROOM_SANDBOX_2"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D07",
+        "classification": "exterior",
+        "sourcePoint": {
+          "x": 1561.472711111111,
+          "y": 4490.5889777777775
+        },
+        "thresholdPoint": {
+          "x": 1561.472711111111,
+          "y": 4490.5889777777775
+        },
+        "approachCellId": null,
+        "exitCellId": null,
+        "connectedRoomIds": [],
+        "provenance": "exterior-authority",
+        "reason": "Door leads to an unmodeled exterior/future/elevator destination."
+      },
+      {
+        "doorId": "D08",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 2250.413333333333,
+          "y": 3995.5340444444446
+        },
+        "thresholdPoint": {
+          "x": 2250.413333333333,
+          "y": 3995.5340444444446
+        },
+        "approachCellId": "cell:045:083",
+        "exitCellId": "cell:047:083",
+        "connectedRoomIds": [
+          "ROOM_CONFERENCE_2",
+          "ROOM_RM1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D09",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 2351.2346666666667,
+          "y": 3601.2996444444443
+        },
+        "thresholdPoint": {
+          "x": 2351.2346666666667,
+          "y": 3601.2996444444443
+        },
+        "approachCellId": "cell:049:072",
+        "exitCellId": "cell:049:078",
+        "connectedRoomIds": [
+          "ROOM_PLUGINS_AND_AUTOMATION",
+          "ROOM_RM1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D10",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 2903.161777777778,
+          "y": 4283.777599999999
+        },
+        "thresholdPoint": {
+          "x": 2903.161777777778,
+          "y": 4283.777599999999
+        },
+        "approachCellId": "cell:060:092",
+        "exitCellId": "cell:057:086",
+        "connectedRoomIds": [
+          "ROOM_RM1",
+          "ROOM_SECURITY_A"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D11",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 3424.068444444444,
+          "y": 4762.028888888889
+        },
+        "thresholdPoint": {
+          "x": 3424.068444444444,
+          "y": 4762.028888888889
+        },
+        "approachCellId": "cell:071:096",
+        "exitCellId": "cell:077:099",
+        "connectedRoomIds": [
+          "ROOM_DATA_MEMORY_KNOWLEDGE",
+          "ROOM_SECURITY_A"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D12",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 3521.0115555555553,
+          "y": 4540.999288888889
+        },
+        "thresholdPoint": {
+          "x": 3521.0115555555553,
+          "y": 4540.999288888889
+        },
+        "approachCellId": "cell:074:095",
+        "exitCellId": "cell:072:089",
+        "connectedRoomIds": [
+          "ROOM_DATA_MEMORY_KNOWLEDGE",
+          "ROOM_FOCUS_B"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D13",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 3073.781333333333,
+          "y": 4073.0883555555556
+        },
+        "thresholdPoint": {
+          "x": 3073.781333333333,
+          "y": 4073.0883555555556
+        },
+        "approachCellId": "cell:065:085",
+        "exitCellId": "cell:057:085",
+        "connectedRoomIds": [
+          "ROOM_FOCUS_B",
+          "ROOM_RM1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D14",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 3391.753777777778,
+          "y": 3181.214222222222
+        },
+        "thresholdPoint": {
+          "x": 3391.753777777778,
+          "y": 3181.214222222222
+        },
+        "approachCellId": "cell:071:069",
+        "exitCellId": "cell:071:063",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_RM4"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D15",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 2958.743111111111,
+          "y": 2821.8782222222226
+        },
+        "thresholdPoint": {
+          "x": 2958.743111111111,
+          "y": 2821.8782222222226
+        },
+        "approachCellId": "cell:061:061",
+        "exitCellId": "cell:063:058",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_PLUGINS_AND_AUTOMATION"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D16",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 4825.215999999999,
+          "y": 4552.6323555555555
+        },
+        "thresholdPoint": {
+          "x": 4825.215999999999,
+          "y": 4552.6323555555555
+        },
+        "approachCellId": "cell:100:095",
+        "exitCellId": "cell:102:088",
+        "connectedRoomIds": [
+          "ROOM_DATA_MEMORY_KNOWLEDGE",
+          "ROOM_FOCUS_C"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D17",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 4938.962666666666,
+          "y": 4789.172977777777
+        },
+        "thresholdPoint": {
+          "x": 4938.962666666666,
+          "y": 4789.172977777777
+        },
+        "approachCellId": "cell:102:097",
+        "exitCellId": "cell:103:100",
+        "connectedRoomIds": [
+          "ROOM_SECURITY_B"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D18",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 5470.913777777778,
+          "y": 4301.866933333333
+        },
+        "thresholdPoint": {
+          "x": 5470.913777777778,
+          "y": 4301.866933333333
+        },
+        "approachCellId": "cell:114:092",
+        "exitCellId": "cell:117:085",
+        "connectedRoomIds": [
+          "ROOM_RM6",
+          "ROOM_SECURITY_B"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D19",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 5314.727999999999,
+          "y": 4071.1788444444446
+        },
+        "thresholdPoint": {
+          "x": 5314.727999999999,
+          "y": 4071.1788444444446
+        },
+        "approachCellId": "cell:110:085",
+        "exitCellId": "cell:117:085",
+        "connectedRoomIds": [
+          "ROOM_FOCUS_C",
+          "ROOM_RM6"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D20",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 6184.701333333333,
+          "y": 3996.2096
+        },
+        "thresholdPoint": {
+          "x": 6184.701333333333,
+          "y": 3996.2096
+        },
+        "approachCellId": "cell:130:083",
+        "exitCellId": "cell:127:083",
+        "connectedRoomIds": [
+          "ROOM_CONFERENCE_1",
+          "ROOM_RM6"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D21",
+        "classification": "exterior",
+        "sourcePoint": {
+          "x": 6826.540444444444,
+          "y": 4531.317511111111
+        },
+        "thresholdPoint": {
+          "x": 6826.540444444444,
+          "y": 4531.317511111111
+        },
+        "approachCellId": null,
+        "exitCellId": null,
+        "connectedRoomIds": [],
+        "provenance": "exterior-authority",
+        "reason": "Door leads to an unmodeled exterior/future/elevator destination."
+      },
+      {
+        "doorId": "D22",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 7311.255111111111,
+          "y": 4044.448799999999
+        },
+        "thresholdPoint": {
+          "x": 7311.255111111111,
+          "y": 4044.448799999999
+        },
+        "approachCellId": "cell:145:084",
+        "exitCellId": "cell:152:085",
+        "connectedRoomIds": [
+          "ROOM_CONFERENCE_1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D23",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 7669.943999999999,
+          "y": 3554.3488888888887
+        },
+        "thresholdPoint": {
+          "x": 7669.943999999999,
+          "y": 3554.3488888888887
+        },
+        "approachCellId": "cell:160:077",
+        "exitCellId": "cell:160:074",
+        "connectedRoomIds": [
+          "ROOM_SANDBOX_1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D24",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 7414.660444444444,
+          "y": 3166.5777777777776
+        },
+        "thresholdPoint": {
+          "x": 7414.660444444444,
+          "y": 3166.5777777777776
+        },
+        "approachCellId": "cell:156:077",
+        "exitCellId": "cell:154:066",
+        "connectedRoomIds": [
+          "ROOM_RM10",
+          "ROOM_SANDBOX_1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D25",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 7730.663111111112,
+          "y": 3023.3617777777777
+        },
+        "thresholdPoint": {
+          "x": 7730.663111111112,
+          "y": 3023.3617777777777
+        },
+        "approachCellId": "cell:152:065",
+        "exitCellId": "cell:161:062",
+        "connectedRoomIds": [
+          "ROOM_PROJECT_AND_RELEASE_MGMT"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D26",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 7515.912888888888,
+          "y": 2653.856888888889
+        },
+        "thresholdPoint": {
+          "x": 7515.912888888888,
+          "y": 2653.856888888889
+        },
+        "approachCellId": "cell:155:050",
+        "exitCellId": "cell:157:056",
+        "connectedRoomIds": [
+          "ROOM_SOFTWARE_ENG"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D27",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 6049.058666666667,
+          "y": 3609.5344888888885
+        },
+        "thresholdPoint": {
+          "x": 6049.058666666667,
+          "y": 3609.5344888888885
+        },
+        "approachCellId": "cell:126:072",
+        "exitCellId": "cell:126:078",
+        "connectedRoomIds": [
+          "ROOM_PROJECT_AND_RELEASE_MGMT",
+          "ROOM_RM6"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D28",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 5402.772444444444,
+          "y": 2872.5884444444446
+        },
+        "thresholdPoint": {
+          "x": 5402.772444444444,
+          "y": 2872.5884444444446
+        },
+        "approachCellId": "cell:114:061",
+        "exitCellId": "cell:112:058",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_PROJECT_AND_RELEASE_MGMT"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D29",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 4977.301333333333,
+          "y": 3186.7555555555555
+        },
+        "thresholdPoint": {
+          "x": 4977.301333333333,
+          "y": 3186.7555555555555
+        },
+        "approachCellId": "cell:105:068",
+        "exitCellId": "cell:104:064",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_RM7"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D30",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 5855.965333333334,
+          "y": 2197.231111111111
+        },
+        "thresholdPoint": {
+          "x": 5855.965333333334,
+          "y": 2197.231111111111
+        },
+        "approachCellId": "cell:125:046",
+        "exitCellId": "cell:122:045",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_SOFTWARE_ENG"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D31",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 7272.264888888889,
+          "y": 1455.0444444444447
+        },
+        "thresholdPoint": {
+          "x": 7272.264888888889,
+          "y": 1455.0444444444447
+        },
+        "approachCellId": "cell:152:033",
+        "exitCellId": "cell:152:028",
+        "connectedRoomIds": [
+          "ROOM_SOFTWARE_ENG",
+          "ROOM_STAIRS1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D32",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 6807.297777777778,
+          "y": 1215.3795555555557
+        },
+        "thresholdPoint": {
+          "x": 6807.297777777778,
+          "y": 1215.3795555555557
+        },
+        "approachCellId": "cell:142:025",
+        "exitCellId": "cell:144:027",
+        "connectedRoomIds": [
+          "ROOM_RELIABILITY_AND_OPERATIONS",
+          "ROOM_STAIRS1"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D33",
+        "classification": "exterior",
+        "sourcePoint": {
+          "x": 7025.420444444444,
+          "y": 657.959111111111
+        },
+        "thresholdPoint": {
+          "x": 7025.420444444444,
+          "y": 657.959111111111
+        },
+        "approachCellId": null,
+        "exitCellId": null,
+        "connectedRoomIds": [],
+        "provenance": "exterior-authority",
+        "reason": "Door leads to an unmodeled exterior/future/elevator destination."
+      },
+      {
+        "doorId": "D34",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 5246.302222222222,
+          "y": 1620.601777777778
+        },
+        "thresholdPoint": {
+          "x": 5246.302222222222,
+          "y": 1620.601777777778
+        },
+        "approachCellId": "cell:110:032",
+        "exitCellId": "cell:108:035",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_RELIABILITY_AND_OPERATIONS"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D35",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 5207.094222222222,
+          "y": 1146.873777777778
+        },
+        "thresholdPoint": {
+          "x": 5207.094222222222,
+          "y": 1146.873777777778
+        },
+        "approachCellId": "cell:109:027",
+        "exitCellId": "cell:108:023",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_RELIABILITY_AND_OPERATIONS"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D36",
+        "classification": "exterior",
+        "sourcePoint": {
+          "x": 5496.845333333334,
+          "y": 239.9191111111113
+        },
+        "thresholdPoint": {
+          "x": 5496.845333333334,
+          "y": 239.9191111111113
+        },
+        "approachCellId": null,
+        "exitCellId": null,
+        "connectedRoomIds": [],
+        "provenance": "exterior-authority",
+        "reason": "Door leads to an unmodeled exterior/future/elevator destination."
+      },
+      {
+        "doorId": "D37",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 4932.4222222222215,
+          "y": 825.8853333333336
+        },
+        "thresholdPoint": {
+          "x": 4932.4222222222215,
+          "y": 825.8853333333336
+        },
+        "approachCellId": "cell:103:014",
+        "exitCellId": "cell:103:018",
+        "connectedRoomIds": [
+          "ROOM_EXECUTIVE_COMMAND"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D38",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 4181.654222222222,
+          "y": 1351.5306666666665
+        },
+        "thresholdPoint": {
+          "x": 4181.654222222222,
+          "y": 1351.5306666666665
+        },
+        "approachCellId": "cell:087:025",
+        "exitCellId": "cell:090:036",
+        "connectedRoomIds": [
+          "ROOM_CENTRAL_NEXUS",
+          "ROOM_EXECUTIVE_BOARDROOM",
+          "ROOM_MAIN_CONNECTING_WALKWAY"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D39",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 3393.1857777777777,
+          "y": 819.4222222222222
+        },
+        "thresholdPoint": {
+          "x": 3393.1857777777777,
+          "y": 819.4222222222222
+        },
+        "approachCellId": "cell:071:014",
+        "exitCellId": "cell:070:018",
+        "connectedRoomIds": [
+          "ROOM_EXECUTIVE_COMMAND"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D40",
+        "classification": "exterior",
+        "sourcePoint": {
+          "x": 2830.916444444444,
+          "y": 271.1573333333336
+        },
+        "thresholdPoint": {
+          "x": 2830.916444444444,
+          "y": 271.1573333333336
+        },
+        "approachCellId": null,
+        "exitCellId": null,
+        "connectedRoomIds": [],
+        "provenance": "exterior-authority",
+        "reason": "Door leads to an unmodeled exterior/future/elevator destination."
+      },
+      {
+        "doorId": "D41",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 3098.048,
+          "y": 1157.6453333333336
+        },
+        "thresholdPoint": {
+          "x": 3098.048,
+          "y": 1157.6453333333336
+        },
+        "approachCellId": "cell:063:025",
+        "exitCellId": "cell:065:023",
+        "connectedRoomIds": [
+          "ROOM_SECURITY_AND_GOVERNANCE"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D42",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 3103.4337777777773,
+          "y": 1611.1226666666666
+        },
+        "thresholdPoint": {
+          "x": 3103.4337777777773,
+          "y": 1611.1226666666666
+        },
+        "approachCellId": "cell:063:032",
+        "exitCellId": "cell:066:036",
+        "connectedRoomIds": [
+          "ROOM_MAIN_CONNECTING_WALKWAY",
+          "ROOM_SECURITY_AND_GOVERNANCE"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D43",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 1323.993511111111,
+          "y": 657.8506666666672
+        },
+        "thresholdPoint": {
+          "x": 1323.993511111111,
+          "y": 657.8506666666672
+        },
+        "approachCellId": "cell:032:013",
+        "exitCellId": "cell:027:016",
+        "connectedRoomIds": [
+          "ROOM_SECURITY_AND_GOVERNANCE",
+          "ROOM_STAIRS2"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D44",
+        "classification": "exterior",
+        "sourcePoint": {
+          "x": 1069.0028444444445,
+          "y": 1471.1422222222227
+        },
+        "thresholdPoint": {
+          "x": 1069.0028444444445,
+          "y": 1471.1422222222227
+        },
+        "approachCellId": null,
+        "exitCellId": null,
+        "connectedRoomIds": [],
+        "provenance": "exterior-authority",
+        "reason": "Door leads to an unmodeled exterior/future/elevator destination."
+      },
+      {
+        "doorId": "D45",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 579.9721777777777,
+          "y": 3080.992888888889
+        },
+        "thresholdPoint": {
+          "x": 579.9721777777777,
+          "y": 3080.992888888889
+        },
+        "approachCellId": "cell:011:063",
+        "exitCellId": "cell:013:065",
+        "connectedRoomIds": [
+          "ROOM_FOCUS_A",
+          "ROOM_RM3"
+        ],
+        "provenance": "registered-door",
+        "reason": "Registered candidate door threshold retained."
+      },
+      {
+        "doorId": "D46",
+        "classification": "interior",
+        "sourcePoint": {
+          "x": 7002.114666666666,
+          "y": 3946.4287999999997
+        },
+        "thresholdPoint": {
+          "x": 7510,
+          "y": 2708
+        },
+        "approachCellId": "cell:161:058",
+        "exitCellId": "cell:156:056",
+        "connectedRoomIds": [
+          "ROOM_FOCUS_D"
+        ],
+        "provenance": "image-guided-d46-repair",
+        "reason": "Registered D46 lands on a red wall console. Clean-image inspection places the Focus D west entrance at the brown door between Focus D and RM10 circulation."
+      },
+      {
+        "doorId": "D47",
+        "classification": "exterior",
+        "sourcePoint": {
+          "x": 4172.450666666667,
+          "y": 3147.257777777778
+        },
+        "thresholdPoint": {
+          "x": 4172.450666666667,
+          "y": 3147.257777777778
+        },
+        "approachCellId": null,
+        "exitCellId": null,
+        "connectedRoomIds": [],
+        "provenance": "exterior-authority",
+        "reason": "Door leads to an unmodeled exterior/future/elevator destination."
+      }
+    ],
+    "routeOutcomes": {
+      "Start or destination could not be projected into valid Floor 1 space.": 13,
+      "valid": 435
+    },
+    "routeFailures": [
+      {
+        "point": {
+          "x": 1632,
+          "y": 4704
+        },
+        "roomIds": [
+          "ROOM_RM5"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 1632,
+          "y": 4704
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 1824,
+          "y": 4704
+        },
+        "roomIds": [
+          "ROOM_RM5"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 1824,
+          "y": 4704
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 2016,
+          "y": 4704
+        },
+        "roomIds": [
+          "ROOM_RM5"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 2016,
+          "y": 4704
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 6432,
+          "y": 4704
+        },
+        "roomIds": [
+          "ROOM_RM8"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 6432,
+          "y": 4704
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 6624,
+          "y": 4704
+        },
+        "roomIds": [
+          "ROOM_RM8"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 6624,
+          "y": 4704
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 6816,
+          "y": 4704
+        },
+        "roomIds": [
+          "ROOM_RM8"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 6816,
+          "y": 4704
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 1440,
+          "y": 4896
+        },
+        "roomIds": [
+          "ROOM_RM5"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 1440,
+          "y": 4896
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 1632,
+          "y": 4896
+        },
+        "roomIds": [
+          "ROOM_RM5"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 1632,
+          "y": 4896
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 1824,
+          "y": 4896
+        },
+        "roomIds": [
+          "ROOM_RM5"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 1824,
+          "y": 4896
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 2016,
+          "y": 4896
+        },
+        "roomIds": [
+          "ROOM_RM5"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 2016,
+          "y": 4896
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 6432,
+          "y": 4896
+        },
+        "roomIds": [
+          "ROOM_RM8"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 6432,
+          "y": 4896
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 6624,
+          "y": 4896
+        },
+        "roomIds": [
+          "ROOM_RM8"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 6624,
+          "y": 4896
+        },
+        "acceptedRoomIds": []
+      },
+      {
+        "point": {
+          "x": 6816,
+          "y": 4896
+        },
+        "roomIds": [
+          "ROOM_RM8"
+        ],
+        "reason": "Start or destination could not be projected into valid Floor 1 space.",
+        "projectedPoint": {
+          "x": 6816,
+          "y": 4896
+        },
+        "acceptedRoomIds": []
+      }
+    ],
+    "issues": [
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_AGENT_PLATFORM_AND_MODELS",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_CENTRAL_NEXUS",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_CONFERENCE_1",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_CONFERENCE_2",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_EXECUTIVE_BOARDROOM",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_FOCUS_A",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_FOCUS_C",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "geometry-outside-source",
+        "entityId": "ROOM_FOCUS_D",
+        "message": "Finite candidate room geometry extends outside the source image and remains registration-review evidence."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_FOCUS_D",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_MAIN_CONNECTING_WALKWAY",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_PLUGINS_AND_AUTOMATION",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_PROJECT_AND_RELEASE_MGMT",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_RELIABILITY_AND_OPERATIONS",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_RM10",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_RM2",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_RM3",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_RM7",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_RM8",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_RM9",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_SANDBOX_1",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_SANDBOX_2",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_SECURITY_AND_GOVERNANCE",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_SOFTWARE_ENG",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_STAIRS1",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "duplicate-room-vertex",
+        "entityId": "ROOM_STAIRS2",
+        "message": "Room polygon contains duplicate vertices."
+      },
+      {
+        "code": "geometry-outside-source",
+        "entityId": "wall:walls-012:path:01",
+        "message": "Finite candidate collider geometry extends outside the source image and remains registration-review evidence."
+      },
+      {
+        "code": "geometry-outside-source",
+        "entityId": "wall:walls-028:path:01",
+        "message": "Finite candidate collider geometry extends outside the source image and remains registration-review evidence."
+      },
+      {
+        "code": "geometry-outside-source",
+        "entityId": "wall:walls-029:path:01",
+        "message": "Finite candidate collider geometry extends outside the source image and remains registration-review evidence."
+      },
+      {
+        "code": "geometry-outside-source",
+        "entityId": "wall:walls-049:path:01",
+        "message": "Finite candidate collider geometry extends outside the source image and remains registration-review evidence."
+      },
+      {
+        "code": "geometry-outside-source",
+        "entityId": "wall:walls-049:path:02",
+        "message": "Finite candidate collider geometry extends outside the source image and remains registration-review evidence."
+      },
+      {
+        "code": "geometry-outside-source",
+        "entityId": "wall:walls-050:path:01",
+        "message": "Finite candidate collider geometry extends outside the source image and remains registration-review evidence."
+      }
+    ]
+  },
+  "failures": [
+    {
+      "id": "baseline-snap-0001",
+      "point": {
+        "x": 3168,
+        "y": 2208
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 329.23688172259745,
+        "point": {
+          "x": 2924.2275555555557,
+          "y": 1986.7040000000002
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:336",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0002",
+      "point": {
+        "x": 3360,
+        "y": 2400
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 303.53493961944093,
+        "point": {
+          "x": 3657.829333333333,
+          "y": 2341.424
+        },
+        "componentId": 454,
+        "sourceId": "walk:walk-paths-075:path:01:088",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0003",
+      "point": {
+        "x": 3360,
+        "y": 2208
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 298.081254339554,
+        "point": {
+          "x": 3657.829333333333,
+          "y": 2220.252444444445
+        },
+        "componentId": 454,
+        "sourceId": "walk:walk-paths-075:path:01:066",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0004",
+      "point": {
+        "x": 2592,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 286.7211162070425,
+        "point": {
+          "x": 2609.786666666667,
+          "y": 2302.168888888889
+        },
+        "componentId": 293,
+        "sourceId": "walk:walk-paths-054:path:01:024",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0005",
+      "point": {
+        "x": 4704,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 260.88369877404136,
+        "point": {
+          "x": 4527.603555555555,
+          "y": 2016.2097777777778
+        },
+        "componentId": 590,
+        "sourceId": "walk:walk-paths-079:path:01:027",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0006",
+      "point": {
+        "x": 3168,
+        "y": 2400
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 256.66966833838836,
+        "point": {
+          "x": 3081.361777777778,
+          "y": 2641.6053333333334
+        },
+        "componentId": 297,
+        "sourceId": "walk:walk-paths-002:path:01:019",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0007",
+      "point": {
+        "x": 2208,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_AGENT_PLATFORM_AND_MODELS"
+      ],
+      "reason": "transition-unavailable: Door D01 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 256.62981033926167,
+        "point": {
+          "x": 2131.0382222222224,
+          "y": 2068.817777777778
+        },
+        "componentId": 179,
+        "sourceId": "walk:walk-paths-054:path:03:045",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0008",
+      "point": {
+        "x": 3360,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 254.0006262000646,
+        "point": {
+          "x": 3165.4951111111104,
+          "y": 1852.6471111111111
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:294",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0009",
+      "point": {
+        "x": 3552,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 253.78931859339332,
+        "point": {
+          "x": 3344.124444444444,
+          "y": 1678.408888888889
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:252",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0010",
+      "point": {
+        "x": 2016,
+        "y": 1440
+      },
+      "roomIds": [
+        "ROOM_SECURITY_AND_GOVERNANCE"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 229.14071464398344,
+        "point": {
+          "x": 1891.6906666666666,
+          "y": 1247.5093333333336
+        },
+        "componentId": 122,
+        "sourceId": "walk:walk-paths-063:path:01:010",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0011",
+      "point": {
+        "x": 4896,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 223.89048935783063,
+        "point": {
+          "x": 4716.133333333333,
+          "y": 2149.3226666666665
+        },
+        "componentId": 641,
+        "sourceId": "walk:walk-paths-078:path:01:072",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0012",
+      "point": {
+        "x": 4128,
+        "y": 288
+      },
+      "roomIds": [
+        "ROOM_EXECUTIVE_COMMAND"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 199.28936658878231,
+        "point": {
+          "x": 3940.110222222222,
+          "y": 354.43555555555554
+        },
+        "componentId": 462,
+        "sourceId": "walk:walk-paths-021:path:01:043",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0013",
+      "point": {
+        "x": 2592,
+        "y": 2784
+      },
+      "roomIds": [
+        "ROOM_PLUGINS_AND_AUTOMATION"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 193.7851493154462,
+        "point": {
+          "x": 2445.752888888889,
+          "y": 2911.1395555555555
+        },
+        "componentId": 119,
+        "sourceId": "walk:walk-paths-038:path:03:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0014",
+      "point": {
+        "x": 480,
+        "y": 3360
+      },
+      "roomIds": [
+        "ROOM_RM3"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 192.2583296750237,
+        "point": {
+          "x": 664.6474666666666,
+          "y": 3413.559111111111
+        },
+        "componentId": 1359,
+        "sourceId": "walk:walk-paths-048:path:01:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0015",
+      "point": {
+        "x": 6432,
+        "y": 672
+      },
+      "roomIds": [
+        "ROOM_RELIABILITY_AND_OPERATIONS"
+      ],
+      "reason": "transition-unavailable: Door D34 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 190.41621227792564,
+        "point": {
+          "x": 6620.362666666668,
+          "y": 699.889777777778
+        },
+        "componentId": 1391,
+        "sourceId": "walk:walk-paths-087:path:01:195",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0016",
+      "point": {
+        "x": 3936,
+        "y": 4704
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 188.07328280528722,
+        "point": {
+          "x": 4030.096,
+          "y": 4866.841955555556
+        },
+        "componentId": 523,
+        "sourceId": "walk:walk-paths-127:path:01:486",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0017",
+      "point": {
+        "x": 1632,
+        "y": 1056
+      },
+      "roomIds": [
+        "ROOM_SECURITY_AND_GOVERNANCE"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 186.99470716903903,
+        "point": {
+          "x": 1585.0008888888888,
+          "y": 1236.9920000000002
+        },
+        "componentId": 116,
+        "sourceId": "walk:walk-paths-061:path:01:090",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0018",
+      "point": {
+        "x": 5280,
+        "y": 2400
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 186.92122197992646,
+        "point": {
+          "x": 5419.582222222221,
+          "y": 2524.3235555555557
+        },
+        "componentId": 782,
+        "sourceId": "walk:walk-paths-006:path:01:080",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0019",
+      "point": {
+        "x": 5088,
+        "y": 2592
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 185.23642197172921,
+        "point": {
+          "x": 5244.9226666666655,
+          "y": 2690.4266666666667
+        },
+        "componentId": 1056,
+        "sourceId": "walk:walk-paths-126:path:01:036",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0020",
+      "point": {
+        "x": 3936,
+        "y": 4512
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 178.34093751926804,
+        "point": {
+          "x": 3765.148444444444,
+          "y": 4563.139377777778
+        },
+        "componentId": 422,
+        "sourceId": "walk:walk-paths-128:path:01:329",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0021",
+      "point": {
+        "x": 3744,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 176.52943057563542,
+        "point": {
+          "x": 3840.3502222222223,
+          "y": 1971.9164444444446
+        },
+        "componentId": 454,
+        "sourceId": "walk:walk-paths-075:path:01:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0022",
+      "point": {
+        "x": 4320,
+        "y": 4320
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 175.5394156519805,
+        "point": {
+          "x": 4482.474666666666,
+          "y": 4386.453511111111
+        },
+        "componentId": 422,
+        "sourceId": "walk:walk-paths-127:path:01:270",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0023",
+      "point": {
+        "x": 4320,
+        "y": 1056
+      },
+      "roomIds": [
+        "ROOM_EXECUTIVE_BOARDROOM"
+      ],
+      "reason": "transition-unavailable: Door D38 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 174.23638568279196,
+        "point": {
+          "x": 4482.632888888889,
+          "y": 1118.5208888888892
+        },
+        "componentId": 566,
+        "sourceId": "walk:walk-paths-014:path:01:423",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0024",
+      "point": {
+        "x": 864,
+        "y": 1632
+      },
+      "roomIds": [
+        "ROOM_AGENT_PLATFORM_AND_MODELS"
+      ],
+      "reason": "transition-unavailable: Door D01 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 172.17241421678597,
+        "point": {
+          "x": 1022.4833777777777,
+          "y": 1699.2782222222222
+        },
+        "componentId": 0,
+        "sourceId": "walk:walk-paths-056:path:02:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0025",
+      "point": {
+        "x": 5664,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 171.80633656978722,
+        "point": {
+          "x": 5575.781333333332,
+          "y": 2163.4275555555555
+        },
+        "componentId": 1061,
+        "sourceId": "walk:walk-paths-007:path:01:066",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0026",
+      "point": {
+        "x": 4896,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 170.8103984113149,
+        "point": {
+          "x": 5001.283555555556,
+          "y": 1689.495111111111
+        },
+        "componentId": 919,
+        "sourceId": "walk:walk-paths-008:path:01:045",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0027",
+      "point": {
+        "x": 2976,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 170.7424306367727,
+        "point": {
+          "x": 2924.2275555555557,
+          "y": 1986.7040000000002
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:336",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0028",
+      "point": {
+        "x": 1824,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 170.68349643176654,
+        "point": {
+          "x": 1905.0168888888886,
+          "y": 3785.7697777777776
+        },
+        "componentId": 115,
+        "sourceId": "walk:walk-paths-031:path:01:164",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0029",
+      "point": {
+        "x": 864,
+        "y": 3360
+      },
+      "roomIds": [
+        "ROOM_RM3"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 169.6067453399827,
+        "point": {
+          "x": 700.7468444444444,
+          "y": 3314.0124444444446
+        },
+        "componentId": 1374,
+        "sourceId": "walk:walk-paths-045:path:01:044",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0030",
+      "point": {
+        "x": 3936,
+        "y": 4320
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 165.16128354434898,
+        "point": {
+          "x": 3775.896888888889,
+          "y": 4360.561600000001
+        },
+        "componentId": 422,
+        "sourceId": "walk:walk-paths-128:path:01:297",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0031",
+      "point": {
+        "x": 864,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_SANDBOX_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 163.89228974996516,
+        "point": {
+          "x": 784.8860444444445,
+          "y": 3887.5328000000004
+        },
+        "componentId": 408,
+        "sourceId": "walk:walk-paths-050:path:02:133",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0032",
+      "point": {
+        "x": 3168,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 163.37209301680429,
+        "point": {
+          "x": 3165.4951111111104,
+          "y": 1852.6471111111111
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:294",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0033",
+      "point": {
+        "x": 4704,
+        "y": 1632
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 163.2158830518488,
+        "point": {
+          "x": 4822.220444444443,
+          "y": 1519.4684444444445
+        },
+        "componentId": 423,
+        "sourceId": "walk:walk-paths-011:path:01:135",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0034",
+      "point": {
+        "x": 2976,
+        "y": 2400
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 162.424814811555,
+        "point": {
+          "x": 2845.5306666666665,
+          "y": 2496.744888888889
+        },
+        "componentId": 297,
+        "sourceId": "walk:walk-paths-002:path:01:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0035",
+      "point": {
+        "x": 6240,
+        "y": 3360
+      },
+      "roomIds": [
+        "ROOM_PROJECT_AND_RELEASE_MGMT"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 161.37665092418476,
+        "point": {
+          "x": 6214.679111111111,
+          "y": 3200.6222222222223
+        },
+        "componentId": 1274,
+        "sourceId": "walk:walk-paths-123:path:01:028",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0036",
+      "point": {
+        "x": 1632,
+        "y": 4128
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 158.9271135954244,
+        "point": {
+          "x": 1476.3304888888888,
+          "y": 4095.987022222221
+        },
+        "componentId": 63,
+        "sourceId": "walk:walk-paths-032:path:01:030",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0037",
+      "point": {
+        "x": 6048,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_RM6"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 158.66746838375684,
+        "point": {
+          "x": 6030.040888888889,
+          "y": 3901.6478222222217
+        },
+        "componentId": 1229,
+        "sourceId": "walk:walk-paths-117:path:01:028",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0038",
+      "point": {
+        "x": 6048,
+        "y": 672
+      },
+      "roomIds": [
+        "ROOM_RELIABILITY_AND_OPERATIONS"
+      ],
+      "reason": "transition-unavailable: Door D34 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 157.92955111897868,
+        "point": {
+          "x": 5899.3279999999995,
+          "y": 725.2764444444443
+        },
+        "componentId": 1263,
+        "sourceId": "walk:walk-paths-086:path:01:069",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0039",
+      "point": {
+        "x": 6816,
+        "y": 1056
+      },
+      "roomIds": [
+        "ROOM_RELIABILITY_AND_OPERATIONS"
+      ],
+      "reason": "transition-unavailable: Door D34 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 157.27282568819896,
+        "point": {
+          "x": 6659.297777777778,
+          "y": 1069.384888888889
+        },
+        "componentId": 1404,
+        "sourceId": "walk:walk-paths-088:path:01:022",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0040",
+      "point": {
+        "x": 4704,
+        "y": 4128
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 156.78465257215987,
+        "point": {
+          "x": 4859.137777777778,
+          "y": 4105.3351111111115
+        },
+        "componentId": 795,
+        "sourceId": "walk:walk-paths-110:path:01:192",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0041",
+      "point": {
+        "x": 7200,
+        "y": 2592
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 155.44132156024355,
+        "point": {
+          "x": 7224.775111111111,
+          "y": 2438.545777777778
+        },
+        "componentId": 1530,
+        "sourceId": "walk:walk-paths-096:path:01:084",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0042",
+      "point": {
+        "x": 6432,
+        "y": 4896
+      },
+      "roomIds": [
+        "ROOM_RM8"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 152.58385586795734,
+        "point": {
+          "x": 6475.850666666666,
+          "y": 4749.8529777777785
+        },
+        "componentId": 1354,
+        "sourceId": "walk:walk-paths-113:path:02:074",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0043",
+      "point": {
+        "x": 4320,
+        "y": 4704
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 152.18970689163268,
+        "point": {
+          "x": 4258.462222222222,
+          "y": 4843.193422222223
+        },
+        "componentId": 598,
+        "sourceId": "walk:walk-paths-129:path:02:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0044",
+      "point": {
+        "x": 4128,
+        "y": 4704
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 149.86505556914383,
+        "point": {
+          "x": 4092.6062222222217,
+          "y": 4849.625599999999
+        },
+        "componentId": 539,
+        "sourceId": "walk:walk-paths-129:path:01:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0045",
+      "point": {
+        "x": 4512,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 149.4246882683677,
+        "point": {
+          "x": 4412.424888888889,
+          "y": 1935.4115555555559
+        },
+        "componentId": 590,
+        "sourceId": "walk:walk-paths-079:path:01:045",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0046",
+      "point": {
+        "x": 1248,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_RM2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 149.27554637348385,
+        "point": {
+          "x": 1224.2485333333334,
+          "y": 3891.3738666666663
+        },
+        "componentId": 50,
+        "sourceId": "walk:walk-paths-031:path:01:041",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0047",
+      "point": {
+        "x": 5856,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_RM6"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 147.1443504194214,
+        "point": {
+          "x": 5857.980444444445,
+          "y": 3891.131022222222
+        },
+        "componentId": 1229,
+        "sourceId": "walk:walk-paths-117:path:01:168",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0048",
+      "point": {
+        "x": 3360,
+        "y": 1824
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 146.45410509359388,
+        "point": {
+          "x": 3344.124444444444,
+          "y": 1678.408888888889
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:252",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0049",
+      "point": {
+        "x": 6816,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 144.3327590100632,
+        "point": {
+          "x": 6711.349333333333,
+          "y": 2115.3991111111113
+        },
+        "componentId": 1321,
+        "sourceId": "walk:walk-paths-102:path:01:152",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0050",
+      "point": {
+        "x": 2208,
+        "y": 3360
+      },
+      "roomIds": [
+        "ROOM_PLUGINS_AND_AUTOMATION"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 144.04505081842942,
+        "point": {
+          "x": 2333.6764444444443,
+          "y": 3430.3875555555555
+        },
+        "componentId": 244,
+        "sourceId": "walk:walk-paths-036:path:01:024",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0051",
+      "point": {
+        "x": 2784,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 143.25509747679644,
+        "point": {
+          "x": 2924.2275555555557,
+          "y": 1986.7040000000002
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:336",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0052",
+      "point": {
+        "x": 672,
+        "y": 4128
+      },
+      "roomIds": [
+        "ROOM_SANDBOX_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 142.72486342563332,
+        "point": {
+          "x": 811.8229333333334,
+          "y": 4099.365511111111
+        },
+        "componentId": 408,
+        "sourceId": "walk:walk-paths-050:path:01:057",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0053",
+      "point": {
+        "x": 1248,
+        "y": 2592
+      },
+      "roomIds": [
+        "ROOM_AGENT_PLATFORM_AND_MODELS"
+      ],
+      "reason": "transition-unavailable: Door D01 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 141.772569729046,
+        "point": {
+          "x": 1243.9175111111113,
+          "y": 2450.2862222222225
+        },
+        "componentId": 17,
+        "sourceId": "walk:walk-paths-053:path:01:065",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0054",
+      "point": {
+        "x": 6816,
+        "y": 2208
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 139.73792132699782,
+        "point": {
+          "x": 6711.349333333333,
+          "y": 2115.3991111111113
+        },
+        "componentId": 1321,
+        "sourceId": "walk:walk-paths-102:path:01:152",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0055",
+      "point": {
+        "x": 2016,
+        "y": 4896
+      },
+      "roomIds": [
+        "ROOM_RM5"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 137.08755544463466,
+        "point": {
+          "x": 1904.9919999999997,
+          "y": 4815.562311111111
+        },
+        "componentId": 117,
+        "sourceId": "walk:walk-paths-030:path:01:144",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0056",
+      "point": {
+        "x": 1632,
+        "y": 2208
+      },
+      "roomIds": [
+        "ROOM_AGENT_PLATFORM_AND_MODELS"
+      ],
+      "reason": "transition-unavailable: Door D01 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 135.26852156677936,
+        "point": {
+          "x": 1582.0325333333333,
+          "y": 2082.2986666666666
+        },
+        "componentId": 9,
+        "sourceId": "walk:walk-paths-056:path:03:060",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0057",
+      "point": {
+        "x": 3744,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 133.98797306000552,
+        "point": {
+          "x": 3874.986666666666,
+          "y": 3964.200533333333
+        },
+        "componentId": 422,
+        "sourceId": "walk:walk-paths-128:path:01:231",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0058",
+      "point": {
+        "x": 6624,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 132.3256941166632,
+        "point": {
+          "x": 6711.349333333333,
+          "y": 2115.3991111111113
+        },
+        "componentId": 1321,
+        "sourceId": "walk:walk-paths-102:path:01:152",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0059",
+      "point": {
+        "x": 4896,
+        "y": 480
+      },
+      "roomIds": [
+        "ROOM_EXECUTIVE_COMMAND"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 130.9348157719502,
+        "point": {
+          "x": 4948.296888888888,
+          "y": 359.96266666666645
+        },
+        "componentId": 891,
+        "sourceId": "walk:walk-paths-071:path:01:077",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0060",
+      "point": {
+        "x": 2016,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 130.06689165009664,
+        "point": {
+          "x": 2113.9448888888887,
+          "y": 3850.418488888889
+        },
+        "componentId": 193,
+        "sourceId": "walk:walk-paths-031:path:01:205",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0061",
+      "point": {
+        "x": 5088,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_FOCUS_C"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 129.51183033431084,
+        "point": {
+          "x": 4971.374222222222,
+          "y": 3879.681777777778
+        },
+        "componentId": 850,
+        "sourceId": "walk:walk-paths-110:path:01:128",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0062",
+      "point": {
+        "x": 2208,
+        "y": 2784
+      },
+      "roomIds": [
+        "ROOM_PLUGINS_AND_AUTOMATION"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 129.4946938728939,
+        "point": {
+          "x": 2310.021333333333,
+          "y": 2863.7528888888887
+        },
+        "componentId": 119,
+        "sourceId": "walk:walk-paths-038:path:01:132",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0063",
+      "point": {
+        "x": 5664,
+        "y": 2784
+      },
+      "roomIds": [
+        "ROOM_PROJECT_AND_RELEASE_MGMT"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 129.0801938304581,
+        "point": {
+          "x": 5622.266666666667,
+          "y": 2906.1475555555558
+        },
+        "componentId": 1221,
+        "sourceId": "walk:walk-paths-125:path:01:056",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0064",
+      "point": {
+        "x": 7776,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 128.9952116864218,
+        "point": {
+          "x": 7678.99911111111,
+          "y": 2101.0328888888885
+        },
+        "componentId": 1378,
+        "sourceId": "walk:walk-paths-094:path:01:304",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0065",
+      "point": {
+        "x": 6240,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_1"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 128.92752730223535,
+        "point": {
+          "x": 6266.412444444444,
+          "y": 3870.1930666666667
+        },
+        "componentId": 1320,
+        "sourceId": "walk:walk-paths-115:path:01:104",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0066",
+      "point": {
+        "x": 1632,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 128.08793673693393,
+        "point": {
+          "x": 1601.2318222222223,
+          "y": 3811.6624000000006
+        },
+        "componentId": 115,
+        "sourceId": "walk:walk-paths-031:path:01:123",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0067",
+      "point": {
+        "x": 6624,
+        "y": 2208
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 127.29819581121315,
+        "point": {
+          "x": 6711.349333333333,
+          "y": 2115.3991111111113
+        },
+        "componentId": 1321,
+        "sourceId": "walk:walk-paths-102:path:01:152",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0068",
+      "point": {
+        "x": 1632,
+        "y": 672
+      },
+      "roomIds": [
+        "ROOM_SECURITY_AND_GOVERNANCE"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 125.83509455677147,
+        "point": {
+          "x": 1608.9727999999998,
+          "y": 795.7102222222222
+        },
+        "componentId": 118,
+        "sourceId": "walk:walk-paths-060:path:01:007",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0069",
+      "point": {
+        "x": 7776,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_SANDBOX_1"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 125.04356017142894,
+        "point": {
+          "x": 7652.618666666666,
+          "y": 3764.320888888889
+        },
+        "componentId": 1644,
+        "sourceId": "walk:walk-paths-118:path:01:324",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0070",
+      "point": {
+        "x": 6624,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_1"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 123.49093291664818,
+        "point": {
+          "x": 6516.275555555556,
+          "y": 3804.3776
+        },
+        "componentId": 1320,
+        "sourceId": "walk:walk-paths-115:path:01:078",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0071",
+      "point": {
+        "x": 1824,
+        "y": 4128
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 122.06758710066703,
+        "point": {
+          "x": 1756.3400888888887,
+          "y": 4229.600355555556
+        },
+        "componentId": 115,
+        "sourceId": "prototype-portal-alias:D07:zone:lower west service exterior boundary:node",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0072",
+      "point": {
+        "x": 7968,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_SANDBOX_1"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 121.87313908413915,
+        "point": {
+          "x": 7851.898666666668,
+          "y": 3898.938666666667
+        },
+        "componentId": 1644,
+        "sourceId": "walk:walk-paths-118:path:01:252",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0073",
+      "point": {
+        "x": 2400,
+        "y": 2784
+      },
+      "roomIds": [
+        "ROOM_PLUGINS_AND_AUTOMATION"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 120.2359502862375,
+        "point": {
+          "x": 2310.021333333333,
+          "y": 2863.7528888888887
+        },
+        "componentId": 119,
+        "sourceId": "walk:walk-paths-038:path:01:132",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0074",
+      "point": {
+        "x": 1440,
+        "y": 4896
+      },
+      "roomIds": [
+        "ROOM_RM5"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 119.50290507854808,
+        "point": {
+          "x": 1547.3882666666668,
+          "y": 4843.57191111111
+        },
+        "componentId": 117,
+        "sourceId": "walk:walk-paths-030:path:01:072",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0075",
+      "point": {
+        "x": 6624,
+        "y": 4128
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_1"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 118.71627369866641,
+        "point": {
+          "x": 6680.816,
+          "y": 4232.237688888888
+        },
+        "componentId": 1320,
+        "sourceId": "prototype-portal-alias:D21:zone:lower east service exterior boundary:node",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0076",
+      "point": {
+        "x": 2016,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 118.5831576890505,
+        "point": {
+          "x": 1905.0168888888886,
+          "y": 3785.7697777777776
+        },
+        "componentId": 115,
+        "sourceId": "walk:walk-paths-031:path:01:164",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0077",
+      "point": {
+        "x": 2784,
+        "y": 480
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 118.43876527889887,
+        "point": {
+          "x": 2812.4586666666664,
+          "y": 365.03111111111116
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0078",
+      "point": {
+        "x": 6816,
+        "y": 4704
+      },
+      "roomIds": [
+        "ROOM_RM8"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 118.42162586137924,
+        "point": {
+          "x": 6869.333333333333,
+          "y": 4809.731911111112
+        },
+        "componentId": 1354,
+        "sourceId": "walk:walk-paths-113:path:02:333",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0079",
+      "point": {
+        "x": 6816,
+        "y": 3360
+      },
+      "roomIds": [
+        "ROOM_PROJECT_AND_RELEASE_MGMT"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 116.8097415048071,
+        "point": {
+          "x": 6715.546666666666,
+          "y": 3419.6124444444445
+        },
+        "componentId": 1377,
+        "sourceId": "walk:walk-paths-121:path:01:132",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0080",
+      "point": {
+        "x": 6816,
+        "y": 3744
+      },
+      "roomIds": [
+        "ROOM_CONFERENCE_1"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 116.3413029213277,
+        "point": {
+          "x": 6837.891555555555,
+          "y": 3858.2631111111114
+        },
+        "componentId": 1320,
+        "sourceId": "walk:walk-paths-115:path:01:052",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0081",
+      "point": {
+        "x": 3360,
+        "y": 480
+      },
+      "roomIds": [
+        "ROOM_EXECUTIVE_COMMAND"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 115.02927442574587,
+        "point": {
+          "x": 3388.6008888888887,
+          "y": 368.5831111111112
+        },
+        "componentId": 418,
+        "sourceId": "walk:walk-paths-070:path:01:126",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0082",
+      "point": {
+        "x": 1632,
+        "y": 2784
+      },
+      "roomIds": [
+        "ROOM_PLUGINS_AND_AUTOMATION"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 113.76959897339817,
+        "point": {
+          "x": 1724.0293333333332,
+          "y": 2850.8888888888887
+        },
+        "componentId": 119,
+        "sourceId": "walk:walk-paths-038:path:01:220",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0083",
+      "point": {
+        "x": 2400,
+        "y": 1248
+      },
+      "roomIds": [
+        "ROOM_SECURITY_AND_GOVERNANCE"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 113.33402939742648,
+        "point": {
+          "x": 2373.402666666667,
+          "y": 1358.1688888888887
+        },
+        "componentId": 255,
+        "sourceId": "walk:walk-paths-065:path:01:000",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0084",
+      "point": {
+        "x": 5472,
+        "y": 2208
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 112.94807635456813,
+        "point": {
+          "x": 5575.781333333332,
+          "y": 2163.4275555555555
+        },
+        "componentId": 1061,
+        "sourceId": "walk:walk-paths-007:path:01:066",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0085",
+      "point": {
+        "x": 2784,
+        "y": 1056
+      },
+      "roomIds": [
+        "ROOM_SECURITY_AND_GOVERNANCE"
+      ],
+      "reason": "transition-unavailable: Door D42 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 111.97186369688167,
+        "point": {
+          "x": 2753.427555555556,
+          "y": 1163.7173333333333
+        },
+        "componentId": 295,
+        "sourceId": "walk:walk-paths-065:path:02:071",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0086",
+      "point": {
+        "x": 2784,
+        "y": 2400
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 110.86631938833385,
+        "point": {
+          "x": 2768.389333333333,
+          "y": 2290.2382222222222
+        },
+        "componentId": 293,
+        "sourceId": "walk:walk-paths-054:path:01:008",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0087",
+      "point": {
+        "x": 2208,
+        "y": 3168
+      },
+      "roomIds": [
+        "ROOM_PLUGINS_AND_AUTOMATION"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 110.56195375165306,
+        "point": {
+          "x": 2310.021333333333,
+          "y": 3210.6097777777777
+        },
+        "componentId": 241,
+        "sourceId": "walk:walk-paths-039:path:01:014",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0088",
+      "point": {
+        "x": 480,
+        "y": 4128
+      },
+      "roomIds": [
+        "ROOM_SANDBOX_2"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 110.4855790438723,
+        "point": {
+          "x": 370.2453333333333,
+          "y": 4140.687644444444
+        },
+        "componentId": 453,
+        "sourceId": "walk:walk-paths-049:path:01:098",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0089",
+      "point": {
+        "x": 5664,
+        "y": 3360
+      },
+      "roomIds": [
+        "ROOM_PROJECT_AND_RELEASE_MGMT"
+      ],
+      "reason": "transition-unavailable: Door D28 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 109.72713515819491,
+        "point": {
+          "x": 5598.926222222221,
+          "y": 3448.3484444444443
+        },
+        "componentId": 1213,
+        "sourceId": "walk:walk-paths-125:path:01:196",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0090",
+      "point": {
+        "x": 6816,
+        "y": 2400
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 109.50557136060418,
+        "point": {
+          "x": 6874.743111111112,
+          "y": 2492.4159999999997
+        },
+        "componentId": 1464,
+        "sourceId": "walk:walk-paths-101:path:01:018",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0091",
+      "point": {
+        "x": 2976,
+        "y": 2592
+      },
+      "roomIds": [
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 107.61299037285241,
+        "point": {
+          "x": 2884.0462222222222,
+          "y": 2536.097777777778
+        },
+        "componentId": 296,
+        "sourceId": "walk:walk-paths-001:path:01:418",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0092",
+      "point": {
+        "x": 2976,
+        "y": 4704
+      },
+      "roomIds": [
+        "ROOM_SECURITY_A"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 106.99413572259131,
+        "point": {
+          "x": 2919.6675555555557,
+          "y": 4613.036266666666
+        },
+        "componentId": 226,
+        "sourceId": "walk:walk-paths-027:path:01:088",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0093",
+      "point": {
+        "x": 2592,
+        "y": 2976
+      },
+      "roomIds": [
+        "ROOM_PLUGINS_AND_AUTOMATION"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 106.81290883099412,
+        "point": {
+          "x": 2486.625777777778,
+          "y": 2958.5280000000002
+        },
+        "componentId": 119,
+        "sourceId": "walk:walk-paths-038:path:01:088",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0094",
+      "point": {
+        "x": 3552,
+        "y": 2208
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 106.53623885158486,
+        "point": {
+          "x": 3657.829333333333,
+          "y": 2220.252444444445
+        },
+        "componentId": 454,
+        "sourceId": "walk:walk-paths-075:path:01:066",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0095",
+      "point": {
+        "x": 7584,
+        "y": 2784
+      },
+      "roomIds": [
+        "ROOM_RM10"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 105.6350876387418,
+        "point": {
+          "x": 7501.253333333332,
+          "y": 2849.664
+        },
+        "componentId": 1615,
+        "sourceId": "prototype-portal-alias:D26:ambiguous:focus d rm10 upper circulation:node",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0096",
+      "point": {
+        "x": 6432,
+        "y": 2400
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 105.41764548431556,
+        "point": {
+          "x": 6488.727111111111,
+          "y": 2488.8533333333335
+        },
+        "componentId": 1366,
+        "sourceId": "walk:walk-paths-102:path:01:019",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0097",
+      "point": {
+        "x": 4512,
+        "y": 3360
+      },
+      "roomIds": [
+        "ROOM_CENTRAL_NEXUS",
+        "ROOM_MAIN_CONNECTING_WALKWAY"
+      ],
+      "reason": "different-component: The nearby navigation geometry is disconnected from this agent.",
+      "nearestSupport": {
+        "distance": 105.10795992457543,
+        "point": {
+          "x": 4615.742222222222,
+          "y": 3343.1111111111113
+        },
+        "componentId": 719,
+        "sourceId": "walk:walk-paths-004:path:01:096",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0098",
+      "point": {
+        "x": 4320,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 104.33219691009548,
+        "point": {
+          "x": 4223.960888888889,
+          "y": 3895.236088888889
+        },
+        "componentId": 422,
+        "sourceId": "walk:walk-paths-128:path:01:165",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0099",
+      "point": {
+        "x": 7008,
+        "y": 2016
+      },
+      "roomIds": [
+        "ROOM_SOFTWARE_ENG"
+      ],
+      "reason": "transition-unavailable: Door D30 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 104.31687660248838,
+        "point": {
+          "x": 6991.438222222221,
+          "y": 2118.9937777777777
+        },
+        "componentId": 1321,
+        "sourceId": "walk:walk-paths-102:path:01:171",
+        "kind": "node"
+      }
+    },
+    {
+      "id": "baseline-snap-0100",
+      "point": {
+        "x": 4128,
+        "y": 3936
+      },
+      "roomIds": [
+        "ROOM_DATA_MEMORY_KNOWLEDGE"
+      ],
+      "reason": "transition-unavailable: Door D15 has no nearby approach in the agent's reachable component.",
+      "nearestSupport": {
+        "distance": 104.2601968414612,
+        "point": {
+          "x": 4223.960888888889,
+          "y": 3895.236088888889
+        },
+        "componentId": 422,
+        "sourceId": "walk:walk-paths-128:path:01:165",
+        "kind": "node"
+      }
+    }
+  ],
+  "omittedFailureCount": 304
+}

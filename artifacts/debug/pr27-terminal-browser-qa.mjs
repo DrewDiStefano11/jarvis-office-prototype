@@ -220,7 +220,7 @@ async function discoverRouteCases(limit = 25) {
                 const target = roomSide === 0 ? endpoints.exitPoint : endpoints.approachPoint;
                 if (!target || fixtures.some(point => Math.hypot(target.x - point.x, target.y - point.y) < 110)) continue;
                 const selection = prototype.selectPrototypeRouteToPoint(graph, agent, target);
-                if (selection.status !== 'accepted' || selection.plan.route.crossedDoorIds.includes('D46')) continue;
+                if (selection.status !== 'accepted') continue;
                 crossCase = { agentId: agent.fixture.id, origin: agent.point, target: selection.plan.snappedPoint,
                     crossedDoorIds: selection.plan.route.crossedDoorIds, length: selection.plan.route.length };
                 if (crossCase.crossedDoorIds.length > 0) break;
@@ -280,7 +280,7 @@ async function timedMotionRun(label, durationMs) {
                 const gap = previousAt === null ? 0 : now - previousAt;
                 previousAt = now;
                 maxSampleGapMs = Math.max(maxSampleGapMs, gap);
-                let moving = 0;
+                let walking = 0;
                 let changed = 0;
                 for (const agent of document.querySelectorAll('.prototype-agent')) {
                     const x = Number.parseFloat(agent.style.left);
@@ -299,7 +299,7 @@ async function timedMotionRun(label, durationMs) {
                     if (agent.dataset.portalPhase) portalPhases.add(agent.dataset.portalPhase);
                     if (agent.dataset.portalDoor) portalDoors.add(agent.dataset.portalDoor);
                     activityCounts[agent.dataset.agentState] = (activityCounts[agent.dataset.agentState] ?? 0) + 1;
-                    if (['walking', 'waiting'].includes(movement)) moving += 1;
+                    if (movement === 'walking') walking += 1;
                     if (prior) {
                         const dx = x - prior.x;
                         const dy = y - prior.y;
@@ -317,14 +317,14 @@ async function timedMotionRun(label, durationMs) {
                     }
                     previous.set(agent.dataset.agentId, { x, y, revision, progress, framePosition });
                 }
-                if (moving > 0 && changed === 0) movingNoChangeMs += gap; else movingNoChangeMs = 0;
+                if (walking > 0 && changed === 0) movingNoChangeMs += gap; else movingNoChangeMs = 0;
                 maximumMovingNoChangeMs = Math.max(maximumMovingNoChangeMs, movingNoChangeMs);
                 renderedSamples += 1;
-                if (gap > 250) gaps.push({ atMs: now - started, gapMs: gap, moving, changed });
+                if (gap > 250) gaps.push({ atMs: now - started, gapMs: gap, walking, changed });
                 if (now - started >= duration) {
                     clearInterval(timer);
                     observer?.disconnect();
-                    resolve({ durationMs: now - started, maxSampleGapMs, maximumMovingNoChangeMs, staleRollbackCount,
+                    resolve({ durationMs: now - started, sampleCount: renderedSamples, averageSampleGapMs: renderedSamples > 1 ? (now - started) / (renderedSamples - 1) : 0, maxSampleGapMs, maximumMovingNoChangeMs, staleRollbackCount,
                         backwardsCount, sidewaysCount, movingSamples, positionChanges, frameChanges, renderedSamples,
                         states: [...states], resolvedStates: [...resolvedStates], portalPhases: [...portalPhases], portalDoors: [...portalDoors], activityCounts, gaps, longTasks });
                 }
@@ -355,7 +355,7 @@ const digest = value => createHash('sha256').update(value).digest('hex');
 report.candidate.sourceVerification = {
     diskSha256: digest(diskSource), servedSha256: servedSource ? digest(servedSource) : null,
     exactMatch: servedSource === diskSource, devClientPresent: await evaluate(`[...document.scripts].some(script => script.src.includes('/@vite/client'))`),
-    salvageTokensPresent: servedSource.includes('Office Engine agent count') && servedSource.includes('PROTOTYPE_D01_ROOM_BRIDGE'),
+    continuousNavigationTokensPresent: servedSource.includes('continuousPrototypeNavigationField') && servedSource.includes('Navigation probes'),
 };
 await screenshot('candidate-initial');
 
@@ -479,13 +479,34 @@ report.timed.debug = await timedMotionRun('agent-simulation', timedRunMs);
 await screenshot('agent-simulation-after-timed-run');
 
 report.candidate.finalAgents = await agentSnapshot();
+report.candidate.navigationDiagnostics = await call(() => Object.fromEntries([...document.querySelectorAll('dt')]
+    .map(term => [term.textContent?.trim(), term.nextElementSibling?.textContent?.trim()])));
 report.browserEvents = browserEvents;
 report.consoleErrors = browserEvents.filter(event => event.method === 'Runtime.exceptionThrown'
     || event.method === 'Network.loadingFailed'
     || event.params?.entry?.level === 'error'
     || event.params?.type === 'error');
 report.finishedAt = new Date().toISOString();
+const acceptanceFailures = [];
+const requireQa = (condition, message) => { if (!condition) acceptanceFailures.push(message); };
+requireQa(report.candidate.sourceVerification.exactMatch, 'Served candidate source does not match the worktree source.');
+requireQa(report.candidate.sourceVerification.continuousNavigationTokensPresent, 'Served candidate source is missing continuous-navigation integration tokens.');
+requireQa(JSON.stringify(report.controls.countSlider.counts) === JSON.stringify([20, 30, 10, 1, 50]), 'Agent-count controls regressed.');
+requireQa(report.controls.panZoom.zoomChanged && report.controls.panZoom.panChanged, 'Pan/zoom controls did not update the world transform.');
+requireQa(report.drags.summary.successful >= 20 && report.drags.summary.crossRoom >= 10 && report.drags.summary.transitions >= 10, 'Representative drag-route quota was not met.');
+for (const [label, timed] of Object.entries(report.timed)) {
+    requireQa(timed.sampleCount >= Math.floor(timedRunMs / 125), `${label} sample coverage is too sparse.`);
+    requireQa(timed.maxSampleGapMs < 1_000, `${label} had a repeated/global pause of at least one second.`);
+    requireQa(timed.maximumMovingNoChangeMs < 2_000, `${label} had a sustained moving-agent freeze.`);
+    requireQa(timed.staleRollbackCount === 0, `${label} committed a stale route rollback.`);
+    requireQa(timed.backwardsCount === 0, `${label} showed backward walking.`);
+    requireQa(timed.sidewaysCount === 0, `${label} showed sideways gliding.`);
+}
+requireQa(report.consoleErrors.length === 0, 'Browser console, runtime, or network errors were captured.');
+report.acceptance = { passed: acceptanceFailures.length === 0, failures: acceptanceFailures };
 await writeFile(path.join(outputDir, 'qa-report.json'), JSON.stringify(report, null, 2));
 process.stdout.write(`${JSON.stringify({ sourceVerification: report.candidate.sourceVerification, controls: report.controls,
-    dragSummary: report.drags.summary, timed: report.timed, consoleErrors: report.consoleErrors.length }, null, 2)}\n`);
+    dragSummary: report.drags.summary, timed: report.timed, navigationDiagnostics: report.candidate.navigationDiagnostics,
+    consoleErrors: report.consoleErrors.length, acceptance: report.acceptance }, null, 2)}\n`);
 socket.close();
+if (acceptanceFailures.length > 0) process.exitCode = 1;

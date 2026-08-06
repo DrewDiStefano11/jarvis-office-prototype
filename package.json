@@ -32,6 +32,8 @@
     "generate:sprites": "node scripts/generate-sprites.mjs",
     "check:sprites-generated": "node scripts/check-sprites-generated.mjs",
     "check:production-bundle": "node scripts/check-production-bundle.mjs",
+    "check:floor1-reachability": "node scripts/check-floor1-reachability.mjs",
+    "replay:floor1-reachability": "node scripts/check-floor1-reachability.mjs --replay",
     "audit:floor1": "node scripts/audit-floor1.mjs",
     "extract:floor1": "node scripts/extract-floor1.mjs",
     "classify:floor1": "node scripts/classify-floor1.mjs",
