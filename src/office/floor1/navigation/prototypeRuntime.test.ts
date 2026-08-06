@@ -9,9 +9,14 @@ import objects from '../../data/floor1/provisional/objects.json';
 import walkPaths from '../../data/floor1/provisional/walk-paths.json';
 import { OFFICE_SOURCE_WIDTH } from '../../constants';
 import { FLOOR1_CANDIDATE_REGISTRATION } from '../candidateRegistration';
-import { buildCandidateSandboxGraph } from './candidateNavigation';
+import {
+    buildCandidateSandboxGraph,
+    candidatePointHasStaticClearance,
+    candidateSegmentHasStaticClearance,
+} from './candidateNavigation';
 import {
     advancePrototypeAgents,
+    auditPrototypeDoorConnectivity,
     auditPrototypePortalEndpoints,
     assignPrototypeIdle,
     assignPrototypeTalk,
@@ -24,6 +29,7 @@ import {
     layoutPrototypeAgentLabels,
     planPrototypeRouteToPoint,
     prototypeDoorTraversalCoverage,
+    PROTOTYPE_D01_ROOM_BRIDGE,
     prototypeOpenDoorRuntimes,
     prototypeOpenGraph,
     prototypeRoomAtPoint,
@@ -216,12 +222,33 @@ describe('prototype runtime', () => {
         expect(plan?.snappedNodeId).toBeTruthy();
     });
 
-    it('audits every registered door and never approves an incomplete portal pair', () => {
+    it('audits every registered door and rejects only the geometrically mismatched D46 pair', () => {
         const audit = auditPrototypePortalEndpoints(graph);
         expect(audit).toHaveLength(47);
         expect(new Set(audit.map(item => item.doorId)).size).toBe(47);
-        expect(audit.filter(item => item.status === 'provisional-valid').every(item => item.approachPoint && item.exitPoint)).toBe(true);
-        expect(audit.filter(item => item.status === 'disabled-incomplete').every(item => !item.approachPoint || !item.exitPoint)).toBe(true);
+        const incomplete = audit.filter(item => item.status === 'disabled-incomplete');
+        const incompleteDiagnostics = incomplete.map(item => {
+            const door = graph.doors.find(candidate => candidate.id === item.doorId)!;
+            return {
+                doorId: item.doorId,
+                zones: door.zoneIds.map(zoneId => ({
+                    zoneId,
+                    room: graph.rooms.some(room => room.id === zoneId),
+                    nodes: graph.walkNodes.filter(node => node.roomId === zoneId || node.roomIds.includes(zoneId)).length,
+                    center: graph.rooms.find(room => room.id === zoneId)?.center,
+                    nearestNode: graph.walkNodes
+                        .filter(node => node.roomId === zoneId || node.roomIds.includes(zoneId))
+                        .map(node => ({ id: node.id, point: node.point, distance: Math.hypot(node.point.x - door.point.x, node.point.y - door.point.y) }))
+                        .sort((a, b) => a.distance - b.distance)[0],
+                })),
+                doorPoint: door.point,
+            };
+        });
+        expect(incompleteDiagnostics).toEqual([expect.objectContaining({
+            doorId: 'D46',
+            doorPoint: expect.objectContaining({ x: 7002.114666666666, y: 3946.4287999999997 }),
+        })]);
+        expect(audit.filter(item => item.status === 'provisional-valid')).toHaveLength(46);
     });
 
     it('returns explicit click-route rejection reasons instead of a generic null result', () => {
@@ -231,15 +258,53 @@ describe('prototype runtime', () => {
         });
     });
 
-    it('reports the unverified D47 transition for the reproduced long A21 click', () => {
+    it('routes the reproduced A21 start through D01 without inventing an elevator shortcut', () => {
         const originalAgent = createPrototypeAgents(registeredGraph, 25, 'debug')[20];
         const start = snapPrototypePoint(registeredGraph, { x: 1_022.48, y: 1_805.52 }, 620);
         expect(start).not.toBeNull();
         if (!start) return;
         const agent = repositionPrototypeAgent(originalAgent, start, 0);
-        const selection = findValidatedPrototypeRouteToPoint(registeredGraph, agent, { x: 5_325, y: 2_966 });
-        expect(selection).toMatchObject({ status: 'rejected', reason: 'transition-unavailable' });
-        expect(selection.status === 'rejected' ? selection.message : '').toContain('D47 has no validated portal endpoint pair');
+        const d01Connectivity = auditPrototypeDoorConnectivity(registeredGraph, 'D01', start.point);
+        expect(d01Connectivity).toMatchObject({
+            zones: [
+                { zoneId: 'ROOM_AGENT_PLATFORM_AND_MODELS' },
+                { zoneId: 'ROOM_MAIN_CONNECTING_WALKWAY' },
+            ],
+        });
+        if (!d01Connectivity) return;
+        expect(d01Connectivity.zones[0].nearbyNodes.map(node => node.componentId)).toContain(d01Connectivity.probeComponentId);
+        expect(PROTOTYPE_D01_ROOM_BRIDGE.every(point => candidatePointHasStaticClearance(registeredGraph, point))).toBe(true);
+        expect(PROTOTYPE_D01_ROOM_BRIDGE.slice(1).map((point, index) =>
+            candidateSegmentHasStaticClearance(registeredGraph, PROTOTYPE_D01_ROOM_BRIDGE[index], point))).toEqual([true, true, true, true, true]);
+        const selection = selectPrototypeRouteToPoint(registeredGraph, agent, { x: 3_050, y: 2_300 });
+        expect(selection.status, JSON.stringify(selection)).toBe('accepted');
+        if (selection.status !== 'accepted') return;
+        expect(selection.plan.route.crossedDoorIds).toContain('D01');
+        expect(selection.plan.route.crossedDoorIds).not.toContain('D47');
+        expect(selection.plan.route.doorSteps.map(step => step.doorId)).toContain('D01');
+
+        const d01Step = selection.plan.route.doorSteps.find(step => step.doorId === 'D01');
+        expect(d01Step).toBeDefined();
+        if (!d01Step) return;
+        let moving = {
+            ...startPrototypeRoute(agent, selection.plan),
+            point: d01Step.thresholdPoint,
+            progress: Math.max(0, d01Step.thresholdDistance - 1),
+        };
+        const doorsOpen = prototypeOpenDoorRuntimes(registeredGraph);
+        for (let index = 0; index < 10 && !moving.portalTransition; index += 1) {
+            moving = advancePrototypeAgents([moving], 100, 2_000, false, doorsOpen, registeredGraph)[0];
+        }
+        expect(moving.movementState).toBe('portal-out');
+        moving = advancePrototypeAgents([moving], 170, 2_000, false, doorsOpen, registeredGraph)[0];
+        expect(moving.movementState).toBe('hidden-transition');
+        moving = advancePrototypeAgents([moving], 120, 2_000, false, doorsOpen, registeredGraph)[0];
+        expect(moving.movementState).toBe('portal-in');
+        moving = advancePrototypeAgents([moving], 220, 2_000, false, doorsOpen, registeredGraph)[0];
+        expect(moving.portalTransition).toBeUndefined();
+        expect(moving.point).toEqual(d01Step.exitPoint);
+        const continued = advancePrototypeAgents([moving], 100, 180, false, doorsOpen, registeredGraph)[0];
+        expect(continued.progress).toBeGreaterThan(moving.progress);
     });
 
     it('selects a nearby reachable alternative when the closest endpoint is occupied', () => {
@@ -460,7 +525,7 @@ describe('prototype runtime', () => {
         expect(current.workstationId).toBe(assigned.workstationId);
         expect(current.movementState).toBe('arrived');
         expect(current.velocity).toEqual({ x: 0, y: 0 });
-        expect(prototypeSpriteState(current)).toBe('working');
+        expect(prototypeSpriteState(current)).toBe('typing');
 
         const stationary = advancePrototypeAgents([current], 500, 1000, false, prototypeOpenDoorRuntimes(graph), graph)[0];
         expect(stationary.point).toEqual(current.point);
@@ -583,6 +648,10 @@ describe('prototype runtime', () => {
         expect(prototypeSpriteState({ ...agent, movementState: 'walking' })).toBe('walking');
         expect(prototypeSpriteState({ ...agent, activityState: 'working-at-desk', task: {
             kind: 'work', phase: 'working', workstationId: 'POSITION_001', destination: agent.point, nodeId: agent.currentNodeId, startedAtMs: 0,
-        } })).toBe('working');
+        } })).toBe('typing');
+        const working = { ...agent, fixture: { ...agent.fixture, id: 'prototype-agent-03' }, activityState: 'working-at-desk' as const, task: {
+            kind: 'work' as const, phase: 'working' as const, workstationId: 'POSITION_001', destination: agent.point, nodeId: agent.currentNodeId, startedAtMs: 0,
+        } };
+        expect([0, 4_000, 8_000].map(elapsed => prototypeSpriteState(working, elapsed))).toEqual(['sitting', 'typing', 'working']);
     });
 });

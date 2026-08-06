@@ -16,8 +16,8 @@ import {
     type CandidateRouteResult,
 } from './candidateNavigation';
 
-export const PROTOTYPE_AGENT_LIMIT = 25;
-export const PROTOTYPE_AMBIENT_COUNTS = [15, 20, 25, 30] as const;
+export const PROTOTYPE_AGENT_LIMIT = 50;
+export const PROTOTYPE_ACTIVITY_SPRITE_ASSET_ID = 'agent-activity-sheet-01';
 export const PROTOTYPE_CLICK_SNAP_LIMIT = 620;
 export const PROTOTYPE_DOOR_POLICY = 'prototype-open' as const;
 export const PROTOTYPE_AGENT_RADIUS = AGENT_FOOTPRINT_RADIUS;
@@ -30,8 +30,18 @@ export const PROTOTYPE_PORTAL_OUT_MS = 160;
 export const PROTOTYPE_PORTAL_HIDDEN_MS = 120;
 export const PROTOTYPE_PORTAL_IN_MS = 220;
 export const PROTOTYPE_PORTAL_TOTAL_MS = PROTOTYPE_PORTAL_OUT_MS + PROTOTYPE_PORTAL_HIDDEN_MS + PROTOTYPE_PORTAL_IN_MS;
+export const PROTOTYPE_D01_ROOM_BRIDGE = [
+    { x: 958.194311111111, y: 2011.9608888888893 },
+    { x: 800, y: 2100 },
+    { x: 800, y: 2350 },
+    { x: 950, y: 2350 },
+    { x: 1500, y: 2430 },
+    { x: 2000.9333333333334, y: 2450.3128888888887 },
+] as const satisfies readonly Point[];
 const PROTOTYPE_TRAFFIC_CELL_SIZE = 160;
 const PROTOTYPE_TRAFFIC_CLEARANCE = PROTOTYPE_AGENT_DIAMETER + 4;
+const PROTOTYPE_MOTION_SPRITE_ASSETS = AGENT_SPRITE_MANIFEST.assets
+    .filter(asset => asset.runtimeCapability === 'limited-cardinal-idle-walk');
 
 export type PrototypeActivityState = 'walking' | 'working-at-desk' | 'idle' | 'talking' | 'waiting' | 'moving-to-task';
 export type PrototypePortalPhase = 'portal-out' | 'hidden-transition' | 'portal-in';
@@ -366,13 +376,17 @@ class PrototypeSpatialHash {
 type PrototypeWalkNetwork = Readonly<{
     points: ReadonlyMap<string, Point>;
     nodeIds: ReadonlyMap<string, string>;
+    keyByNodeId: ReadonlyMap<string, string>;
+    roomIdsByKey: ReadonlyMap<string, readonly string[]>;
     adjacency: ReadonlyMap<string, readonly Readonly<{ to: string; length: number }>[] >;
     componentByKey: ReadonlyMap<string, number>;
+    clearSegmentKeys: ReadonlySet<string>;
 }>;
 
 const WALK_NETWORK_CACHE = new WeakMap<object, PrototypeWalkNetwork>();
 const WORKSTATION_CACHE = new WeakMap<object, readonly PrototypeWorkstation[]>();
 const PORTAL_AUDIT_CACHE = new WeakMap<object, readonly PrototypePortalEndpointAudit[]>();
+const AMBIENT_PATROL_CACHE = new WeakMap<object, Map<string, Readonly<{ forward: PrototypeRoutePlan; reverse: PrototypeRoutePlan }>>>();
 
 function prototypeWalkNetwork(graph: CandidateNavigationGraph, metrics?: PrototypeRuntimeMetrics): PrototypeWalkNetwork {
     const cached = WALK_NETWORK_CACHE.get(graph);
@@ -380,10 +394,16 @@ function prototypeWalkNetwork(graph: CandidateNavigationGraph, metrics?: Prototy
     if (metrics) metrics.graphBuilds += 1;
     const points = new Map<string, Point>();
     const nodeIds = new Map<string, string>();
+    const keyByNodeId = new Map<string, string>();
+    const roomIdsByKey = new Map<string, readonly string[]>();
     const mutable = new Map<string, Array<{ to: string; length: number }>>();
+    const clearSegmentKeys = new Set<string>();
     for (const node of graph.walkNodes) {
         const key = pointKey(node.point);
         points.set(key, node.point);
+        keyByNodeId.set(node.id, key);
+        const roomIds = node.roomIds.length > 0 ? node.roomIds : [node.roomId];
+        roomIdsByKey.set(key, [...new Set([...(roomIdsByKey.get(key) ?? []), ...roomIds])]);
         if (!nodeIds.has(key) || node.id.localeCompare(nodeIds.get(key)!) < 0) nodeIds.set(key, node.id);
     }
     for (const segment of graph.walkSegments) {
@@ -392,6 +412,7 @@ function prototypeWalkNetwork(graph: CandidateNavigationGraph, metrics?: Prototy
         points.set(a, segment.a);
         points.set(b, segment.b);
         if (candidateSegmentHasStaticClearance(graph, segment.a, segment.b)) {
+            clearSegmentKeys.add(undirectedEdgeKey(segment.a, segment.b));
             const length = distance(segment.a, segment.b);
             mutable.set(a, [...(mutable.get(a) ?? []), { to: b, length }]);
             mutable.set(b, [...(mutable.get(b) ?? []), { to: a, length }]);
@@ -403,8 +424,8 @@ function prototypeWalkNetwork(graph: CandidateNavigationGraph, metrics?: Prototy
         if (componentByKey.has(key)) continue;
         const queue = [key];
         componentByKey.set(key, componentId);
-        while (queue.length > 0) {
-            const current = queue.shift()!;
+        for (let cursor = 0; cursor < queue.length; cursor += 1) {
+            const current = queue[cursor];
             for (const edge of mutable.get(current) ?? []) {
                 if (componentByKey.has(edge.to)) continue;
                 componentByKey.set(edge.to, componentId);
@@ -420,7 +441,7 @@ function prototypeWalkNetwork(graph: CandidateNavigationGraph, metrics?: Prototy
     }
     const adjacency = new Map<string, readonly Readonly<{ to: string; length: number }>[] >();
     mutable.forEach((edges, key) => adjacency.set(key, edges.sort((a, b) => a.to.localeCompare(b.to))));
-    const network = { points, nodeIds, adjacency, componentByKey };
+    const network = { points, nodeIds, keyByNodeId, roomIdsByKey, adjacency, componentByKey, clearSegmentKeys };
     WALK_NETWORK_CACHE.set(graph, network);
     return network;
 }
@@ -436,6 +457,84 @@ export type PrototypePortalEndpointAudit = Readonly<{
     status: 'provisional-valid' | 'disabled-incomplete';
     reason: string;
 }>;
+
+export type PrototypeDoorConnectivityAudit = Readonly<{
+    doorId: string;
+    doorPoint: Point;
+    probePoint: Point | null;
+    probeNodeId: string | null;
+    probeNodePoint: Point | null;
+    probeRoomIds: readonly string[];
+    probeComponentId: number | null;
+    zones: readonly Readonly<{
+        zoneId: string;
+        roomExists: boolean;
+        nearbyNodes: readonly Readonly<{ id: string; point: Point; componentId: number | null; distance: number }>[];
+        nearestClearConnector: Readonly<{ fromNodeId: string; from: Point; toNodeId: string; to: Point; length: number }> | null;
+        clearConnectors: readonly Readonly<{ fromNodeId: string; from: Point; toNodeId: string; to: Point; length: number }>[];
+    }>[];
+}>;
+
+export function auditPrototypeDoorConnectivity(
+    graph: CandidateNavigationGraph,
+    doorId: string,
+    probePoint: Point | null = null,
+): PrototypeDoorConnectivityAudit | null {
+    const door = graph.doors.find(candidate => candidate.id === doorId);
+    if (!door) return null;
+    const network = prototypeWalkNetwork(graph);
+    const probeKey = probePoint ? nearestNetworkKey(network, probePoint) : null;
+    const probeNode = probeKey ? graph.walkNodes
+        .filter(node => pointKey(node.point) === probeKey)
+        .slice()
+        .sort((a, b) => a.id.localeCompare(b.id))[0] ?? null : null;
+    const probeComponentId = probeKey ? network.componentByKey.get(probeKey) ?? null : null;
+    const probeComponentNodes = probeComponentId === null ? [] : graph.walkNodes
+        .filter(node => network.componentByKey.get(pointKey(node.point)) === probeComponentId);
+    return {
+        doorId,
+        doorPoint: door.point,
+        probePoint,
+        probeNodeId: probeKey ? network.nodeIds.get(probeKey) ?? null : null,
+        probeNodePoint: probeNode?.point ?? null,
+        probeRoomIds: probeNode ? (probeNode.roomIds.length > 0 ? probeNode.roomIds : [probeNode.roomId]) : [],
+        probeComponentId,
+        zones: door.zoneIds.map(zoneId => {
+            const zoneNodes = graph.walkNodes
+                .filter(node => node.roomId === zoneId || node.roomIds.includes(zoneId))
+                .filter(node => candidatePointHasStaticClearance(graph, node.point));
+            const nearbyNodes = zoneNodes
+                .map(node => ({
+                    id: node.id,
+                    point: node.point,
+                    componentId: network.componentByKey.get(pointKey(node.point)) ?? null,
+                    distance: distance(node.point, door.point),
+                }))
+                .filter(node => node.distance <= PROTOTYPE_CLICK_SNAP_LIMIT)
+                .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id));
+            const nearbyComponentIds = new Set(nearbyNodes.map(node => node.componentId).filter((id): id is number => id !== null));
+            const clearConnectors = probeComponentNodes.flatMap(fromNode => zoneNodes
+                .filter(toNode => nearbyComponentIds.has(network.componentByKey.get(pointKey(toNode.point)) ?? -1))
+                .filter(toNode => candidateSegmentHasStaticClearance(graph, fromNode.point, toNode.point))
+                .map(toNode => ({
+                    fromNodeId: fromNode.id,
+                    from: fromNode.point,
+                    toNodeId: toNode.id,
+                    to: toNode.point,
+                    length: distance(fromNode.point, toNode.point),
+                })))
+                .sort((a, b) => a.length - b.length || a.fromNodeId.localeCompare(b.fromNodeId) || a.toNodeId.localeCompare(b.toNodeId))
+                .slice(0, 16);
+            return {
+                zoneId,
+                roomExists: graph.rooms.some(room => room.id === zoneId),
+                nearbyNodes,
+                nearestClearConnector: clearConnectors[0] ?? null,
+                clearConnectors,
+            };
+        }),
+    };
+}
 
 export function auditPrototypePortalEndpoints(graph: CandidateNavigationGraph): readonly PrototypePortalEndpointAudit[] {
     const cached = PORTAL_AUDIT_CACHE.get(graph);
@@ -521,8 +620,8 @@ function nearestNetworkKey(network: PrototypeWalkNetwork, point: Point): string 
 function reachableKeys(network: PrototypeWalkNetwork, start: string): ReadonlySet<string> {
     const reached = new Set([start]);
     const queue = [start];
-    while (queue.length > 0) {
-        const current = queue.shift()!;
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+        const current = queue[cursor];
         for (const edge of network.adjacency.get(current) ?? []) {
             if (reached.has(edge.to)) continue;
             reached.add(edge.to);
@@ -534,12 +633,42 @@ function reachableKeys(network: PrototypeWalkNetwork, start: string): ReadonlySe
 
 function shortestNetworkPath(network: PrototypeWalkNetwork, start: string, end: string) {
     const queue = [{ key: start, cost: 0 }];
+    const compare = (left: { key: string; cost: number }, right: { key: string; cost: number }) =>
+        left.cost - right.cost || left.key.localeCompare(right.key);
+    const push = (item: { key: string; cost: number }) => {
+        queue.push(item);
+        let index = queue.length - 1;
+        while (index > 0) {
+            const parent = Math.floor((index - 1) / 2);
+            if (compare(queue[parent], queue[index]) <= 0) break;
+            [queue[parent], queue[index]] = [queue[index], queue[parent]];
+            index = parent;
+        }
+    };
+    const pop = () => {
+        const first = queue[0];
+        const last = queue.pop()!;
+        if (queue.length > 0) {
+            queue[0] = last;
+            let index = 0;
+            while (index < queue.length) {
+                const left = index * 2 + 1;
+                const right = left + 1;
+                let smallest = index;
+                if (left < queue.length && compare(queue[left], queue[smallest]) < 0) smallest = left;
+                if (right < queue.length && compare(queue[right], queue[smallest]) < 0) smallest = right;
+                if (smallest === index) break;
+                [queue[index], queue[smallest]] = [queue[smallest], queue[index]];
+                index = smallest;
+            }
+        }
+        return first;
+    };
     const best = new Map([[start, 0]]);
     const previous = new Map<string, string>();
     let expanded = 0;
     while (queue.length > 0) {
-        queue.sort((a, b) => a.cost - b.cost || a.key.localeCompare(b.key));
-        const current = queue.shift()!;
+        const current = pop();
         expanded += 1;
         if (current.key === end) {
             const keys = [end];
@@ -552,7 +681,7 @@ function shortestNetworkPath(network: PrototypeWalkNetwork, start: string, end: 
             if (cost >= (best.get(edge.to) ?? Number.POSITIVE_INFINITY)) continue;
             best.set(edge.to, cost);
             previous.set(edge.to, current.key);
-            queue.push({ key: edge.to, cost });
+            push({ key: edge.to, cost });
         }
     }
     return null;
@@ -581,20 +710,6 @@ function prototypeDoorPath(
         }
     }
     return [];
-}
-
-function geometricPrototypeDoorPath(graph: CandidateNavigationGraph, start: Point, target: Point) {
-    const dx = target.x - start.x;
-    const dy = target.y - start.y;
-    const denominator = dx * dx + dy * dy;
-    if (denominator < 1_000_000) return [];
-    const candidates = graph.doors.map(door => {
-        const projection = Math.max(0, Math.min(1, ((door.point.x - start.x) * dx + (door.point.y - start.y) * dy) / denominator));
-        return { door, projection, corridorDistance: pointSegmentDistance(door.point, start, target) };
-    }).filter(item => item.projection > 0.08 && item.projection < 0.92)
-        .sort((a, b) => a.corridorDistance - b.corridorDistance || a.projection - b.projection || a.door.id.localeCompare(b.door.id));
-    const selected = candidates.slice(0, Math.hypot(dx, dy) > 2_000 ? 3 : 1).sort((a, b) => a.projection - b.projection);
-    return selected.map(item => item.door);
 }
 
 function roomLabel(roomId: string): string {
@@ -631,12 +746,25 @@ export function snapPrototypePoint(
     };
 }
 
-export function prototypeSpriteState(agent: PrototypeAgent): SpriteState {
+export function prototypeSpriteState(agent: PrototypeAgent, elapsedMs?: number): SpriteState {
     if (agent.movementState === 'walking') return 'walking';
     if (agent.movementState === 'blocked') return 'blocked';
-    if (agent.task.kind === 'work' && agent.task.phase === 'working') return 'working';
+    if (agent.task.kind === 'work' && agent.task.phase === 'working') {
+        if (elapsedMs === undefined) return 'typing';
+        const fixtureOffset = Number(agent.fixture.id.match(/(\d+)$/)?.[1] ?? 0) % 3;
+        const phase = (Math.floor(Math.max(0, elapsedMs - agent.task.startedAtMs) / 4_000) + fixtureOffset) % 3;
+        return (['sitting', 'typing', 'working'] as const)[phase];
+    }
+    if (agent.task.kind === 'talk' && agent.task.phase === 'talking') return 'talking';
     if (agent.activityState === 'waiting') return 'waiting';
     return 'idle';
+}
+
+export function prototypeSpriteAssetId(agent: PrototypeAgent): string {
+    const state = prototypeSpriteState(agent);
+    return ['typing', 'working', 'sitting', 'talking', 'waiting', 'blocked'].includes(state)
+        ? PROTOTYPE_ACTIVITY_SPRITE_ASSET_ID
+        : agent.fixture.spriteAssetId;
 }
 
 export function prototypeSpriteDirection(agent: PrototypeAgent): SpriteDirection {
@@ -654,20 +782,162 @@ export function prototypeTaskSummary(task: PrototypeTask): string {
 }
 
 export function prototypeOpenGraph(graph: CandidateNavigationGraph): CandidateNavigationGraph {
+    const openDoors = graph.doors.map(door => ({
+        ...door,
+        permission: 'general' as const,
+        accessMode: PROTOTYPE_DOOR_POLICY,
+        defaultState: 'open',
+        currentState: 'open' as const,
+        manualReviewRequired: false,
+        malformedReason: undefined,
+        openRule: 'Prototype runtime keeps every candidate door open.',
+        closeRule: 'Prototype runtime does not close doors.',
+        collisionRule: 'Prototype runtime door collision disabled.',
+    }));
+    const provisionalGraph: CandidateNavigationGraph = { ...graph, doors: openDoors };
+    const walkNodes = [...graph.walkNodes];
+    const walkSegments = [...graph.walkSegments];
+
+    // The registered walk markup leaves A21's room-side path as an isolated
+    // component. This reviewed polyline follows the visible lower aisle around
+    // the workstation field and joins an existing D01 room-side component.
+    // It is deliberately registration-specific and is ignored unless both
+    // extracted endpoints and every collision-clear segment still match.
+    const d01Room = graph.rooms.find(room => room.id === 'ROOM_AGENT_PLATFORM_AND_MODELS');
+    const d01BridgeEndpointsMatch = [PROTOTYPE_D01_ROOM_BRIDGE[0], PROTOTYPE_D01_ROOM_BRIDGE[PROTOTYPE_D01_ROOM_BRIDGE.length - 1]].every(point =>
+        walkNodes.some(node => distance(node.point, point) < 1),
+    );
+    const d01BridgeIsClear = Boolean(d01Room)
+        && PROTOTYPE_D01_ROOM_BRIDGE.every(point => pointInPolygon(point, d01Room!.polygon) && candidatePointHasStaticClearance(provisionalGraph, point))
+        && PROTOTYPE_D01_ROOM_BRIDGE.slice(1).every((point, index) =>
+            candidateSegmentHasStaticClearance(provisionalGraph, PROTOTYPE_D01_ROOM_BRIDGE[index], point));
+    if (d01BridgeEndpointsMatch && d01BridgeIsClear) {
+        const pathId = 'prototype-reviewed-bridge:D01:agent-platform-lower-aisle';
+        PROTOTYPE_D01_ROOM_BRIDGE.slice(1, -1).forEach((point, index) => walkNodes.push({
+            id: `${pathId}:node:${String(index + 1).padStart(2, '0')}`,
+            point,
+            roomId: d01Room!.id,
+            roomIds: [d01Room!.id],
+            pathId,
+        }));
+        PROTOTYPE_D01_ROOM_BRIDGE.slice(1).forEach((point, index) => walkSegments.push({
+            id: `${pathId}:segment:${String(index + 1).padStart(2, '0')}`,
+            a: PROTOTYPE_D01_ROOM_BRIDGE[index],
+            b: point,
+            pathId,
+        }));
+    }
+
+    for (const door of openDoors) {
+        for (const zoneId of door.zoneIds) {
+            const zoneNodes = walkNodes.filter(node => node.roomId === zoneId || node.roomIds.includes(zoneId));
+            const hasEndpoint = zoneNodes.some(node =>
+                distance(node.point, door.point) <= PROTOTYPE_CLICK_SNAP_LIMIT
+                && candidatePointHasStaticClearance(provisionalGraph, node.point),
+            );
+            if (hasEndpoint) continue;
+            const room = graph.rooms.find(candidate => candidate.id === zoneId);
+            if (!room || zoneNodes.length === 0) continue;
+
+            const samples: Point[] = [];
+            for (let radius = 72; radius <= 600; radius += 48) {
+                for (let degrees = 0; degrees < 360; degrees += 15) {
+                    const radians = degrees * Math.PI / 180;
+                    samples.push({
+                        x: door.point.x + Math.cos(radians) * radius,
+                        y: door.point.y + Math.sin(radians) * radius,
+                    });
+                }
+            }
+            for (let step = 1; step <= 12; step += 1) {
+                const ratio = step / 12;
+                samples.push({
+                    x: door.point.x + (room.center.x - door.point.x) * ratio,
+                    y: door.point.y + (room.center.y - door.point.y) * ratio,
+                });
+            }
+
+            const support = samples
+                .filter(point => pointInPolygon(point, room.polygon))
+                .filter(point => candidatePointHasStaticClearance(provisionalGraph, point))
+                .map(point => ({
+                    point,
+                    connector: zoneNodes
+                        .filter(node => candidatePointHasStaticClearance(provisionalGraph, node.point))
+                        .filter(node => candidateSegmentHasStaticClearance(provisionalGraph, point, node.point))
+                        .slice()
+                        .sort((a, b) => distance(point, a.point) - distance(point, b.point) || a.id.localeCompare(b.id))[0],
+                }))
+                .filter(candidate => candidate.connector)
+                .sort((a, b) => distance(a.point, door.point) - distance(b.point, door.point)
+                    || distance(a.point, a.connector!.point) - distance(b.point, b.connector!.point))[0];
+            if (!support?.connector) continue;
+
+            const pathId = `prototype-portal-support:${door.id}:${zoneId}`;
+            walkNodes.push({
+                id: `${pathId}:node`,
+                point: support.point,
+                roomId: zoneId,
+                roomIds: [zoneId],
+                pathId,
+            });
+            walkSegments.push({
+                id: `${pathId}:segment`,
+                a: support.connector.point,
+                b: support.point,
+                pathId,
+            });
+        }
+    }
+
+    for (const door of openDoors) {
+        const claimedPoints: Point[] = [];
+        for (const zoneId of door.zoneIds) {
+            const endpoint = walkNodes
+                .filter(node => node.roomId === zoneId || node.roomIds.includes(zoneId))
+                .filter(node => candidatePointHasStaticClearance(provisionalGraph, node.point))
+                .filter(node => distance(node.point, door.point) <= PROTOTYPE_CLICK_SNAP_LIMIT)
+                .slice()
+                .sort((a, b) => distance(a.point, door.point) - distance(b.point, door.point) || a.id.localeCompare(b.id))[0];
+            if (endpoint) {
+                claimedPoints.push(endpoint.point);
+                continue;
+            }
+            if (graph.rooms.some(room => room.id === zoneId)) continue;
+
+            const opposite = claimedPoints[0];
+            const candidate = graph.walkNodes
+                .filter(node => candidatePointHasStaticClearance(provisionalGraph, node.point))
+                .filter(node => distance(node.point, door.point) <= PROTOTYPE_CLICK_SNAP_LIMIT)
+                .filter(node => claimedPoints.every(point => distance(node.point, point) > Math.max(48, door.apertureRadius * 0.45)))
+                .map(node => {
+                    const fromDoor = subtract(node.point, door.point);
+                    const oppositeVector = opposite ? subtract(opposite, door.point) : null;
+                    const oppositeSide = oppositeVector ? fromDoor.x * oppositeVector.x + fromDoor.y * oppositeVector.y < 0 : false;
+                    return { node, oppositeSide };
+                })
+                .sort((a, b) => Number(b.oppositeSide) - Number(a.oppositeSide)
+                    || distance(a.node.point, door.point) - distance(b.node.point, door.point)
+                    || a.node.id.localeCompare(b.node.id))[0]?.node;
+            if (!candidate) continue;
+            const pathId = `prototype-portal-alias:${door.id}:${zoneId}`;
+            walkNodes.push({
+                ...candidate,
+                id: `${pathId}:node`,
+                roomIds: [...new Set([...candidate.roomIds, zoneId])],
+                pathId,
+            });
+            claimedPoints.push(candidate.point);
+        }
+    }
+
     return {
         ...graph,
-        doors: graph.doors.map(door => ({
-            ...door,
-            permission: 'general' as const,
-            accessMode: PROTOTYPE_DOOR_POLICY,
-            defaultState: 'open',
-            currentState: 'open' as const,
-            manualReviewRequired: false,
-            malformedReason: undefined,
-            openRule: 'Prototype runtime keeps every candidate door open.',
-            closeRule: 'Prototype runtime does not close doors.',
-            collisionRule: 'Prototype runtime door collision disabled.',
-        })),
+        doors: openDoors,
+        walkNodes,
+        walkSegments,
+        nodeCount: walkNodes.length,
+        edgeCount: walkSegments.length,
     };
 }
 
@@ -737,7 +1007,7 @@ function agentFixture(graph: CandidateNavigationGraph, node: CandidateNavigation
         roomName: graph.rooms.find(room => room.id === roomId)?.name ?? roomLabel(roomId),
         point: node.point,
         accessTier: 'standard',
-        spriteAssetId: AGENT_SPRITE_MANIFEST.assets[index % Math.max(1, AGENT_SPRITE_MANIFEST.assets.length)]?.id ?? 'agent-sheet-01',
+        spriteAssetId: PROTOTYPE_MOTION_SPRITE_ASSETS[index % Math.max(1, PROTOTYPE_MOTION_SPRITE_ASSETS.length)]?.id ?? 'agent-sheet-01',
         provisionalSpriteAssignment: true,
     };
 }
@@ -752,13 +1022,13 @@ export function createPrototypeAgents(
     const occupiedWorkstations = new Set<string>();
     const agents = nodes.map((node, index): PrototypeAgent => {
         const fixture = agentFixture(graph, node, index);
-        const varied = index % 6;
+        const varied = index % 20;
         const activityState: PrototypeActivityState = mode === 'debug'
             ? 'idle'
-            : varied === 0 ? 'moving-to-task'
-                : varied === 1 || varied === 2 ? 'working-at-desk'
-                    : varied === 3 ? 'idle' : 'talking';
-        const partnerIndex = varied === 4 ? index + 1 : varied === 5 ? index - 1 : -1;
+            : varied < 13 ? 'working-at-desk'
+                : varied < 17 ? 'moving-to-task'
+                    : varied < 19 ? 'talking' : 'idle';
+        const partnerIndex = varied === 17 ? index + 1 : varied === 18 ? index - 1 : -1;
         const partnerAgentId = partnerIndex >= 0 && partnerIndex < nodes.length
             ? `prototype-agent-${String(partnerIndex + 1).padStart(2, '0')}`
             : undefined;
@@ -796,7 +1066,11 @@ export function createPrototypeAgents(
             speed: 1,
             distanceTravelled: 0,
             walkCycleElapsedMs: 0,
-            activityUntil: 4_000 + (index % 7) * 1_100,
+            activityUntil: activityState === 'working-at-desk'
+                ? 18_000 + (index % 9) * 1_700
+                : activityState === 'talking'
+                    ? 6_000 + (index % 5) * 1_200
+                    : activityState === 'moving-to-task' ? 0 : 4_500 + (index % 4) * 1_300,
             blockedDurationMs: 0,
             replanCooldownMs: 0,
             replanAttempts: 0,
@@ -823,42 +1097,57 @@ export function selectPrototypeRouteToPoint(
         return { status: 'rejected', reason: 'outside-office', message: 'That point is outside the Floor 1 world bounds.' };
     }
     const network = prototypeWalkNetwork(graph, metrics);
-    const startKey = nearestNetworkKey(network, agent.point);
+    const startKey = network.keyByNodeId.get(agent.currentNodeId) ?? nearestNetworkKey(network, agent.point);
     if (!startKey) return { status: 'rejected', reason: 'no-navigation-start', message: 'The selected agent is not connected to the navigation graph.' };
     const reached = reachableKeys(network, startKey);
-    const rawCandidates: Array<{ key: string; point: Point; snapDistance: number; kind: 'node' | 'segment' }> = [...network.points]
-        .filter(([key]) => !key.startsWith('door:'))
-        .map(([key, point]) => ({ key, point, snapDistance: distance(point, clickedPoint), kind: 'node' as const }));
-    const seenEdges = new Set<string>();
-    for (const [fromKey, edges] of network.adjacency) {
-        if (fromKey.startsWith('door:')) continue;
-        for (const edge of edges) {
-            if (edge.to.startsWith('door:')) continue;
-            const edgeKey = [fromKey, edge.to].sort().join('|');
-            if (seenEdges.has(edgeKey)) continue;
-            seenEdges.add(edgeKey);
-            const from = network.points.get(fromKey);
-            const to = network.points.get(edge.to);
-            if (!from || !to) continue;
-            const projected = projectPointToSegment(clickedPoint, from, to);
-            const anchors = [fromKey, edge.to].filter(key => reached.has(key));
-            if (anchors.length === 0) continue;
-            const anchor = anchors.sort((a, b) => distance(network.points.get(a)!, projected) - distance(network.points.get(b)!, projected) || a.localeCompare(b))[0];
-            rawCandidates.push({ key: anchor, point: projected, snapDistance: distance(projected, clickedPoint), kind: 'segment' });
-        }
-    }
-    const nearbyCandidates = rawCandidates
-        .filter(candidate => candidate.snapDistance <= PROTOTYPE_CLICK_SNAP_LIMIT)
-        .sort((a, b) => a.snapDistance - b.snapDistance || a.key.localeCompare(b.key));
+    const exactTargetKey = pointKey(clickedPoint);
+    const exactTarget = network.points.get(exactTargetKey);
+    const nearbyCandidates: Array<{ key: string; point: Point; snapDistance: number; kind: 'node' | 'segment' }> = exactTarget && !exactTargetKey.startsWith('door:')
+        ? [{ key: exactTargetKey, point: exactTarget, snapDistance: 0, kind: 'node' }]
+        : (() => {
+            const rawCandidates: Array<{ key: string; point: Point; snapDistance: number; kind: 'node' | 'segment' }> = [...network.points]
+                .filter(([key]) => !key.startsWith('door:'))
+                .map(([key, point]) => ({ key, point, snapDistance: distance(point, clickedPoint), kind: 'node' as const }));
+            const seenEdges = new Set<string>();
+            for (const [fromKey, edges] of network.adjacency) {
+                if (fromKey.startsWith('door:')) continue;
+                for (const edge of edges) {
+                    if (edge.to.startsWith('door:')) continue;
+                    const edgeKey = [fromKey, edge.to].sort().join('|');
+                    if (seenEdges.has(edgeKey)) continue;
+                    seenEdges.add(edgeKey);
+                    const from = network.points.get(fromKey);
+                    const to = network.points.get(edge.to);
+                    if (!from || !to) continue;
+                    const projected = projectPointToSegment(clickedPoint, from, to);
+                    const anchors = [fromKey, edge.to].filter(key => reached.has(key));
+                    if (anchors.length === 0) continue;
+                    const anchor = anchors.sort((a, b) => distance(network.points.get(a)!, projected) - distance(network.points.get(b)!, projected) || a.localeCompare(b))[0];
+                    rawCandidates.push({ key: anchor, point: projected, snapDistance: distance(projected, clickedPoint), kind: 'segment' });
+                }
+            }
+            return rawCandidates
+                .filter(candidate => candidate.snapDistance <= PROTOTYPE_CLICK_SNAP_LIMIT)
+                .sort((a, b) => a.snapDistance - b.snapDistance || a.key.localeCompare(b.key));
+        })();
     if (nearbyCandidates.length === 0) {
         return { status: 'rejected', reason: 'no-nearby-candidate', message: `No navigation path lies within ${PROTOTYPE_CLICK_SNAP_LIMIT}px of that point.` };
     }
     const target = nearbyCandidates.find(candidate => reached.has(candidate.key)) ?? nearbyCandidates[0];
     const path = shortestNetworkPath(network, startKey, target.key);
-    const startRoomIds = graph.rooms.filter(room => pointInPolygon(agent.point, room.polygon)).map(room => room.id);
-    const targetRoomIds = graph.rooms.filter(room => pointInPolygon(target.point, room.polygon)).map(room => room.id);
+    const roomIdsForPoint = (point: Point, key?: string) => {
+        const indexedRoomIds = key ? network.roomIdsByKey.get(key) : undefined;
+        if (indexedRoomIds?.length) return [...indexedRoomIds];
+        const polygonRoomIds = graph.rooms.filter(room => pointInPolygon(point, room.polygon)).map(room => room.id);
+        if (polygonRoomIds.length > 0) return polygonRoomIds;
+        const nearest = graph.walkNodes.slice()
+            .sort((a, b) => distance(a.point, point) - distance(b.point, point) || a.id.localeCompare(b.id))[0];
+        return nearest ? (nearest.roomIds.length > 0 ? [...nearest.roomIds] : [nearest.roomId]) : [];
+    };
+    const startRoomIds = roomIdsForPoint(agent.point, startKey);
+    const targetRoomIds = roomIdsForPoint(target.point, target.key);
     const topologyDoorPath = targetRoomIds.length > 0 ? prototypeDoorPath(graph, startRoomIds, targetRoomIds, agent.point, target.point) : [];
-    const doorPath = topologyDoorPath.length > 0 ? topologyDoorPath : geometricPrototypeDoorPath(graph, agent.point, target.point);
+    const doorPath = topologyDoorPath;
     if (doorPath.length > 0) {
         const endpointAudit = new Map(auditPrototypePortalEndpoints(graph).map(item => [item.doorId, item]));
         const unavailableDoor = doorPath.find(door => endpointAudit.get(door.id)?.status !== 'provisional-valid');
@@ -965,18 +1254,60 @@ export function selectPrototypeRouteToPoint(
             ? 'No route connects the selected agent to the nearby navigation geometry.'
             : 'The nearby navigation geometry is disconnected from this agent.',
     };
-    const points = [agent.point, ...path.keys.map(key => network.points.get(key)!), target.point].filter((point, index, all) => index === 0 || distance(point, all[index - 1]) > 0.001);
-    const crossedDoorIds = graph.doors
-        .filter(door => points.some((point, index) => index > 0 && pointSegmentDistance(door.point, points[index - 1], point) <= door.apertureRadius))
-        .map(door => door.id)
-        .sort((a, b) => a.localeCompare(b));
+    const rawPoints = [agent.point, ...path.keys.map(key => network.points.get(key)!), target.point]
+        .filter((point, index, all) => index === 0 || distance(point, all[index - 1]) > 0.001);
+    const points: Point[] = [rawPoints[0]];
+    const crossedDoors: CandidateNavigationGraph['doors'][number][] = [];
+    for (let index = 1; index < rawPoints.length; index += 1) {
+        const a = rawPoints[index - 1];
+        const b = rawPoints[index];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const denominator = dx * dx + dy * dy;
+        const segmentDoors = graph.doors
+            .filter(door => pointSegmentDistance(door.point, a, b) <= door.apertureRadius)
+            .map(door => ({
+                door,
+                projection: denominator <= 1e-7 ? 0 : ((door.point.x - a.x) * dx + (door.point.y - a.y) * dy) / denominator,
+            }))
+            .filter(item => item.projection > 0.001 && item.projection < 0.999)
+            .sort((left, right) => left.projection - right.projection || left.door.id.localeCompare(right.door.id));
+        for (const item of segmentDoors) {
+            points.push(item.door.point);
+            crossedDoors.push(item.door);
+        }
+        points.push(b);
+    }
+    const crossedDoorIds = [...new Set(crossedDoors.map(door => door.id))].sort((a, b) => a.localeCompare(b));
+    const doorSteps: CandidateDoorStep[] = [];
+    let routeProgress = 0;
+    for (let index = 1; index < points.length; index += 1) {
+        routeProgress += distance(points[index - 1], points[index]);
+        const door = crossedDoors.find(candidate => distance(candidate.point, points[index]) < 0.001);
+        if (!door) continue;
+        const exitPoint = points[index + 1] ?? door.point;
+        const exitDistance = routeProgress + distance(door.point, exitPoint);
+        doorSteps.push({
+            doorId: door.id,
+            permission: 'general',
+            initialPhysicalState: 'open',
+            requiredAction: 'none',
+            approachPoint: points[index - 1],
+            thresholdPoint: door.point,
+            exitPoint,
+            approachDistance: Math.max(0, routeProgress - distance(points[index - 1], door.point)),
+            thresholdDistance: routeProgress,
+            exitDistance,
+            clearanceReleaseDistance: exitDistance + 68,
+        });
+    }
     const length = points.slice(1).reduce((total, point, index) => total + distance(points[index], point), 0);
     const route: CandidateRouteResult = {
         status: 'valid',
         reason: crossedDoorIds.length > 0 ? `Prototype route traverses open doors ${crossedDoorIds.join(', ')}.` : 'Prototype route follows the reachable walk graph.',
         points,
         crossedDoorIds,
-        doorSteps: [],
+        doorSteps,
         nodeSequence: path.keys.map(key => network.nodeIds.get(key) ?? `walk:${key}`),
         cost: Math.round(path.cost),
         length,
@@ -1066,10 +1397,12 @@ export function validatePrototypeRouteSegments(
     graph: CandidateNavigationGraph,
     route: CandidateRouteResult,
 ): CandidateRouteResult | null {
+    const network = prototypeWalkNetwork(graph);
     for (let index = 1; index < route.points.length; index += 1) {
         const a = route.points[index - 1];
         const b = route.points[index];
         if (isPortalJump(route, a, b)) continue;
+        if (network.clearSegmentKeys.has(undirectedEdgeKey(a, b))) continue;
         const failure = validateCandidateRouteSegments(graph, [a, b], route.crossedDoorIds);
         if (failure) return failure;
     }
@@ -1552,7 +1885,7 @@ export function advancePrototypeAgents(
             velocity: staticClear ? velocity : { x: 0, y: 0 },
             resolvedVelocity: staticClear ? resolvedVelocity : { x: 0, y: 0 },
             routeTangent: segment?.tangent ?? previous.routeTangent,
-            direction: prototypeFacingFromVelocity(previous.direction, resolvedVelocity),
+            direction: prototypeFacingFromVelocity(previous.direction, velocity),
             distanceTravelled: previous.distanceTravelled + (staticClear ? movedDistance : 0),
             walkCycleElapsedMs: previous.walkCycleElapsedMs + (staticClear ? movedDistance / PROTOTYPE_NOMINAL_WALK_SPEED * 1000 : 0),
             blockedDurationMs: staticClear ? 0 : previous.blockedDurationMs + deltaMs,
@@ -1716,8 +2049,8 @@ export function advancePrototypeAgents(
 export function seedAmbientMovement(graph: CandidateNavigationGraph, input: readonly PrototypeAgent[]): readonly PrototypeAgent[] {
     let agents = input;
     for (let index = 0; index < agents.length; index += 1) {
-        if (index % 6 !== 0) continue;
         const agent = agents[index];
+        if (agent.activityState !== 'moving-to-task') continue;
         const target = ambientPrototypeTarget(graph, agent, index);
         if (!target) continue;
         // Routing does not depend on the mutable prototype-agent roster. Keep the
@@ -1725,6 +2058,25 @@ export function seedAmbientMovement(graph: CandidateNavigationGraph, input: read
         // for every ambient seed instead of rebuilding the full office network.
         const plan = planPrototypeRouteToPoint(graph, agent, target);
         if (!plan || !prototypeRouteHasStaticClearance(graph, plan.route)) continue;
+        if (plan.route.doorSteps.length > 0) continue;
+        const reverse: PrototypeRoutePlan = {
+            ...plan,
+            route: {
+                ...plan.route,
+                reason: 'Prototype ambient patrol returns along its prevalidated local route.',
+                points: [...plan.route.points].reverse(),
+                nodeSequence: [...plan.route.nodeSequence].reverse(),
+                crossedDoorIds: [],
+                doorSteps: [],
+            },
+            clickedPoint: agent.spawnPoint,
+            snappedPoint: agent.spawnPoint,
+            snappedNodeId: agent.currentNodeId,
+            snapDistance: 0,
+        };
+        const cache = AMBIENT_PATROL_CACHE.get(graph) ?? new Map();
+        cache.set(agent.fixture.id, { forward: plan, reverse });
+        AMBIENT_PATROL_CACHE.set(graph, cache);
         agents = agents.map(item => item.fixture.id === agent.fixture.id
             ? {
                 ...startPrototypeRoute(item, plan, {
@@ -1735,6 +2087,21 @@ export function seedAmbientMovement(graph: CandidateNavigationGraph, input: read
             : item);
     }
     return agents;
+}
+
+export function assignPrototypeAmbientPatrol(
+    graph: CandidateNavigationGraph,
+    agent: PrototypeAgent,
+    startedAtMs: number,
+): PrototypeAgent | null {
+    const patrol = AMBIENT_PATROL_CACHE.get(graph)?.get(agent.fixture.id);
+    if (!patrol) return null;
+    const atForwardEnd = distance(agent.point, patrol.forward.snappedPoint) <= PROTOTYPE_AGENT_RADIUS;
+    const plan = atForwardEnd ? patrol.reverse : patrol.forward;
+    return startPrototypeRoute(agent, plan, {
+        kind: 'wander', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId,
+        seed: agent.revision + 1, startedAtMs,
+    });
 }
 
 export function ambientPrototypeTarget(graph: CandidateNavigationGraph, agent: PrototypeAgent, seed: number): Point | null {

@@ -61,13 +61,13 @@ describe('Agent Simulation usability', () => {
         expect(agents.every(agent => agent.dataset.replanAttempts === '0' && agent.dataset.blockedDurationMs === '0')).toBe(true);
     });
 
-    it('enforces and announces the 25-agent limit', async () => {
+    it('enforces and announces the 50-agent limit', async () => {
         const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} presentation="simulation" registration={TEST_REGISTRATION} />);
         await screen.findByLabelText('Agent simulation controls');
         const addTen = screen.getByRole('button', { name: 'Add 10' });
-        fireEvent.click(addTen); fireEvent.click(addTen); fireEvent.click(addTen);
-        expect(container.querySelectorAll('.prototype-agent')).toHaveLength(25);
-        expect(screen.getByText('25-agent limit reached')).toBeTruthy();
+        for (let index = 0; index < 5; index += 1) fireEvent.click(addTen);
+        expect(container.querySelectorAll('.prototype-agent')).toHaveLength(50);
+        expect(screen.getByText('50-agent limit reached')).toBeTruthy();
         expect(screen.getByRole('button', { name: 'Add agent' }).hasAttribute('disabled')).toBe(true);
         expect(screen.getByRole('button', { name: 'Add 5' }).hasAttribute('disabled')).toBe(true);
     });
@@ -84,7 +84,7 @@ describe('Agent Simulation usability', () => {
         expect(screen.getByLabelText(/Agent 01\. idle\./)).toBeTruthy();
     });
 
-    it('hides every overlay, preserves agents/background, and restores the prior selection', async () => {
+    it('hides every overlay, preserves agents/background, and keeps labels opt-in', async () => {
         const { container } = render(<OverlayHarness />);
         await screen.findByLabelText('Agent simulation controls');
         fireEvent.click(screen.getByRole('button', { name: 'Add agent' }));
@@ -92,12 +92,12 @@ describe('Agent Simulation usability', () => {
         expect(screen.getByTestId('visible-layers').textContent).toBe('');
         expect(container.querySelectorAll('.prototype-agent')).toHaveLength(1);
         expect(screen.getByAltText('test office background')).toBeTruthy();
-        expect(container.querySelectorAll('.prototype-agent__label')).toHaveLength(0);
+        expect(container.querySelector('.prototype-agent__label--forced')).toBeNull();
         fireEvent.click(screen.getByRole('button', { name: 'Show all overlays' }));
         expect(screen.getByTestId('visible-layers').textContent).toBe('rooms');
-        expect(container.querySelectorAll('.prototype-agent__label')).toHaveLength(1);
+        expect(container.querySelector('.prototype-agent__label--forced')).toBeNull();
         fireEvent.click(screen.getByLabelText('Agent labels'));
-        expect(container.querySelectorAll('.prototype-agent__label')).toHaveLength(0);
+        expect(container.querySelectorAll('.prototype-agent__label--forced')).toHaveLength(1);
     });
 
     it('selects a clicked agent instead of commanding the current agent', async () => {
@@ -110,17 +110,17 @@ describe('Agent Simulation usability', () => {
         expect((screen.getByLabelText('Selected agent') as HTMLSelectElement).value).toBe('prototype-agent-02');
     });
 
-    it('creates a route and begins movement immediately from a valid map click', async () => {
+    it('does not issue a route from an ordinary map click', async () => {
         const { container } = render(<Floor1CandidateSimulation active reducedMotion={false} presentation="simulation" registration={TEST_REGISTRATION} />);
         await screen.findByLabelText('Agent simulation controls');
         fireEvent.click(screen.getByRole('button', { name: 'Add agent' }));
         const root = container.querySelector<HTMLElement>('.floor1-candidate-simulation')!;
         vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 8192, bottom: 5460, width: 8192, height: 5460, toJSON: () => ({}) });
         fireEvent.click(root, { clientX: 4200, clientY: 2700 });
-        await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Walking now'));
-        expect(container.querySelector('.floor1-candidate-route')).toBeTruthy();
-        expect(container.querySelector('.floor1-candidate-destination')).toBeTruthy();
-        expect(container.querySelector('.prototype-agent')?.getAttribute('data-agent-state')).toBe('walking');
+        expect(screen.getByRole('status').textContent).toContain('Map clicks do not move agents');
+        expect(container.querySelector('.floor1-candidate-route')).toBeNull();
+        expect(container.querySelector('.floor1-candidate-destination')).toBeNull();
+        expect(container.querySelector('.prototype-agent')?.getAttribute('data-agent-state')).toBe('idle');
     });
 
     it('Escape cancels command feedback and pause/resume controls are explicit', async () => {
@@ -157,7 +157,7 @@ describe('Agent Simulation usability', () => {
         expect(container.querySelectorAll('[data-primary-sprite-visual="true"]')).toHaveLength(25);
     });
 
-    it('uses the authoritative transform for a panned and zoomed click', async () => {
+    it('does not route from a panned and zoomed ordinary click', async () => {
         const transform = { x: 100, y: 50, scale: 0.5 };
         const { container } = render(<Floor1CandidateSimulation active={false} reducedMotion presentation="simulation" registration={TEST_REGISTRATION} transform={transform} />);
         await screen.findByLabelText('Agent simulation controls');
@@ -165,8 +165,8 @@ describe('Agent Simulation usability', () => {
         const root = container.querySelector<HTMLElement>('.floor1-candidate-simulation')!;
         vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({ x: 100, y: 50, left: 100, top: 50, right: 4196, bottom: 2780, width: 4096, height: 2730, toJSON: () => ({}) });
         fireEvent.click(root, { clientX: 2_200, clientY: 1_400 });
-        await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Walking now'));
-        expect(container.querySelector('.floor1-candidate-destination .snapped')).toBeTruthy();
+        expect(screen.getByRole('status').textContent).toContain('Map clicks do not move agents');
+        expect(container.querySelector('.floor1-candidate-destination')).toBeNull();
     });
 
     it('keeps the sprite body at a constant world size without inverse zoom compensation', async () => {
@@ -238,18 +238,13 @@ describe('Agent Simulation usability', () => {
         expect(screen.getByLabelText(/Agent 02\. idle\./).getAttribute('aria-pressed')).toBe('false');
     });
 
-    it('uses card Walk somewhere mode and a valid map click creates a real route', async () => {
+    it('does not expose the rejected Walk somewhere or Reposition agent commands', async () => {
         const { container } = render(<Floor1CandidateSimulation active reducedMotion presentation="simulation" registration={TEST_REGISTRATION} viewport={{ width: 1200, height: 800 }} transform={{ x: 0, y: 0, scale: 0.1 }} />);
         await screen.findByLabelText('Agent simulation controls');
         fireEvent.click(screen.getByRole('button', { name: 'Add agent' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Walk somewhere' }));
-        expect(screen.getByText(/Click a reachable destination/)).toBeTruthy();
-        expect(screen.queryByLabelText('Agent 01 details')).toBeNull();
-        const root = container.querySelector<HTMLElement>('.floor1-candidate-simulation')!;
-        vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 819.2, bottom: 546, width: 819.2, height: 546, toJSON: () => ({}) });
-        fireEvent.click(root, { clientX: 420, clientY: 270 });
-        await waitFor(() => expect(container.querySelector('.floor1-candidate-route')).toBeTruthy());
-        expect(screen.getByLabelText('Agent 01 details').textContent).toContain('Walking to assigned point');
+        expect(screen.queryByRole('button', { name: 'Walk somewhere' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Reposition agent' })).toBeNull();
+        expect(container.querySelector('.floor1-candidate-route')).toBeNull();
     });
 
     it('assigns work, wander, idle, and stop tasks without changing the sprite assignment', async () => {
@@ -293,7 +288,7 @@ describe('Agent Simulation usability', () => {
         expect(screen.queryByLabelText('Agent 01 details')).toBeNull();
     });
 
-    it('uses a drag threshold, shows snap feedback, and commits a valid graph node', async () => {
+    it('uses a drag threshold, keeps the committed point fixed, and assigns a walking route on release', async () => {
         const { container } = render(<Floor1CandidateSimulation active reducedMotion presentation="simulation" registration={TEST_REGISTRATION} viewport={{ width: 8192, height: 5460 }} transform={{ x: 0, y: 0, scale: 1 }} />);
         await screen.findByLabelText('Agent simulation controls');
         fireEvent.click(screen.getByRole('button', { name: 'Add agent' }));
@@ -310,8 +305,10 @@ describe('Agent Simulation usability', () => {
         fireEvent.pointerMove(agent, { pointerId: 9, clientX: startX + 120, clientY: startY + 80 });
         expect(container.querySelector('.floor1-candidate-drag-feedback')).toBeTruthy();
         fireEvent.pointerUp(agent, { pointerId: 9, clientX: startX + 120, clientY: startY + 80 });
-        expect(screen.getByRole('status').textContent).toContain('repositioned');
-        expect(agent.getAttribute('data-agent-state')).toBe('idle');
+        expect(screen.getByRole('status').textContent).toContain('Walking now');
+        expect(`${agent.style.left},${agent.style.top}`).toBe(`${startX}px,${startY}px`);
+        expect(agent.getAttribute('data-agent-state')).toBe('walking');
+        expect(container.querySelector('.floor1-candidate-route')).toBeTruthy();
     });
 
     it('reverts invalid and canceled drags to the original point', async () => {
@@ -329,7 +326,7 @@ describe('Agent Simulation usability', () => {
         fireEvent.pointerMove(agent, { pointerId: 4, clientX: -1000, clientY: -1000 });
         fireEvent.pointerUp(agent, { pointerId: 4, clientX: -1000, clientY: -1000 });
         await waitFor(() => expect(`${agent.style.left},${agent.style.top}`).toBe(original));
-        expect(screen.getByRole('status').textContent).toContain('Invalid drop reverted');
+        expect(screen.getByRole('status').textContent).toContain('Invalid destination');
         fireEvent.pointerDown(agent, { pointerId: 5, button: 0, clientX: 4100, clientY: 2700 });
         fireEvent.pointerMove(agent, { pointerId: 5, clientX: 4300, clientY: 2800 });
         fireEvent.keyDown(window, { key: 'Escape' });
@@ -340,25 +337,38 @@ describe('Agent Simulation usability', () => {
 
 describe('Office Engine ambient mode', () => {
     it('starts with twenty visible agents, varied states, minimal controls, and no overlays', async () => {
-        const { container } = render(<Floor1CandidateSimulation active reducedMotion registration={TEST_REGISTRATION} presentation="inspection" />);
+        const { container } = render(<Floor1CandidateSimulation active={false} reducedMotion registration={TEST_REGISTRATION} presentation="inspection" />);
         await screen.findByLabelText('Office Engine simulation controls');
         expect(container.querySelectorAll('.prototype-agent')).toHaveLength(20);
         expect(container.querySelectorAll('[data-agent-state="walking"]').length).toBeGreaterThan(0);
         expect(container.querySelectorAll('[data-agent-state="working-at-desk"]').length).toBeGreaterThan(0);
         expect(container.querySelectorAll('[data-agent-state="idle"], [data-agent-state="talking"]').length).toBeGreaterThan(0);
+        const working = container.querySelector<HTMLElement>('[data-agent-state="working-at-desk"]')!;
+        expect(working.dataset.spriteState).toBe('typing');
+        expect(working.title).toContain('agent-activity-sheet-01');
+        const talking = container.querySelector<HTMLElement>('[data-agent-state="talking"]')!;
+        expect(talking.dataset.spriteState).toBe('talking');
+        expect(talking.title).toContain('agent-activity-sheet-01');
         expect(container.querySelector('.floor1-candidate-debug')).toBeNull();
+        expect(screen.queryByLabelText(/Agent 01 details/)).toBeNull();
+        expect(container.querySelectorAll('.prototype-agent__label--forced')).toHaveLength(0);
         expect(screen.queryByLabelText('Agent simulation controls')).toBeNull();
     });
 
-    it('supports 15, 20, 25, and 30 deterministic ambient counts', async () => {
-        const { container } = render(<Floor1CandidateSimulation active reducedMotion registration={TEST_REGISTRATION} presentation="inspection" />);
+    it('supports a preserving 1 through 50 ambient count slider', async () => {
+        const { container } = render(<Floor1CandidateSimulation active={false} reducedMotion registration={TEST_REGISTRATION} presentation="inspection" />);
         await screen.findByLabelText('Office Engine simulation controls');
-        for (const count of [15, 20, 25, 30]) {
-            fireEvent.click(screen.getByRole('button', { name: String(count) }));
+        const slider = screen.getByRole('slider', { name: 'Office Engine agent count' });
+        const first = container.querySelector<HTMLElement>('[data-agent-id="prototype-agent-01"]')!;
+        const firstPoint = `${first.style.left},${first.style.top}`;
+        for (const count of [1, 17, 33, 50]) {
+            fireEvent.change(slider, { target: { value: String(count) } });
             await waitFor(() => expect(container.querySelectorAll('.prototype-agent')).toHaveLength(count));
+            expect(container.querySelector<HTMLElement>('[data-agent-id="prototype-agent-01"]')).toBe(first);
+            expect(`${first.style.left},${first.style.top}`).toBe(firstPoint);
         }
         fireEvent.click(screen.getByRole('button', { name: 'Reset simulation' }));
-        expect(container.querySelectorAll('.prototype-agent')).toHaveLength(30);
+        expect(container.querySelectorAll('.prototype-agent')).toHaveLength(50);
     });
 
     it('opens a read-only ambient card and disables direct dragging', async () => {

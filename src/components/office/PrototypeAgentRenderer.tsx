@@ -7,6 +7,7 @@ import {
     PROTOTYPE_PORTAL_IN_MS,
     PROTOTYPE_PORTAL_OUT_MS,
     prototypeSpriteDirection,
+    prototypeSpriteAssetId,
     prototypeSpriteState,
     type PrototypeAgent,
     type PrototypeLabelPlacement,
@@ -76,8 +77,9 @@ export function PrototypeAgentRenderer({
         '--portal-sprite-scale': reducedMotion ? 1 : 0.72 + portalOpacity * 0.28,
         '--portal-effect-opacity': agent.portalTransition ? reducedMotion ? 0.65 : 0.45 + (portalStep % 2) * 0.4 : 0,
     } as CSSProperties;
-    const spriteState = prototypeSpriteState(agent);
+    const spriteState = prototypeSpriteState(agent, elapsedMs);
     const spriteDirection = prototypeSpriteDirection(agent);
+    const spriteAssetId = prototypeSpriteAssetId(agent);
     const status = agent.movementState === 'walking' ? 'walking' : agent.activityState;
     const shortName = agent.fixture.label.replace(/^Agent\s+/i, 'A');
     const taskElapsed = Math.max(0, elapsedMs - agent.task.startedAtMs);
@@ -124,7 +126,7 @@ export function PrototypeAgentRenderer({
             data-task-phase={'phase' in agent.task ? agent.task.phase : ''}
             data-portal-door={agent.portalTransition?.doorId ?? ''}
             data-portal-phase={agent.portalTransition?.phase ?? ''}
-            title={`${agent.fixture.label} · ${spriteState} · ${agent.fixture.spriteAssetId}`}
+            title={`${agent.fixture.label} · ${spriteState} · ${spriteAssetId}`}
         >
             <span className="prototype-agent__selection-ring" aria-hidden="true" />
             <span className={`prototype-agent__facing-indicator prototype-agent__facing-indicator--${agent.direction}`} aria-hidden="true">▲</span>
@@ -133,7 +135,7 @@ export function PrototypeAgentRenderer({
                 <SpritePlayer
                     manifest={AGENT_SPRITE_MANIFEST}
                     runtime={runtime}
-                    assetId={agent.fixture.spriteAssetId}
+                    assetId={spriteAssetId}
                     state={spriteState}
                     direction={spriteDirection}
                     reducedMotion={reducedMotion}
@@ -146,7 +148,7 @@ export function PrototypeAgentRenderer({
                 />
             </span>
             <span className={`prototype-agent__activity-dot prototype-agent__activity-dot--${agent.activityState}`} aria-hidden="true" />
-            {showLabel && <span className="prototype-agent__label">{shortName}</span>}
+            <span className={`prototype-agent__label ${showLabel ? 'prototype-agent__label--forced' : ''}`}>{shortName}</span>
         </button>
     );
 }

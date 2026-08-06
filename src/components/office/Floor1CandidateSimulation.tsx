@@ -9,15 +9,17 @@ import walls from '../../office/data/floor1/provisional/walls.json';
 import objects from '../../office/data/floor1/provisional/objects.json';
 import walkPaths from '../../office/data/floor1/provisional/walk-paths.json';
 import { FLOOR1_CANDIDATE_LAYER_CONTROLS } from '../../office/floor1/candidateReview';
-import { screenToOffice } from '../../office/coordinates';
 import {
     buildCandidateNavigationGraph,
     buildCandidateSandboxGraph,
+    candidatePointHasStaticClearance,
     type CandidateNavigationGraph,
     type MarkupRegistration,
 } from '../../office/floor1/navigation/candidateNavigation';
 import {
     advancePrototypeAgents,
+    assignPrototypeAmbientPatrol,
+    auditPrototypeDoorConnectivity,
     auditPrototypePortalEndpoints,
     assignPrototypeIdle,
     assignPrototypeTalk,
@@ -29,18 +31,18 @@ import {
     findValidatedPrototypeRouteToPoint,
     PROTOTYPE_AGENT_LIMIT,
     PROTOTYPE_AGENT_RADIUS,
-    PROTOTYPE_AMBIENT_COUNTS,
     PROTOTYPE_CLICK_SNAP_LIMIT,
+    PROTOTYPE_D01_ROOM_BRIDGE,
     PROTOTYPE_DOOR_POLICY,
     PROTOTYPE_SPRITE_WORLD_SIZE,
     prototypeOpenDoorRuntimes,
     prototypeOpenGraph,
     prototypeRoomAtPoint,
     prototypeSpriteDirection,
+    prototypeSpriteAssetId,
     prototypeSpriteState,
     prototypeTaskSummary,
     prototypeWorkstations,
-    repositionPrototypeAgent,
     resetPrototypeAgent,
     snapPrototypePoint,
     startPrototypeRoute,
@@ -90,6 +92,7 @@ type OverlaySnapshot = Readonly<{ layers: ReadonlySet<OfficeLayer>; local: Local
 const BASE_SPEED_PX_PER_SECOND = 180;
 const UI_SNAPSHOT_INTERVAL_MS = 250;
 const RENDER_SNAPSHOT_INTERVAL_MS = 1000 / 30;
+const SIMULATION_STEP_INTERVAL_MS = 1000 / 30;
 
 type RuntimeDiagnosticsSnapshot = Readonly<PrototypeRuntimeMetrics & {
     fps: number;
@@ -114,7 +117,7 @@ const ALL_LOCAL_OVERLAYS: LocalOverlays = {
     workstations: true,
 };
 
-type CommandMode = 'walk' | 'talk' | 'reposition' | null;
+type CommandMode = 'talk' | null;
 type ClickRouteDiagnostic = Readonly<{
     screen: Point;
     viewportLocal: Point;
@@ -160,18 +163,21 @@ function candidateGraph(registration?: MarkupRegistration): CandidateNavigationG
 function initialLocalOverlays(mode: 'ambient' | 'debug'): LocalOverlays {
     return mode === 'ambient'
         ? NO_LOCAL_OVERLAYS
-        : { ...NO_LOCAL_OVERLAYS, routes: true, destinations: true, labels: true };
+        : { ...NO_LOCAL_OVERLAYS, routes: true, destinations: true };
 }
 
-function mergeAgentCount(graph: CandidateNavigationGraph, current: readonly PrototypeAgent[], count: number): readonly PrototypeAgent[] {
-    const generated = createPrototypeAgents(graph, count, 'debug');
+function mergeAgentCount(graph: CandidateNavigationGraph, current: readonly PrototypeAgent[], count: number, mode: 'ambient' | 'debug'): readonly PrototypeAgent[] {
+    const generated = createPrototypeAgents(graph, count, mode);
     const currentById = new Map(current.map(agent => [agent.fixture.id, agent]));
     return generated.map(agent => currentById.get(agent.fixture.id) ?? agent);
 }
 
 function nextAmbientActivity(index: number, revision: number): PrototypeActivityState {
-    const phase = (index + revision) % 6;
-    return phase === 0 ? 'moving-to-task' : phase === 1 || phase === 2 ? 'working-at-desk' : phase === 3 ? 'idle' : 'talking';
+    const phase = (index * 7 + revision) % 20;
+    if (phase < 13) return 'working-at-desk';
+    if (phase < 17) return 'moving-to-task';
+    if (phase < 19) return 'talking';
+    return 'idle';
 }
 
 function selectedStatus(agent: PrototypeAgent | null): string {
@@ -209,13 +215,13 @@ export function Floor1CandidateSimulation({
     const doorRuntimes = useMemo(() => prototypeOpenDoorRuntimes(graph), [graph]);
     const [ambientCount, setAmbientCount] = useState(20);
     const [agents, setAgents] = useState<readonly PrototypeAgent[]>(() => createPrototypeAgents(graph, mode === 'ambient' ? 20 : 0, mode));
-    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(() => mode === 'ambient' ? 'prototype-agent-01' : null);
-    const [cardOpen, setCardOpen] = useState(mode === 'ambient');
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+    const [cardOpen, setCardOpen] = useState(false);
     const [localOverlays, setLocalOverlays] = useState<LocalOverlays>(() => initialLocalOverlays(mode));
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const [paused, setPaused] = useState(false);
     const [autoMovement, setAutoMovement] = useState(false);
-    const [feedback, setFeedback] = useState(mode === 'debug' ? 'Add an agent, then click the office to send it there.' : 'Ambient simulation running.');
+    const [feedback, setFeedback] = useState(mode === 'debug' ? 'Add an agent, then drag it toward a reachable destination.' : 'Ambient simulation running.');
     const [clickRouteDiagnostic, setClickRouteDiagnostic] = useState<ClickRouteDiagnostic | null>(null);
     const [panelCollapsed, setPanelCollapsed] = useState(false);
     const [commandMode, setCommandMode] = useState<CommandMode>(null);
@@ -243,6 +249,12 @@ export function Floor1CandidateSimulation({
     const labelLayoutUpdatedAtRef = useRef(0);
     const labelLayoutContextRef = useRef('');
 
+    const commitAgents = useCallback((update: (current: readonly PrototypeAgent[]) => readonly PrototypeAgent[]) => {
+        const next = update(agentsRef.current);
+        agentsRef.current = next;
+        setAgents(next);
+    }, []);
+
     const selectedAgent = agents.find(agent => agent.fixture.id === selectedAgentId) ?? null;
     const anyDiagnosticOverlay = visibleLayers.size > 0 || Object.values(localOverlays).some(Boolean);
     const atLimit = agents.length >= PROTOTYPE_AGENT_LIMIT;
@@ -252,6 +264,45 @@ export function Floor1CandidateSimulation({
     const waitingCount = agents.filter(agent => ['waiting', 'blocked'].includes(agent.movementState)).length;
     const workstations = useMemo(() => prototypeWorkstations(graph, runtimeMetricsRef.current), [graph]);
     const portalEndpointAudit = useMemo(() => auditPrototypePortalEndpoints(graph), [graph]);
+    const d46RegistrationOverlay = useMemo(() => {
+        const door = graph.doors.find(candidate => candidate.id === 'D46');
+        const room = graph.rooms.find(candidate => candidate.id === 'ROOM_FOCUS_D');
+        if (!door || !room) return null;
+        const nearestForZone = (zoneId: string) => graph.walkNodes
+            .filter(node => node.roomId === zoneId || node.roomIds.includes(zoneId))
+            .filter(node => candidatePointHasStaticClearance(graph, node.point))
+            .slice()
+            .sort((a, b) => Math.hypot(a.point.x - door.point.x, a.point.y - door.point.y)
+                - Math.hypot(b.point.x - door.point.x, b.point.y - door.point.y)
+                || a.id.localeCompare(b.id))[0]?.point ?? null;
+        const approachPoint = nearestForZone(door.zoneIds[1]);
+        const interiorPoint = nearestForZone('ROOM_FOCUS_D');
+        const bounds = [door.point, room.center, ...(approachPoint ? [approachPoint] : []), ...(interiorPoint ? [interiorPoint] : [])];
+        const minX = Math.min(...bounds.map(point => point.x)) - 180;
+        const maxX = Math.max(...bounds.map(point => point.x)) + 180;
+        const minY = Math.min(...bounds.map(point => point.y)) - 180;
+        const maxY = Math.max(...bounds.map(point => point.y)) + 180;
+        const nearbyColliders = graph.colliders.filter(collider => {
+            const colliderMinX = Math.min(...collider.points.map(point => point.x));
+            const colliderMaxX = Math.max(...collider.points.map(point => point.x));
+            const colliderMinY = Math.min(...collider.points.map(point => point.y));
+            const colliderMaxY = Math.max(...collider.points.map(point => point.y));
+            return colliderMaxX >= minX && colliderMinX <= maxX && colliderMaxY >= minY && colliderMinY <= maxY;
+        });
+        return {
+            door,
+            room,
+            approachPoint,
+            interiorPoint,
+            nearbyColliders,
+            audit: portalEndpointAudit.find(item => item.doorId === 'D46') ?? null,
+        };
+    }, [graph, portalEndpointAudit]);
+    const d01ConnectivityOverlay = useMemo(() => auditPrototypeDoorConnectivity(
+        graph,
+        'D01',
+        { x: 1022.4833777777777, y: 1805.5217777777784 },
+    ), [graph]);
     const labelPlacements = useMemo(() => {
         const contextKey = `${selectedAgentId ?? ''}:${transform.scale}:${transform.x}:${transform.y}:${viewport.width}:${viewport.height}:${agents.length}`;
         const now = typeof performance === 'undefined' ? Date.now() : performance.now();
@@ -286,10 +337,12 @@ export function Floor1CandidateSimulation({
     useEffect(() => () => spriteRuntime.dispose(), [spriteRuntime]);
 
     useEffect(() => {
-        const nextCount = mode === 'ambient' ? ambientCount : 0;
-        setAgents(createPrototypeAgents(graph, nextCount, mode));
-        setSelectedAgentId(mode === 'ambient' && nextCount > 0 ? 'prototype-agent-01' : null);
-        setCardOpen(mode === 'ambient' && nextCount > 0);
+        const nextCount = mode === 'ambient' ? 20 : 0;
+        const reset = createPrototypeAgents(graph, nextCount, mode);
+        agentsRef.current = reset;
+        setAgents(reset);
+        setSelectedAgentId(null);
+        setCardOpen(false);
         setLocalOverlays(initialLocalOverlays(mode));
         setPaused(false);
         simulationElapsedRef.current = 0;
@@ -298,8 +351,8 @@ export function Floor1CandidateSimulation({
         setDragState(null);
         dragRef.current = null;
         setRemoveConfirmation(false);
-        setFeedback(mode === 'debug' ? 'Add an agent, then click the office to send it there.' : `Ambient team running with ${ambientCount} agents.`);
-    }, [ambientCount, graph, mode]);
+        setFeedback(mode === 'debug' ? 'Add an agent, then drag it toward a reachable destination.' : 'Ambient team running with 20 agents.');
+    }, [graph, mode]);
 
     const scheduleAmbient = useCallback((current: readonly PrototypeAgent[]) => {
         if (mode !== 'ambient' && !autoMovement) return current;
@@ -329,17 +382,39 @@ export function Floor1CandidateSimulation({
                 continue;
             }
             if (now < agent.activityUntil) continue;
-            if (mode === 'ambient' && agent.task.kind === 'work' && agent.task.phase === 'working') {
-                next[index] = { ...agent, activityUntil: now + 12_000 + (index % 4) * 700 };
+            // Automatic scheduling must stay inside the prevalidated local-patrol cache.
+            // Cross-room work/talk assignments remain available through explicit commands
+            // and drag routing, where their synchronous planning cost cannot accumulate
+            // across the whole roster in a single simulation tick.
+            if (mode === 'ambient' || autoMovement) {
+                if (agent.task.kind === 'work' && agent.task.phase === 'working') {
+                    next[index] = { ...agent, activityUntil: now + 45_000 + (index % 7) * 2_300 };
+                    changed = true;
+                    continue;
+                }
+                if (agent.task.kind === 'talk' && agent.task.phase === 'talking') {
+                    next[index] = { ...agent, activityUntil: now + 12_000 + (index % 4) * 1_400 };
+                    changed = true;
+                    continue;
+                }
+                if (plannedThisTick) {
+                    next[index] = { ...agent, activityUntil: now + 180 + (index % 5) * 45 };
+                    changed = true;
+                    continue;
+                }
+                const wander = assignPrototypeAmbientPatrol(graph, agent, now);
+                if (wander && (wander.route?.length ?? 0) > 20) {
+                    next[index] = { ...wander, activityUntil: 0 };
+                    plannedThisTick = true;
+                    changed = true;
+                    continue;
+                }
+                next[index] = { ...assignPrototypeIdle(agent, now), activityUntil: now + 5_000 + (index % 5) * 900 };
                 changed = true;
                 continue;
             }
-            const scheduledActivity = mode === 'ambient' && index % 5 === 0
-                ? 'moving-to-task'
-                : nextAmbientActivity(index, agent.revision + 1);
-            const activity = mode === 'ambient' && scheduledActivity === 'talking'
-                ? 'idle'
-                : scheduledActivity;
+            const scheduledActivity = nextAmbientActivity(index, agent.revision + 1);
+            const activity = scheduledActivity;
             if (agent.workstationId) occupiedWorkstations.delete(agent.workstationId);
             if (plannedThisTick && activity !== 'idle') {
                 next[index] = { ...agent, activityUntil: now + 120 + (index % 5) * 40 };
@@ -389,12 +464,13 @@ export function Floor1CandidateSimulation({
 
     useEffect(() => {
         if (!active || paused || agents.length === 0) {
-            if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+            if (frameRef.current !== null) window.clearTimeout(frameRef.current);
             frameRef.current = null;
             lastTimestampRef.current = null;
             return undefined;
         }
-        const tick = (timestamp: number) => {
+        const tick = () => {
+            const timestamp = typeof performance === 'undefined' ? Date.now() : performance.now();
             const last = lastTimestampRef.current;
             lastTimestampRef.current = timestamp;
             const rawDelta = last === null ? 0 : timestamp - last;
@@ -431,11 +507,11 @@ export function Floor1CandidateSimulation({
                     p95FrameMs: percentile(0.95),
                 });
             }
-            frameRef.current = requestAnimationFrame(tick);
+            frameRef.current = window.setTimeout(tick, SIMULATION_STEP_INTERVAL_MS);
         };
-        frameRef.current = requestAnimationFrame(tick);
+        frameRef.current = window.setTimeout(tick, SIMULATION_STEP_INTERVAL_MS);
         return () => {
-            if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+            if (frameRef.current !== null) window.clearTimeout(frameRef.current);
             frameRef.current = null;
             lastTimestampRef.current = null;
         };
@@ -446,8 +522,6 @@ export function Floor1CandidateSimulation({
         const cancel = (event: KeyboardEvent) => {
             if (event.key !== 'Escape') return;
             if (dragRef.current) {
-                const canceledDrag = dragRef.current;
-                if (canceledDrag.active) setAgents(previous => previous.map(agent => agent.fixture.id === canceledDrag.agentId ? canceledDrag.originalAgent : agent));
                 dragRef.current = null;
                 setDragState(null);
                 setFeedback('Reposition canceled. Agent returned to its original node.');
@@ -475,9 +549,9 @@ export function Floor1CandidateSimulation({
 
     const setAgentCount = (count: number) => {
         const bounded = Math.max(0, Math.min(PROTOTYPE_AGENT_LIMIT, count));
-        setAgents(previous => mergeAgentCount(graph, previous, bounded));
-        if (bounded === 0) setSelectedAgentId(null);
-        else if (!selectedAgentId || Number(selectedAgentId.slice(-2)) > bounded) setSelectedAgentId(`prototype-agent-${String(bounded).padStart(2, '0')}`);
+        commitAgents(previous => mergeAgentCount(graph, previous, bounded, mode));
+        if (mode === 'ambient') setAmbientCount(bounded);
+        if (bounded === 0 || (selectedAgentId && Number(selectedAgentId.slice(-2)) > bounded)) setSelectedAgentId(null);
     };
 
     const addAgents = (count: number) => {
@@ -488,13 +562,13 @@ export function Floor1CandidateSimulation({
         setSelectedAgentId(addedId);
         setCardOpen(true);
         setFeedback(nextCount === PROTOTYPE_AGENT_LIMIT
-            ? '25-agent limit reached.'
-            : `${count === 1 ? `Agent ${String(agents.length + 1).padStart(2, '0')}` : `${nextCount - agents.length} agents`} added and selected. Click the office to move it.`);
+            ? `${PROTOTYPE_AGENT_LIMIT}-agent limit reached.`
+            : `${count === 1 ? `Agent ${String(agents.length + 1).padStart(2, '0')}` : `${nextCount - agents.length} agents`} added and selected. Drag an agent toward a destination to assign a route.`);
     };
 
     const removeSelected = () => {
         if (!selectedAgentId) return;
-        setAgents(previous => previous.filter(agent => agent.fixture.id !== selectedAgentId));
+        commitAgents(previous => previous.filter(agent => agent.fixture.id !== selectedAgentId));
         const remaining = agents.filter(agent => agent.fixture.id !== selectedAgentId);
         setSelectedAgentId(remaining[0]?.fixture.id ?? null);
         setCardOpen(false);
@@ -503,7 +577,7 @@ export function Floor1CandidateSimulation({
     };
 
     const clearAgents = () => {
-        setAgents([]);
+        commitAgents(() => []);
         setSelectedAgentId(null);
         setCardOpen(false);
         setFeedback('All agents removed.');
@@ -511,16 +585,16 @@ export function Floor1CandidateSimulation({
 
     const resetAgents = () => {
         const count = mode === 'ambient' ? ambientCount : agents.length;
-        setAgents(createPrototypeAgents(graph, count, mode));
-        setSelectedAgentId(count > 0 ? 'prototype-agent-01' : null);
-        setCardOpen(count > 0);
+        commitAgents(() => createPrototypeAgents(graph, count, mode));
+        setSelectedAgentId(mode === 'debug' && count > 0 ? 'prototype-agent-01' : null);
+        setCardOpen(mode === 'debug' && count > 0);
         setPaused(false);
         setFeedback(mode === 'ambient' ? 'Ambient simulation reset deterministically.' : 'Agents reset to deterministic spawn nodes.');
     };
 
     const stopSelected = () => {
         if (!selectedAgentId) return;
-        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId
+        commitAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId
             ? assignPrototypeIdle(agent, simulationElapsedRef.current, true)
             : agent));
         setCommandMode(null);
@@ -543,75 +617,21 @@ export function Floor1CandidateSimulation({
 
     const handleMapClick = (event: MouseEvent<HTMLDivElement>) => {
         if (mode !== 'debug') return;
+        event.stopPropagation();
         if (!selectedAgent) {
-            setFeedback('Add or select an agent before choosing a destination.');
+            setFeedback('Add or select an agent before dragging it toward a destination.');
             return;
         }
         if (commandMode === 'talk') {
             setFeedback('Choose another agent sprite as the conversation partner, or press Escape.');
             return;
         }
-        if (commandMode === 'reposition') {
-            setFeedback(`Drag ${selectedAgent.fixture.label} to a valid navigation node, or press Escape.`);
-            return;
-        }
-        const rect = event.currentTarget.getBoundingClientRect();
-        const screen = { x: event.clientX, y: event.clientY };
-        const viewportLocal = {
-            x: event.clientX - (rect.left - transform.x),
-            y: event.clientY - (rect.top - transform.y),
-        };
-        const clickedPoint = screenToOffice(viewportLocal, transform);
-        const selection = findValidatedPrototypeRouteToPoint(graph, selectedAgent, clickedPoint, runtimeMetricsRef.current, {
-            occupiedPoints: agents.filter(agent => agent.fixture.id !== selectedAgent.fixture.id).map(agent => agent.point),
-        });
-        if (selection.status === 'rejected') {
-            setClickRouteDiagnostic({
-                screen,
-                viewportLocal,
-                world: clickedPoint,
-                candidatesEvaluated: selection.candidatesEvaluated ?? 0,
-                searchRadius: selection.searchRadius ?? PROTOTYPE_CLICK_SNAP_LIMIT,
-                acceptedEndpoint: null,
-                rejectionReason: selection.message,
-                routeCost: null,
-                clickOffset: null,
-            });
-            setFeedback(selection.message);
-            return;
-        }
-        const { plan } = selection;
-        setClickRouteDiagnostic({
-            screen,
-            viewportLocal,
-            world: clickedPoint,
-            candidatesEvaluated: plan.candidatesEvaluated,
-            searchRadius: plan.searchRadius,
-            acceptedEndpoint: plan.snappedPoint,
-            rejectionReason: null,
-            routeCost: plan.route.cost,
-            clickOffset: plan.snapDistance,
-        });
-        if (Math.hypot(plan.snappedPoint.x - selectedAgent.point.x, plan.snappedPoint.y - selectedAgent.point.y) <= PROTOTYPE_AGENT_RADIUS) {
-            setCommandMode(null);
-            setFeedback('Already near the best reachable destination.');
-            return;
-        }
-        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id
-            ? startPrototypeRoute(agent, plan, {
-                kind: 'walk', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs: simulationElapsedRef.current,
-            })
-            : agent));
-        setCommandMode(null);
-        setCardOpen(true);
-        setFeedback(plan.snapDistance > 20
-            ? `Walking now. Target snapped ${Math.round(plan.snapDistance)}px to reachable navigation.`
-            : 'Walking now on the navigation graph.');
+        setFeedback('Map clicks do not move agents. Drag an agent toward a reachable destination and release to assign a walking route.');
     };
 
     const resetSelected = () => {
         if (!selectedAgentId) return;
-        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId ? resetPrototypeAgent(agent) : agent));
+        commitAgents(previous => previous.map(agent => agent.fixture.id === selectedAgentId ? resetPrototypeAgent(agent) : agent));
         setFeedback('Selected agent returned to its deterministic spawn.');
     };
 
@@ -628,7 +648,7 @@ export function Floor1CandidateSimulation({
                 setFeedback(`No reachable conversation approach near ${partner.fixture.label}.`);
                 return;
             }
-            setAgents(previous => previous.map(agent => {
+            commitAgents(previous => previous.map(agent => {
                 if (agent.fixture.id === selectedAgent.fixture.id) return assigned;
                 if (agent.fixture.id !== partner.fixture.id) return agent;
                 return {
@@ -669,7 +689,7 @@ export function Floor1CandidateSimulation({
             setFeedback('No reachable workstation destination is available.');
             return;
         }
-        setAgents(previous => previous.map(agent => agent.fixture.id === assigned.fixture.id ? assigned : agent));
+        commitAgents(previous => previous.map(agent => agent.fixture.id === assigned.fixture.id ? assigned : agent));
         setCommandMode(null);
         setFeedback(`${selectedAgent.fixture.label} is heading to ${assigned.workstationId}.`);
     };
@@ -681,7 +701,7 @@ export function Floor1CandidateSimulation({
             setFeedback('No reachable wander target is available in the current room.');
             return;
         }
-        setAgents(previous => previous.map(agent => agent.fixture.id === assigned.fixture.id ? assigned : agent));
+        commitAgents(previous => previous.map(agent => agent.fixture.id === assigned.fixture.id ? assigned : agent));
         setCommandMode(null);
         setFeedback(`${selectedAgent.fixture.label} is wandering on the navigation graph.`);
     };
@@ -724,16 +744,10 @@ export function Floor1CandidateSimulation({
             setSelectedAgentId(agentId);
             setCardOpen(false);
             setRemoveConfirmation(false);
-            setAgents(previous => previous.map(agent => agent.fixture.id === agentId ? {
-                ...agent,
-                movementState: 'paused',
-                activityState: 'waiting',
-                task: { kind: 'reposition', origin: current.origin, preview, startedAtMs: simulationElapsedRef.current },
-            } : agent));
         }
         dragRef.current = next;
         setDragState(next);
-        setFeedback(next.snap ? `Valid snap: ${next.snap.nodeId}. Release to reposition.` : 'Invalid location. Release to return to the original node.');
+        setFeedback(next.snap ? `Reachable destination preview: ${next.snap.nodeId}. Release to walk there.` : 'Invalid destination. Release to keep the agent at its original point.');
     };
 
     const finishDrag = (event: PointerEvent<HTMLButtonElement>, agentId: string, canceled = false) => {
@@ -743,26 +757,52 @@ export function Floor1CandidateSimulation({
         if (current.active) suppressAgentClickRef.current = true;
         dragRef.current = null;
         setDragState(null);
-        if (!canceled && current.active && current.snap) {
-            setAgents(previous => previous.map(agent => agent.fixture.id === agentId
-                ? repositionPrototypeAgent(agent, current.snap!, simulationElapsedRef.current)
-                : agent));
-            setCommandMode(null);
-            setCardOpen(true);
-            setFeedback(`${agentsRef.current.find(agent => agent.fixture.id === agentId)?.fixture.label ?? 'Agent'} repositioned to ${current.snap.nodeId}.`);
+        if (!current.active) return;
+        if (canceled || !current.snap) {
+            setFeedback(canceled ? 'Destination drag canceled.' : 'Invalid destination. Agent remained at its original point.');
             return;
         }
-        if (current.active) {
-            setAgents(previous => previous.map(agent => agent.fixture.id === agentId ? current.originalAgent : agent));
-            setFeedback(canceled ? 'Reposition canceled.' : 'Invalid drop reverted to the original node.');
+        const selection = findValidatedPrototypeRouteToPoint(graph, current.originalAgent, current.preview, runtimeMetricsRef.current, {
+            occupiedPoints: agentsRef.current.filter(agent => agent.fixture.id !== agentId).map(agent => agent.point),
+        });
+        if (selection.status === 'rejected') {
+            setClickRouteDiagnostic({
+                screen: { x: event.clientX, y: event.clientY }, viewportLocal: current.preview, world: current.preview,
+                candidatesEvaluated: selection.candidatesEvaluated ?? 0,
+                searchRadius: selection.searchRadius ?? PROTOTYPE_CLICK_SNAP_LIMIT,
+                acceptedEndpoint: null, rejectionReason: selection.message, routeCost: null, clickOffset: null,
+            });
+            setFeedback(`${selection.message} Agent remained at its original point.`);
+            return;
         }
+        const { plan } = selection;
+        setClickRouteDiagnostic({
+            screen: { x: event.clientX, y: event.clientY }, viewportLocal: current.preview, world: current.preview,
+            candidatesEvaluated: plan.candidatesEvaluated, searchRadius: plan.searchRadius,
+            acceptedEndpoint: plan.snappedPoint, rejectionReason: null, routeCost: plan.route.cost, clickOffset: plan.snapDistance,
+        });
+        if (Math.hypot(plan.snappedPoint.x - current.originalAgent.point.x, plan.snappedPoint.y - current.originalAgent.point.y) <= PROTOTYPE_AGENT_RADIUS) {
+            setFeedback('Already near the best reachable destination.');
+            return;
+        }
+        commitAgents(previous => previous.map(agent => agent.fixture.id === agentId
+            ? startPrototypeRoute(agent, plan, {
+                kind: 'walk', phase: 'traveling', destination: plan.snappedPoint, nodeId: plan.snappedNodeId, startedAtMs: simulationElapsedRef.current,
+            })
+            : agent));
+        setCommandMode(null);
+        setCardOpen(true);
+        setFeedback(plan.snapDistance > 20
+            ? `Walking now. Target snapped ${Math.round(plan.snapDistance)}px to reachable navigation.`
+            : 'Walking now on the navigation graph.');
     };
 
     const currentRoom = selectedAgent ? prototypeRoomAtPoint(graph, selectedAgent.point) : null;
     const requestedSpriteState = selectedAgent ? prototypeSpriteState(selectedAgent) : 'idle';
     const requestedSpriteDirection = selectedAgent ? prototypeSpriteDirection(selectedAgent) : 'none';
+    const requestedSpriteAssetId = selectedAgent ? prototypeSpriteAssetId(selectedAgent) : null;
     const resolvedSprite = selectedAgent
-        ? resolveSpriteClip(AGENT_SPRITE_MANIFEST, selectedAgent.fixture.spriteAssetId, requestedSpriteState, requestedSpriteDirection, reducedMotion)
+        ? resolveSpriteClip(AGENT_SPRITE_MANIFEST, requestedSpriteAssetId!, requestedSpriteState, requestedSpriteDirection, reducedMotion)
         : null;
     const selectedSpriteElapsed = selectedAgent && ['walking', 'waiting'].includes(selectedAgent.movementState)
         ? selectedAgent.walkCycleElapsedMs
@@ -796,7 +836,7 @@ export function Floor1CandidateSimulation({
                     <SpritePlayer
                         manifest={AGENT_SPRITE_MANIFEST}
                         runtime={spriteRuntime}
-                        assetId={selectedAgent.fixture.spriteAssetId}
+                        assetId={requestedSpriteAssetId!}
                         state={requestedSpriteState}
                         direction={requestedSpriteDirection}
                         reducedMotion={reducedMotion}
@@ -817,16 +857,14 @@ export function Floor1CandidateSimulation({
             {mode === 'debug' ? (
                 <section className="prototype-agent-card__actions" aria-label="Assign task">
                     <h3>Assign task</h3>
-                    <button type="button" className={commandMode === 'walk' ? 'is-active' : ''} onClick={() => { setCommandMode('walk'); setCardOpen(false); setFeedback('Click a reachable office location for this walk task.'); }}>Walk somewhere</button>
                     <button type="button" onClick={assignWork}>Work at desk</button>
                     <button type="button" className={commandMode === 'talk' ? 'is-active' : ''} onClick={() => { setCommandMode('talk'); setCardOpen(false); setFeedback('Choose another agent sprite as the conversation partner.'); }}>Talk to agent</button>
                     <button type="button" onClick={assignWander}>Wander</button>
                     <button type="button" onClick={() => {
-                        setAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id ? assignPrototypeIdle(agent, simulationElapsedRef.current) : agent));
+                        commitAgents(previous => previous.map(agent => agent.fixture.id === selectedAgent.fixture.id ? assignPrototypeIdle(agent, simulationElapsedRef.current) : agent));
                         setFeedback(`${selectedAgent.fixture.label} is idle here.`);
                     }}>Idle here</button>
                     <button type="button" onClick={stopSelected}>Stop current task</button>
-                    <button type="button" className={commandMode === 'reposition' ? 'is-active' : ''} onClick={() => { setCommandMode('reposition'); setCardOpen(false); setFeedback(`Drag ${selectedAgent.fixture.label}; release over a valid navigation node.`); }}>Reposition agent</button>
                     {!removeConfirmation ? (
                         <button type="button" className="prototype-destructive" aria-label="Remove from agent card" onClick={() => setRemoveConfirmation(true)}>Remove</button>
                     ) : (
@@ -835,7 +873,7 @@ export function Floor1CandidateSimulation({
                         </div>
                     )}
                 </section>
-            ) : <p className="prototype-agent-card__readonly">Office Engine is ambient and read-only. Open Agent Simulation to assign tasks or reposition agents.</p>}
+            ) : <p className="prototype-agent-card__readonly">Office Engine is ambient and read-only. Open Agent Simulation to assign tasks or drag agents to destinations.</p>}
             <details className="prototype-agent-card__advanced">
                 <summary>Advanced diagnostics</summary>
                 <dl>
@@ -863,11 +901,9 @@ export function Floor1CandidateSimulation({
     const interactionBanner = (mode === 'debug' || commandMode || dragState?.active) ? (
         <div className={`prototype-command-banner ${dragState?.active && !dragState.snap ? 'is-invalid' : ''}`}>
             {dragState?.active
-                ? `Reposition ${selectedAgent?.fixture.label ?? 'agent'} · ${dragState.snap ? 'release to snap' : 'invalid location'} · Esc cancels`
+                ? `Route ${selectedAgent?.fixture.label ?? 'agent'} · ${dragState.snap ? 'release to walk' : 'invalid destination'} · Esc cancels`
                 : commandMode === 'talk' ? 'Choose a conversation partner · Esc cancels'
-                    : commandMode === 'reposition' ? `Drag ${selectedAgent?.fixture.label ?? 'agent'} · Esc cancels`
-                        : commandMode === 'walk' ? 'Click a reachable destination · Esc cancels'
-                            : selectedAgent ? 'Agent click: inspect · map click: walk · agent drag: reposition · empty drag: pan' : 'Agent click: inspect · empty drag: pan'}
+                    : selectedAgent ? 'Agent click: inspect · agent drag: preview and assign route · empty drag: pan' : 'Agent click: inspect · empty drag: pan'}
         </div>
     ) : null;
 
@@ -879,7 +915,7 @@ export function Floor1CandidateSimulation({
                 <dt>Transform</dt><dd>zoom {transform.scale.toFixed(3)} · pan {Math.round(transform.x)}, {Math.round(transform.y)}</dd>
                 <dt>Viewport</dt><dd>{Math.round(viewport.width)} × {Math.round(viewport.height)}</dd>
                 <dt>Pointer</dt><dd>{coordinate(pointer)}</dd>
-                <dt>Last click</dt><dd>{clickRouteDiagnostic
+                <dt>Last destination drag</dt><dd>{clickRouteDiagnostic
                     ? `screen ${coordinate(clickRouteDiagnostic.screen)} · local ${coordinate(clickRouteDiagnostic.viewportLocal)} · world ${coordinate(clickRouteDiagnostic.world)} · ${clickRouteDiagnostic.candidatesEvaluated} candidates/${clickRouteDiagnostic.searchRadius}px · endpoint ${coordinate(clickRouteDiagnostic.acceptedEndpoint)} · cost ${clickRouteDiagnostic.routeCost ?? 'n/a'} · offset ${clickRouteDiagnostic.clickOffset === null ? 'n/a' : Math.round(clickRouteDiagnostic.clickOffset)} · ${clickRouteDiagnostic.rejectionReason ?? 'accepted'}`
                     : 'none'}</dd>
                 <dt>Agent node</dt><dd>{selectedAgent?.currentNodeId ?? 'none'}</dd>
@@ -931,7 +967,7 @@ export function Floor1CandidateSimulation({
                     <button type="button" onClick={() => setPaused(value => !value)} disabled={agents.length === 0}>{paused ? 'Resume all' : 'Pause all'}</button>
                     <button type="button" onClick={resetAgents} disabled={agents.length === 0}>Reset agents</button>
                 </div>
-                {atLimit && <p className="prototype-limit" role="status">25-agent limit reached</p>}
+                {atLimit && <p className="prototype-limit" role="status">{PROTOTYPE_AGENT_LIMIT}-agent limit reached</p>}
             </section>
 
             <section className="prototype-panel-section">
@@ -992,8 +1028,9 @@ export function Floor1CandidateSimulation({
             <div className="prototype-toolbar-actions">
                 <button type="button" onClick={() => setPaused(value => !value)}>{paused ? 'Resume' : 'Pause'}</button>
                 <button type="button" onClick={resetAgents}>Reset simulation</button>
-                <span className="prototype-count-label">Agents</span>
-                {PROTOTYPE_AMBIENT_COUNTS.map(count => <button key={count} type="button" aria-pressed={ambientCount === count} onClick={() => setAmbientCount(count)}>{count}</button>)}
+                <label className="prototype-count-label">Agents · {ambientCount}
+                    <input aria-label="Office Engine agent count" type="range" min="1" max={PROTOTYPE_AGENT_LIMIT} step="1" value={ambientCount} onChange={event => setAgentCount(Number(event.target.value))} />
+                </label>
                 <label>Speed <input aria-label="Simulation speed" type="range" min="0.5" max="2" step="0.5" value={playbackSpeed} onChange={event => setPlaybackSpeed(Number(event.target.value))} /></label>
                 <button type="button" onClick={onFitOffice}>Fit office</button>
                 <button type="button" onClick={onOpenDebugger}>Open debugger</button>
@@ -1028,6 +1065,51 @@ export function Floor1CandidateSimulation({
                     {localOverlays.doors && graph.doors.map(door => <g key={door.id} data-door-id={door.id} data-door-state="open"><circle className="door door--open" cx={door.point.x} cy={door.point.y} r="32" />{localOverlays.labels && <text x={door.point.x + 38} y={door.point.y}>{door.id}</text>}</g>)}
                 </svg>
             )}
+            {localOverlays.doors && d46RegistrationOverlay && (
+                <svg className="floor1-candidate-debug floor1-candidate-debug--d46" aria-label="D46 provisional registration audit">
+                    <polygon className="room" points={d46RegistrationOverlay.room.polygon.map(point => `${point.x},${point.y}`).join(' ')} />
+                    <circle className="envelope" cx={d46RegistrationOverlay.door.point.x} cy={d46RegistrationOverlay.door.point.y} r={PROTOTYPE_CLICK_SNAP_LIMIT} />
+                    {d46RegistrationOverlay.nearbyColliders.map(collider => collider.closed
+                        ? <polygon className="collision" key={collider.id} points={collider.points.map(point => `${point.x},${point.y}`).join(' ')} strokeWidth={collider.thickness} />
+                        : <polyline className="collision" key={collider.id} points={collider.points.map(point => `${point.x},${point.y}`).join(' ')} strokeWidth={collider.thickness} fill="none" />)}
+                    {d46RegistrationOverlay.approachPoint && <>
+                        <line className="proposal" x1={d46RegistrationOverlay.door.point.x} y1={d46RegistrationOverlay.door.point.y} x2={d46RegistrationOverlay.approachPoint.x} y2={d46RegistrationOverlay.approachPoint.y} />
+                        <circle className="approach" cx={d46RegistrationOverlay.approachPoint.x} cy={d46RegistrationOverlay.approachPoint.y} r="34" />
+                        <text x={d46RegistrationOverlay.approachPoint.x + 46} y={d46RegistrationOverlay.approachPoint.y - 32}>proposed approach</text>
+                    </>}
+                    {d46RegistrationOverlay.interiorPoint && <>
+                        <line className="proposal proposal--rejected" x1={d46RegistrationOverlay.door.point.x} y1={d46RegistrationOverlay.door.point.y} x2={d46RegistrationOverlay.interiorPoint.x} y2={d46RegistrationOverlay.interiorPoint.y} />
+                        <circle className="interior" cx={d46RegistrationOverlay.interiorPoint.x} cy={d46RegistrationOverlay.interiorPoint.y} r="34" />
+                        <text x={d46RegistrationOverlay.interiorPoint.x + 46} y={d46RegistrationOverlay.interiorPoint.y + 76}>nearest Focus D support (outside envelope)</text>
+                    </>}
+                    <circle className="threshold" cx={d46RegistrationOverlay.door.point.x} cy={d46RegistrationOverlay.door.point.y} r="42" />
+                    <text x={d46RegistrationOverlay.door.point.x + 54} y={d46RegistrationOverlay.door.point.y + 72}>D46 registered threshold · unsupported</text>
+                    <text className="status" x={d46RegistrationOverlay.door.point.x - 570} y={d46RegistrationOverlay.door.point.y + 700}>
+                        620px envelope · {d46RegistrationOverlay.audit?.status ?? 'audit missing'}
+                    </text>
+                </svg>
+            )}
+            {localOverlays.doors && d01ConnectivityOverlay && (
+                <svg className="floor1-candidate-debug floor1-candidate-debug--d01" aria-label="D01 A21 connectivity audit">
+                    <circle className="envelope" cx={d01ConnectivityOverlay.doorPoint.x} cy={d01ConnectivityOverlay.doorPoint.y} r={PROTOTYPE_CLICK_SNAP_LIMIT} />
+                    {d01ConnectivityOverlay.zones.flatMap(zone => zone.nearbyNodes.slice(0, 12).map(node => (
+                        <circle key={`${zone.zoneId}:${node.id}`} className="endpoint" cx={node.point.x} cy={node.point.y} r="22" />
+                    )))}
+                    {d01ConnectivityOverlay.probeNodePoint && <>
+                        <circle className="probe" cx={d01ConnectivityOverlay.probeNodePoint.x} cy={d01ConnectivityOverlay.probeNodePoint.y} r="38" />
+                        <text x={d01ConnectivityOverlay.probeNodePoint.x + 46} y={d01ConnectivityOverlay.probeNodePoint.y - 42}>A21 reproduced start · component {d01ConnectivityOverlay.probeComponentId}</text>
+                    </>}
+                    <polyline className="reviewed-bridge" points={PROTOTYPE_D01_ROOM_BRIDGE.map(point => `${point.x},${point.y}`).join(' ')} />
+                    {PROTOTYPE_D01_ROOM_BRIDGE.map((point, index) => (
+                        <circle key={`d01-reviewed:${index}`} className="reviewed-point" cx={point.x} cy={point.y} r="25" />
+                    ))}
+                    <text x={PROTOTYPE_D01_ROOM_BRIDGE[2].x + 40} y={PROTOTYPE_D01_ROOM_BRIDGE[2].y + 82}>
+                        reviewed lower-aisle bridge · collision-clear
+                    </text>
+                    <circle className="threshold" cx={d01ConnectivityOverlay.doorPoint.x} cy={d01ConnectivityOverlay.doorPoint.y} r="42" />
+                    <text x={d01ConnectivityOverlay.doorPoint.x + 52} y={d01ConnectivityOverlay.doorPoint.y - 48}>D01 threshold</text>
+                </svg>
+            )}
             {localOverlays.routes && selectedRoute?.status === 'valid' && (
                 <svg className="floor1-candidate-route" aria-label="Selected agent route">
                     <polyline points={selectedRoute.points.map(point => `${point.x},${point.y}`).join(' ')} />
@@ -1050,7 +1132,7 @@ export function Floor1CandidateSimulation({
                 </svg>
             )}
             {dragState?.active && (
-                <svg className="floor1-candidate-drag-feedback" aria-label="Agent reposition preview">
+                <svg className="floor1-candidate-drag-feedback" aria-label="Agent route destination preview">
                     <circle className="origin" cx={dragState.origin.x} cy={dragState.origin.y} r="58" />
                     <line x1={dragState.origin.x} y1={dragState.origin.y} x2={dragState.preview.x} y2={dragState.preview.y} />
                     {dragState.snap && <circle className="snap" cx={dragState.snap.point.x} cy={dragState.snap.point.y} r="48" />}
@@ -1059,11 +1141,10 @@ export function Floor1CandidateSimulation({
             <div className="prototype-agent-layer">
                 {agents.map(agent => {
                     const dragging = dragState?.active && dragState.agentId === agent.fixture.id;
-                    const displayAgent = dragging ? { ...agent, point: dragState.preview } : agent;
                     return (
                         <PrototypeAgentRenderer
                             key={agent.fixture.id}
-                            agent={displayAgent}
+                            agent={agent}
                             runtime={spriteRuntime}
                             elapsedMs={simulationElapsedMs}
                             selected={selectedAgentId === agent.fixture.id}
