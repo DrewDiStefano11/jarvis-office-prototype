@@ -47,8 +47,8 @@ describe('sprite inventory and generation', () => {
   it('classifies ambiguous/reference sources without crashing the inventory', async () => {
     const inventory = await buildInventory();
     expect(inventory.counts).toEqual({
-      total: 18,
-      productionCandidates: 12,
+      total: 19,
+      productionCandidates: 13,
       provisional: 1,
       blocked: 5,
       duplicates: 0,

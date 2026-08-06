@@ -31,11 +31,14 @@ function sourcePreviewUrl(path: string) {
 }
 
 export function AgentSpriteVisualLab() {
+    const defaultAssetId = AGENT_SPRITE_MANIFEST.assets.find(asset =>
+        asset.clips.some(clip => clip.state === 'walking'),
+    )?.id ?? AGENT_SPRITE_MANIFEST.assets[0]?.id;
     const allIds = [
         ...AGENT_SPRITE_MANIFEST.assets.map(asset => asset.id),
         ...AGENT_SPRITE_MANIFEST.blockedAssets.map(asset => asset.id),
     ];
-    const [assetId, setAssetId] = useState(allIds[0]);
+    const [assetId, setAssetId] = useState(defaultAssetId ?? allIds[0]);
     const [state, setState] = useState<SpriteState>('walking');
     const [direction, setDirection] = useState<SpriteDirection>('none');
     const [playing, setPlaying] = useState(true);
@@ -105,7 +108,12 @@ export function AgentSpriteVisualLab() {
             <section className="sprite-lab__controls" aria-label="Sprite controls">
                 <label>Asset
                     <select value={assetId} onChange={event => {
-                        setAssetId(event.target.value);
+                        const nextAssetId = event.target.value;
+                        const nextAsset = AGENT_SPRITE_MANIFEST.assets.find(item => item.id === nextAssetId);
+                        setAssetId(nextAssetId);
+                        if (nextAsset && !nextAsset.clips.some(clip => clip.state === state)) {
+                            setState(nextAsset.clips[0]?.state ?? 'idle');
+                        }
                         setFrame(0);
                         setManualFrame(null);
                     }}>

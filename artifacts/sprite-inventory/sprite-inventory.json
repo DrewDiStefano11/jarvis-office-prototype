@@ -2,12 +2,753 @@
   "counts": {
     "blocked": 5,
     "duplicates": 0,
-    "productionCandidates": 12,
+    "productionCandidates": 13,
     "provisional": 1,
-    "total": 18
+    "total": 19
   },
   "generatedBy": "scripts/sprites/core.mjs",
   "records": [
+    {
+      "alphaChannelPresent": true,
+      "alphaUsed": true,
+      "bitDepth": 8,
+      "blockingIssues": [],
+      "colorMode": "rgba",
+      "confidence": "deterministic",
+      "contentBounds": {
+        "height": 1188,
+        "width": 1154,
+        "x": 49,
+        "y": 50
+      },
+      "duplicateOf": null,
+      "embeddedMarkings": false,
+      "fileSize": 734776,
+      "fileType": "image/png",
+      "frameCount": 36,
+      "frameIntegrity": {
+        "authoredDirectionalRows": [
+          0,
+          2,
+          4
+        ],
+        "edgeBleedFrameIndexes": [],
+        "emptyFrameIndexes": [],
+        "fragmentedFrameIndexes": [],
+        "frames": [
+          {
+            "alphaPixels": 7527,
+            "bottomOffset": 16,
+            "column": 0,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 143,
+              "width": 75,
+              "x": 67,
+              "y": 50
+            },
+            "index": 0,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.172317483574094,
+            "row": 0,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 7500,
+            "bottomOffset": 16,
+            "column": 1,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 143,
+              "width": 74,
+              "x": 68,
+              "y": 50
+            },
+            "index": 1,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.17169936585700876,
+            "row": 0,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 7576,
+            "bottomOffset": 16,
+            "column": 2,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 143,
+              "width": 76,
+              "x": 66,
+              "y": 50
+            },
+            "index": 2,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.17343925276435979,
+            "row": 0,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 7535,
+            "bottomOffset": 16,
+            "column": 3,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 143,
+              "width": 75,
+              "x": 67,
+              "y": 50
+            },
+            "index": 3,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.17250062956434148,
+            "row": 0,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 7522,
+            "bottomOffset": 16,
+            "column": 4,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 143,
+              "width": 74,
+              "x": 67,
+              "y": 50
+            },
+            "index": 4,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.17220301733018933,
+            "row": 0,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 7495,
+            "bottomOffset": 16,
+            "column": 5,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 143,
+              "width": 75,
+              "x": 67,
+              "y": 50
+            },
+            "index": 5,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.1715848996131041,
+            "row": 0,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 8485,
+            "bottomOffset": 16,
+            "column": 0,
+            "connectedComponentCount": 3,
+            "contentBounds": {
+              "height": 177,
+              "width": 95,
+              "x": 57,
+              "y": 16
+            },
+            "index": 6,
+            "largestComponentRatio": 0.9868002357100766,
+            "occupancyRatio": 0.19424921590622926,
+            "row": 1,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 8495,
+            "bottomOffset": 16,
+            "column": 1,
+            "connectedComponentCount": 3,
+            "contentBounds": {
+              "height": 177,
+              "width": 94,
+              "x": 57,
+              "y": 16
+            },
+            "index": 7,
+            "largestComponentRatio": 0.9868157739846969,
+            "occupancyRatio": 0.1944781483940386,
+            "row": 1,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 8433,
+            "bottomOffset": 16,
+            "column": 2,
+            "connectedComponentCount": 3,
+            "contentBounds": {
+              "height": 177,
+              "width": 94,
+              "x": 57,
+              "y": 16
+            },
+            "index": 8,
+            "largestComponentRatio": 0.9868374244041267,
+            "occupancyRatio": 0.19305876696962065,
+            "row": 1,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 8586,
+            "bottomOffset": 16,
+            "column": 3,
+            "connectedComponentCount": 3,
+            "contentBounds": {
+              "height": 177,
+              "width": 96,
+              "x": 56,
+              "y": 16
+            },
+            "index": 9,
+            "largestComponentRatio": 0.986722571628232,
+            "occupancyRatio": 0.19656143403310364,
+            "row": 1,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 8527,
+            "bottomOffset": 16,
+            "column": 4,
+            "connectedComponentCount": 4,
+            "contentBounds": {
+              "height": 177,
+              "width": 170,
+              "x": 19,
+              "y": 16
+            },
+            "index": 10,
+            "largestComponentRatio": 0.985340682537821,
+            "occupancyRatio": 0.1952107323550285,
+            "row": 1,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 8428,
+            "bottomOffset": 16,
+            "column": 5,
+            "connectedComponentCount": 3,
+            "contentBounds": {
+              "height": 177,
+              "width": 94,
+              "x": 57,
+              "y": 16
+            },
+            "index": 11,
+            "largestComponentRatio": 0.9867109634551495,
+            "occupancyRatio": 0.19294430072571597,
+            "row": 1,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 10690,
+            "bottomOffset": 16,
+            "column": 0,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 130,
+              "width": 110,
+              "x": 49,
+              "y": 63
+            },
+            "index": 12,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.24472882946818983,
+            "row": 2,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 10624,
+            "bottomOffset": 17,
+            "column": 1,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 129,
+              "width": 109,
+              "x": 50,
+              "y": 63
+            },
+            "index": 13,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.24321787504864814,
+            "row": 2,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 10655,
+            "bottomOffset": 16,
+            "column": 2,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 130,
+              "width": 110,
+              "x": 49,
+              "y": 63
+            },
+            "index": 14,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.2439275657608571,
+            "row": 2,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 10679,
+            "bottomOffset": 16,
+            "column": 3,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 130,
+              "width": 110,
+              "x": 49,
+              "y": 63
+            },
+            "index": 15,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.24447700373159956,
+            "row": 2,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 8924,
+            "bottomOffset": 17,
+            "column": 4,
+            "connectedComponentCount": 2,
+            "contentBounds": {
+              "height": 118,
+              "width": 176,
+              "x": 17,
+              "y": 74
+            },
+            "index": 16,
+            "largestComponentRatio": 0.9956297624383684,
+            "occupancyRatio": 0.2042993521210595,
+            "row": 2,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 10562,
+            "bottomOffset": 17,
+            "column": 5,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 129,
+              "width": 107,
+              "x": 51,
+              "y": 63
+            },
+            "index": 17,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.24179849362423023,
+            "row": 2,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6801,
+            "bottomOffset": 16,
+            "column": 0,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 82,
+              "x": 63,
+              "y": 54
+            },
+            "index": 18,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.15569698495913556,
+            "row": 3,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6681,
+            "bottomOffset": 16,
+            "column": 1,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 70,
+              "x": 69,
+              "y": 54
+            },
+            "index": 19,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.15294979510542342,
+            "row": 3,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6880,
+            "bottomOffset": 16,
+            "column": 2,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 85,
+              "x": 62,
+              "y": 54
+            },
+            "index": 20,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.15750555161282936,
+            "row": 3,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6704,
+            "bottomOffset": 16,
+            "column": 3,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 68,
+              "x": 70,
+              "y": 54
+            },
+            "index": 21,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.1534763398273849,
+            "row": 3,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6894,
+            "bottomOffset": 16,
+            "column": 4,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 90,
+              "x": 59,
+              "y": 54
+            },
+            "index": 22,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.15782605709576247,
+            "row": 3,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6650,
+            "bottomOffset": 16,
+            "column": 5,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 70,
+              "x": 69,
+              "y": 54
+            },
+            "index": 23,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.15224010439321445,
+            "row": 3,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6378,
+            "bottomOffset": 16,
+            "column": 0,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 137,
+              "width": 63,
+              "x": 73,
+              "y": 56
+            },
+            "index": 24,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.14601314072480026,
+            "row": 4,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6255,
+            "bottomOffset": 16,
+            "column": 1,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 137,
+              "width": 62,
+              "x": 73,
+              "y": 56
+            },
+            "index": 25,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.1431972711247453,
+            "row": 4,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6018,
+            "bottomOffset": 16,
+            "column": 2,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 137,
+              "width": 59,
+              "x": 75,
+              "y": 56
+            },
+            "index": 26,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.13777157116366384,
+            "row": 4,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6179,
+            "bottomOffset": 16,
+            "column": 3,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 137,
+              "width": 63,
+              "x": 73,
+              "y": 56
+            },
+            "index": 27,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.1414573842173943,
+            "row": 4,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6217,
+            "bottomOffset": 16,
+            "column": 4,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 137,
+              "width": 61,
+              "x": 74,
+              "y": 56
+            },
+            "index": 28,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.14232732767106981,
+            "row": 4,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6188,
+            "bottomOffset": 16,
+            "column": 5,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 137,
+              "width": 60,
+              "x": 75,
+              "y": 56
+            },
+            "index": 29,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.1416634234564227,
+            "row": 4,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6737,
+            "bottomOffset": 16,
+            "column": 0,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 71,
+              "x": 68,
+              "y": 54
+            },
+            "index": 30,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.15423181703715574,
+            "row": 5,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6494,
+            "bottomOffset": 16,
+            "column": 1,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 138,
+              "width": 70,
+              "x": 69,
+              "y": 55
+            },
+            "index": 31,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.14866875758338866,
+            "row": 5,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6432,
+            "bottomOffset": 16,
+            "column": 2,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 138,
+              "width": 68,
+              "x": 70,
+              "y": 55
+            },
+            "index": 32,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.1472493761589707,
+            "row": 5,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6602,
+            "bottomOffset": 16,
+            "column": 3,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 139,
+              "width": 70,
+              "x": 69,
+              "y": 54
+            },
+            "index": 33,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.1511412284517296,
+            "row": 5,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6506,
+            "bottomOffset": 16,
+            "column": 4,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 138,
+              "width": 69,
+              "x": 70,
+              "y": 55
+            },
+            "index": 34,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.14894347656875986,
+            "row": 5,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          },
+          {
+            "alphaPixels": 6410,
+            "bottomOffset": 16,
+            "column": 5,
+            "connectedComponentCount": 1,
+            "contentBounds": {
+              "height": 138,
+              "width": 66,
+              "x": 71,
+              "y": 55
+            },
+            "index": 35,
+            "largestComponentRatio": 1,
+            "occupancyRatio": 0.14674572468579017,
+            "row": 5,
+            "significantDetachedComponentCount": 0,
+            "touchesCellEdge": false,
+            "touchesLateralCellEdge": false
+          }
+        ],
+        "inspectedFrameCount": 18,
+        "maximumBottomAnchorDeviationPixels": 1,
+        "method": "per-cell alpha-bounds-v1"
+      },
+      "fullyOpaque": false,
+      "generatedAssetDestination": "public/assets/office/sprites/generated/agent-activity-sheet-01.png",
+      "height": 1254,
+      "id": "agent-activity-sheet-01",
+      "kind": "agent",
+      "manifestAssociation": "agent-activity-sheet-01",
+      "opaqueBackgroundStatus": "transparent-or-translucent",
+      "path": "agent-activity-sheet-01.png",
+      "proposedColumns": 6,
+      "proposedFrameHeight": 209,
+      "proposedFrameWidth": 209,
+      "proposedRows": 6,
+      "runtimeCapability": "complete-office-activities",
+      "runtimeLayout": "office-activities",
+      "sha256": "c4b3c0f8b322030a3609b93ead984af84cde1bbbade7e56943ca2d67826bd214",
+      "status": "production_candidate",
+      "uniformBorderColor": {
+        "a": 0,
+        "b": 0,
+        "g": 0,
+        "r": 0
+      },
+      "width": 1254
+    },
     {
       "alphaChannelPresent": true,
       "alphaUsed": true,
@@ -967,6 +1708,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "514b2e3b830792b40f43a58a8a0415bfe46b4bbd2377d24f8f44b63435efc12c",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -1936,6 +2678,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "f10878dc8a398eb927052269d265e900ac136705bedee43f4883a3c0984143c8",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -2905,6 +3648,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "09ad9303f40cd49d1262d27803784b470b32005c15dbf7cc737a7662692137ba",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -3874,6 +4618,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "3ef6c971c63adec462b1af59f8e92f1c77425d5136b209d25db7ae0b8349981d",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -4852,6 +5597,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "quarantined-fallback-only",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "322b2d2141f288c7bc32a8e6ad725ba3a8feec1839320dd725c155bddf6921b7",
       "status": "unusable_without_manual_editing",
       "uniformBorderColor": {
@@ -5821,6 +6567,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "7e87267ef85a4c1b8a65d109eeae32cf0d15b9b354e0d83379a74e80e22b4004",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -6790,6 +7537,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "52e3f5ecc75c78df834b7ec9245964f1dec2832d41b640081df24d5aaf776967",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -7759,6 +8507,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "1f6a786a86ac07ce007c7ac7d80244dda4c2f8a3e73e5cf25e33c53dee447e82",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -8728,6 +9477,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "869ef5b61d0235593e8598480aa346aadc28b36d89e078557549aa1a96ebcb19",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -9697,6 +10447,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "18bc53e5d0b0a617883cd4f8b1ee47232acd1c6821f2f42ad03e70fea9fb003c",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -10666,6 +11417,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "d2eacd0339f6579b4794a02e5aaebc52ba3ec18c2e76fbbef1f3de52f1c6f74c",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -11646,6 +12398,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "quarantined-fallback-only",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "b04570ccf864d2bcce5435b036471c059947b215f8b8c1008491e2c7ba200e5a",
       "status": "unusable_without_manual_editing",
       "uniformBorderColor": {
@@ -12657,6 +13410,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "quarantined-fallback-only",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "2ffd137cf1e0016c0a8d5f45c68602be7af2be81695311721868746e1dc8e38f",
       "status": "unusable_without_manual_editing",
       "uniformBorderColor": {
@@ -13626,6 +14380,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "e8fdcb17954c60402db25f73f40fade971208411d99c02077f1e6054980f7315",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -14595,6 +15350,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "limited-cardinal-idle-walk",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "aa9ff8b2ddfc6c17ee6650003942bdadba3c79ef767ebfdbba97ce27e5fad49a",
       "status": "production_candidate",
       "uniformBorderColor": {
@@ -15568,6 +16324,7 @@
       "proposedFrameWidth": 181,
       "proposedRows": 8,
       "runtimeCapability": "quarantined-fallback-only",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "70f3f8759c57b524027691f08499f8b5df7ac77dc43f2385e80957b23b5b8a55",
       "status": "unusable_without_manual_editing",
       "uniformBorderColor": {
@@ -15613,6 +16370,7 @@
       "proposedFrameWidth": null,
       "proposedRows": null,
       "runtimeCapability": "quarantined-fallback-only",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "bf17e81c95cf3c54d4f972eafca980fe6af0958d476915f57e621a50593018d6",
       "status": "unusable_without_manual_editing",
       "uniformBorderColor": null,
@@ -15653,6 +16411,7 @@
       "proposedFrameWidth": null,
       "proposedRows": null,
       "runtimeCapability": "quarantined-fallback-only",
+      "runtimeLayout": "cardinal-idle-walk",
       "sha256": "46c4bbbe72419a2c8f34a21ed7f38a13bfa7173a264bac79e68585e54976f335",
       "status": "source_reference_only",
       "uniformBorderColor": null,

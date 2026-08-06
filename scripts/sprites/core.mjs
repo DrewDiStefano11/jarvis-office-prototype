@@ -326,7 +326,7 @@ export async function buildInventory() {
         if (frameIntegrity.edgeBleedFrameIndexes.length > 0) {
           blockingIssues.push(`Authored directional frames touch a cell edge: ${frameIntegrity.edgeBleedFrameIndexes.join(', ')}.`);
         }
-        if (frameIntegrity.fragmentedFrameIndexes.length > 0) {
+        if (source.runtimeLayout !== 'office-activities' && frameIntegrity.fragmentedFrameIndexes.length > 0) {
           blockingIssues.push(`Authored directional frames contain multiple major disconnected body regions: ${frameIntegrity.fragmentedFrameIndexes.join(', ')}.`);
         }
         if ((frameIntegrity.maximumBottomAnchorDeviationPixels ?? 0) > frameHeight * 0.25) {
@@ -369,7 +369,10 @@ export async function buildInventory() {
         ? 'production_candidate'
         : source.status === 'production_candidate' ? 'unusable_without_manual_editing' : source.status,
       confidence: approvedForGeneration ? 'deterministic' : 'explicitly_blocked',
-      runtimeCapability: approvedForGeneration ? 'limited-cardinal-idle-walk' : 'quarantined-fallback-only',
+      runtimeCapability: approvedForGeneration
+        ? source.runtimeLayout === 'office-activities' ? 'complete-office-activities' : 'limited-cardinal-idle-walk'
+        : 'quarantined-fallback-only',
+      runtimeLayout: source.runtimeLayout ?? 'cardinal-idle-walk',
       blockingIssues,
       duplicateOf: null,
       generatedAssetDestination: approvedForGeneration
@@ -440,6 +443,18 @@ export async function writeInventory(root = REPO_ROOT) {
 
 function runtimeManifest(inventory) {
   const cardinalRows = [['south', 0], ['east', 2], ['north', 4], ['west', 6]];
+  const activityRows = [
+    ['idle', 0, 4],
+    ['sitting', 1, 5],
+    ['typing', 2, 7],
+    ['working', 2, 7],
+    ['talking', 3, 5],
+    ['waiting', 4, 3],
+    ['blocked', 4, 3],
+    ['thinking', 5, 4],
+    ['reviewing', 5, 4],
+    ['offline', 0, 1],
+  ];
   const assets = inventory.records
     .filter(record => record.status === 'production_candidate' && record.blockingIssues.length === 0)
     .map(record => ({
@@ -467,9 +482,22 @@ function runtimeManifest(inventory) {
       },
       agentProfileCompatibility: PROFILE_IDS,
       classification: 'agent',
-      authoredDirections: cardinalRows.map(([direction]) => direction),
+      authoredDirections: record.runtimeLayout === 'office-activities'
+        ? ['none']
+        : cardinalRows.map(([direction]) => direction),
       horizontalFlipDirections: [],
-      clips: cardinalRows.flatMap(([direction, row]) => {
+      clips: record.runtimeLayout === 'office-activities'
+        ? activityRows.map(([state, row, framesPerSecond]) => {
+          const firstFrame = row * record.proposedColumns;
+          return {
+            id: `${record.id}:${state}:none`,
+            state, direction: 'none',
+            frames: Array.from({ length: record.proposedColumns }, (_, column) => firstFrame + column),
+            framesPerSecond, loop: state !== 'offline', repeatDelayMs: 0, yoyo: false,
+            reducedMotionFallbackFrame: firstFrame, staticFallbackFrame: firstFrame,
+          };
+        })
+        : cardinalRows.flatMap(([direction, row]) => {
         const firstFrame = row * record.proposedColumns;
         return [
           {
@@ -490,7 +518,7 @@ function runtimeManifest(inventory) {
             repeatDelayMs: 0, yoyo: false, reducedMotionFallbackFrame: firstFrame, staticFallbackFrame: firstFrame,
           },
         ];
-      }),
+        }),
     }));
   return {
     schemaVersion: 1,
@@ -499,6 +527,9 @@ function runtimeManifest(inventory) {
       idle: null,
       walking: 'idle',
       working: 'idle',
+      sitting: 'working',
+      typing: 'working',
+      talking: 'idle',
       thinking: 'idle',
       reviewing: 'working',
       waiting: 'idle',

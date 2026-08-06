@@ -14,6 +14,237 @@
       },
       "approval": "approved",
       "authoredDirections": [
+        "none"
+      ],
+      "availability": "available",
+      "blockingReason": null,
+      "classification": "agent",
+      "clips": [
+        {
+          "direction": "none",
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "framesPerSecond": 4,
+          "id": "agent-activity-sheet-01:idle:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "idle",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "framesPerSecond": 5,
+          "id": "agent-activity-sheet-01:sitting:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 6,
+          "repeatDelayMs": 0,
+          "state": "sitting",
+          "staticFallbackFrame": 6,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          "framesPerSecond": 7,
+          "id": "agent-activity-sheet-01:typing:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 12,
+          "repeatDelayMs": 0,
+          "state": "typing",
+          "staticFallbackFrame": 12,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          "framesPerSecond": 7,
+          "id": "agent-activity-sheet-01:working:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 12,
+          "repeatDelayMs": 0,
+          "state": "working",
+          "staticFallbackFrame": 12,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            18,
+            19,
+            20,
+            21,
+            22,
+            23
+          ],
+          "framesPerSecond": 5,
+          "id": "agent-activity-sheet-01:talking:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 18,
+          "repeatDelayMs": 0,
+          "state": "talking",
+          "staticFallbackFrame": 18,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            24,
+            25,
+            26,
+            27,
+            28,
+            29
+          ],
+          "framesPerSecond": 3,
+          "id": "agent-activity-sheet-01:waiting:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 24,
+          "repeatDelayMs": 0,
+          "state": "waiting",
+          "staticFallbackFrame": 24,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            24,
+            25,
+            26,
+            27,
+            28,
+            29
+          ],
+          "framesPerSecond": 3,
+          "id": "agent-activity-sheet-01:blocked:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 24,
+          "repeatDelayMs": 0,
+          "state": "blocked",
+          "staticFallbackFrame": 24,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            30,
+            31,
+            32,
+            33,
+            34,
+            35
+          ],
+          "framesPerSecond": 4,
+          "id": "agent-activity-sheet-01:thinking:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 30,
+          "repeatDelayMs": 0,
+          "state": "thinking",
+          "staticFallbackFrame": 30,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            30,
+            31,
+            32,
+            33,
+            34,
+            35
+          ],
+          "framesPerSecond": 4,
+          "id": "agent-activity-sheet-01:reviewing:none",
+          "loop": true,
+          "reducedMotionFallbackFrame": 30,
+          "repeatDelayMs": 0,
+          "state": "reviewing",
+          "staticFallbackFrame": 30,
+          "yoyo": false
+        },
+        {
+          "direction": "none",
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "framesPerSecond": 1,
+          "id": "agent-activity-sheet-01:offline:none",
+          "loop": false,
+          "reducedMotionFallbackFrame": 0,
+          "repeatDelayMs": 0,
+          "state": "offline",
+          "staticFallbackFrame": 0,
+          "yoyo": false
+        }
+      ],
+      "columns": 6,
+      "frameCount": 36,
+      "frameHeight": 209,
+      "frameIntegrity": {
+        "inspectedFrameCount": 18,
+        "maximumBottomAnchorDeviationPixels": 1,
+        "method": "per-cell alpha-bounds-v1"
+      },
+      "frameWidth": 209,
+      "generatedAssetUrl": "assets/office/sprites/generated/agent-activity-sheet-01.png",
+      "generatedChecksum": "c4b3c0f8b322030a3609b93ead984af84cde1bbbade7e56943ca2d67826bd214",
+      "horizontalFlipDirections": [],
+      "id": "agent-activity-sheet-01",
+      "pixelArt": true,
+      "rows": 6,
+      "runtimeCapability": "complete-office-activities",
+      "sourceAssetReference": "agent-activity-sheet-01.png",
+      "sourceChecksum": "c4b3c0f8b322030a3609b93ead984af84cde1bbbade7e56943ca2d67826bd214",
+      "visualScale": 1
+    },
+    {
+      "agentProfileCompatibility": [
+        "jarvis",
+        "atlas",
+        "scout",
+        "archive",
+        "sentinel"
+      ],
+      "anchor": {
+        "x": 0.5,
+        "y": 0.94
+      },
+      "approval": "approved",
+      "authoredDirections": [
         "south",
         "east",
         "north",
@@ -2841,7 +3072,10 @@
     "idle": null,
     "offline": null,
     "reviewing": "working",
+    "sitting": "working",
+    "talking": "idle",
     "thinking": "idle",
+    "typing": "working",
     "waiting": "idle",
     "walking": "idle",
     "working": "idle"

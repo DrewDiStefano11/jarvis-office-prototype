@@ -2,14 +2,15 @@
 
 > Canonical generated evidence. Source artwork is never modified.
 
-- Total sources: 18
-- Production candidates: 12
+- Total sources: 19
+- Production candidates: 13
 - Source/reference only: 1
 - Blocked/manual edit: 5
 - Duplicate contents: 0
 
 | ID | Source | Dimensions | Alpha | Grid | Status | Blockers |
 |---|---|---:|---|---:|---|---|
+| agent-activity-sheet-01 | `agent-activity-sheet-01.png` | 1254×1254 | used | 6×6 @ 209×209 | production_candidate | — |
 | agent-sheet-01 | `791eeb5a-09f5-4c81-b691-271f59b258d0.png` | 1086×1448 | used | 6×8 @ 181×181 | production_candidate | — |
 | agent-sheet-02 | `d85660f4-dd62-4dbc-baa6-7ccd75361bf0.png` | 1086×1448 | used | 6×8 @ 181×181 | production_candidate | — |
 | agent-sheet-03 | `d85660f4-dd62-4dbc-baa6-7ccd75361bf0 (1).png` | 1086×1448 | used | 6×8 @ 181×181 | production_candidate | — |

@@ -2,6 +2,9 @@ export const SPRITE_STATES = [
     'idle',
     'walking',
     'working',
+    'sitting',
+    'typing',
+    'talking',
     'thinking',
     'reviewing',
     'waiting',
@@ -45,7 +48,7 @@ export type SpriteAssetManifest = Readonly<{
     availability: 'available' | 'blocked';
     approval: 'approved' | 'provisional';
     blockingReason: string | null;
-    runtimeCapability: 'limited-cardinal-idle-walk';
+    runtimeCapability: 'limited-cardinal-idle-walk' | 'complete-office-activities';
     frameIntegrity: Readonly<{
         method: string;
         inspectedFrameCount: number;

@@ -159,8 +159,8 @@ function validateAsset(
     }
     if (value.availability !== 'available' && value.availability !== 'blocked') issue(issues, `${path}.availability`, 'Invalid availability.');
     if (value.approval !== 'approved' && value.approval !== 'provisional') issue(issues, `${path}.approval`, 'Invalid approval.');
-    if (value.runtimeCapability !== 'limited-cardinal-idle-walk') {
-        issue(issues, `${path}.runtimeCapability`, 'Available assets must truthfully declare limited cardinal idle/walk capability.');
+    if (value.runtimeCapability !== 'limited-cardinal-idle-walk' && value.runtimeCapability !== 'complete-office-activities') {
+        issue(issues, `${path}.runtimeCapability`, 'Available assets must declare a supported reviewed runtime capability.');
     }
     if (!isRecord(value.frameIntegrity)
         || typeof value.frameIntegrity.method !== 'string'

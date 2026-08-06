@@ -32,8 +32,18 @@ describe('sprite state resolution', () => {
         expect(frameAtElapsedTime(resolved!, 10_000)).toBe(0);
     });
 
+    it('resolves the reviewed office activity sequences without an idle fallback', () => {
+        const typing = resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'agent-activity-sheet-01', 'typing', 'north');
+        expect(typing?.resolvedState).toBe('typing');
+        expect(typing?.resolvedDirection).toBe('none');
+        expect(typing?.clip.frames).toEqual([12, 13, 14, 15, 16, 17]);
+        const talking = resolveSpriteClip(AGENT_SPRITE_MANIFEST, 'agent-activity-sheet-01', 'talking', 'west');
+        expect(talking?.resolvedState).toBe('talking');
+        expect(talking?.clip.frames).toEqual([18, 19, 20, 21, 22, 23]);
+    });
+
     it('declares truthful cardinal clips and falls back from directionless requests to south', () => {
-        const asset = AGENT_SPRITE_MANIFEST.assets[0];
+        const asset = AGENT_SPRITE_MANIFEST.assets.find(item => item.id === 'agent-sheet-01')!;
         expect(asset.authoredDirections).toEqual(['south', 'east', 'north', 'west']);
         expect(resolveSpriteClip(AGENT_SPRITE_MANIFEST, asset.id, 'walking', 'north')?.clip.frames).toEqual([24, 25, 26, 27, 28, 29]);
         expect(resolveSpriteClip(AGENT_SPRITE_MANIFEST, asset.id, 'walking', 'none')?.resolvedDirection).toBe('south');
@@ -48,7 +58,7 @@ describe('sprite state resolution', () => {
 
     it('finishes a non-looping yoyo clip on its initial frame', () => {
         const manifest = structuredClone(AGENT_SPRITE_MANIFEST);
-        const walking = manifest.assets[0].clips.find(clip => clip.state === 'walking');
+        const walking = manifest.assets.find(asset => asset.id === 'agent-sheet-01')!.clips.find(clip => clip.state === 'walking');
         if (!walking) throw new Error('Expected walking clip.');
         const mutableWalking = walking as unknown as { loop: boolean; yoyo: boolean; frames: number[] };
         mutableWalking.loop = false;
@@ -60,9 +70,10 @@ describe('sprite state resolution', () => {
 
     it('returns explicit unavailability instead of guessing an unrelated clip', () => {
         const partial = structuredClone(AGENT_SPRITE_MANIFEST) as unknown as {
-            assets: Array<{ clips: typeof AGENT_SPRITE_MANIFEST.assets[number]['clips'] }>;
+            assets: Array<{ id: string; clips: typeof AGENT_SPRITE_MANIFEST.assets[number]['clips'] }>;
         };
-        partial.assets[0].clips = partial.assets[0].clips.filter(clip => clip.state === 'walking');
+        const target = partial.assets.find(asset => asset.id === 'agent-sheet-01')!;
+        target.clips = target.clips.filter(clip => clip.state === 'walking');
         expect(resolveSpriteClip(
             partial as unknown as SpriteManifest,
             'agent-sheet-01',

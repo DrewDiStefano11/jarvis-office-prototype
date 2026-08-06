@@ -16,7 +16,7 @@ function clips(asset: Record<string, unknown>): Record<string, unknown>[] {
 
 describe('sprite manifest validation', () => {
     it('accepts the generated manifest in production mode', () => {
-        expect(assertValidSpriteManifest(rawManifest, { productionMode: true }).assets).toHaveLength(12);
+        expect(assertValidSpriteManifest(rawManifest, { productionMode: true }).assets).toHaveLength(13);
     });
 
     it.each([

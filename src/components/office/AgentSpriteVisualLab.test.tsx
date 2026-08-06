@@ -29,7 +29,7 @@ describe('agent sprite visual laboratory', () => {
     it('exposes inventory, playback, frame stepping, overlays, and reduced motion', () => {
         render(<AgentSpriteVisualLab />);
         expect(screen.getByRole('heading', { name: 'Agent sprite laboratory' })).toBeTruthy();
-        expect(screen.getByLabelText('Inventory summary').textContent).toContain('18');
+        expect(screen.getByLabelText('Inventory summary').textContent).toContain('19');
         fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
         expect(screen.getByRole('button', { name: 'Play' })).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'Next frame' }));
