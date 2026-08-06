@@ -433,6 +433,7 @@ Affected Files: plan, artifact metadata, UI/report wording.
 - Ran visible long-route, projection, exterior-rejection, clearance-overlay, and D46 probes in the real application. The second D46 leg explicitly reported `D46` after the topology repair.
 - Completed a 613-second active 50-agent soak: 50 agents remained active, movement continued, 139 portal transitions completed, the graph rebuilt zero times, the route cache remained bounded at 256, and no `route-failed` state appeared.
 - Passed the local matrix: typecheck, lint, 484 tests in 41 files, Floor 1 and sprite generated checks, deterministic reachability/replay, production-bundle guard, and production build.
+- Extended and ran the retained Chrome QA runner through two 600-second windows. It passed 20/20 representative routes, 16 cross-room/portal cases, 405 debug portal transitions, 6,001 samples per window, sub-163 ms maximum sample gaps, sub-307 ms maximum walking-without-motion intervals, an 8.8 ms longest route plan, zero motion-direction regressions, and zero browser errors.
 
 ## Unexpected Discoveries
 

@@ -280,7 +280,7 @@ async function timedMotionRun(label, durationMs) {
                 const gap = previousAt === null ? 0 : now - previousAt;
                 previousAt = now;
                 maxSampleGapMs = Math.max(maxSampleGapMs, gap);
-                let moving = 0;
+                let walking = 0;
                 let changed = 0;
                 for (const agent of document.querySelectorAll('.prototype-agent')) {
                     const x = Number.parseFloat(agent.style.left);
@@ -299,7 +299,7 @@ async function timedMotionRun(label, durationMs) {
                     if (agent.dataset.portalPhase) portalPhases.add(agent.dataset.portalPhase);
                     if (agent.dataset.portalDoor) portalDoors.add(agent.dataset.portalDoor);
                     activityCounts[agent.dataset.agentState] = (activityCounts[agent.dataset.agentState] ?? 0) + 1;
-                    if (['walking', 'waiting'].includes(movement)) moving += 1;
+                    if (movement === 'walking') walking += 1;
                     if (prior) {
                         const dx = x - prior.x;
                         const dy = y - prior.y;
@@ -317,10 +317,10 @@ async function timedMotionRun(label, durationMs) {
                     }
                     previous.set(agent.dataset.agentId, { x, y, revision, progress, framePosition });
                 }
-                if (moving > 0 && changed === 0) movingNoChangeMs += gap; else movingNoChangeMs = 0;
+                if (walking > 0 && changed === 0) movingNoChangeMs += gap; else movingNoChangeMs = 0;
                 maximumMovingNoChangeMs = Math.max(maximumMovingNoChangeMs, movingNoChangeMs);
                 renderedSamples += 1;
-                if (gap > 250) gaps.push({ atMs: now - started, gapMs: gap, moving, changed });
+                if (gap > 250) gaps.push({ atMs: now - started, gapMs: gap, walking, changed });
                 if (now - started >= duration) {
                     clearInterval(timer);
                     observer?.disconnect();

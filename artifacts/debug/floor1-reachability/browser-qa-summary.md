@@ -25,3 +25,13 @@ Candidate registration remains unverified; these observations certify candidate 
 - Screenshot: `browser-50-agent-10-minute-soak.png`.
 
 The retained terminal-controlled QA runner records higher-frequency sample counts, average/max sample gaps, long tasks, route outcomes, portal phases, animation direction checks, browser errors, and explicit pass/fail assertions when run against the final candidate.
+
+## Extended retained runner
+
+- Served source exactly matched the committed candidate source hash.
+- Office Engine: 600.007 seconds, 6,001 samples, 100.001 ms average gap, 119.9 ms maximum gap, 114.4 ms maximum walking-without-motion interval.
+- Agent Simulation: 600.000 seconds, 6,001 samples, 100.000 ms average gap, 162.9 ms maximum gap, 306.9 ms maximum walking-without-motion interval.
+- Representative drags: 20 successful, 16 cross-room, 16 with observed portal transitions.
+- Final debug telemetry: 1,528 plans, 1,464 replans, 405 portal transitions, zero graph rebuilds, 8.8 ms longest route plan, and a 256/256 bounded cache.
+- Motion checks: zero stale rollbacks, backward-walk samples, or sideways-glide samples.
+- Browser errors: zero; acceptance passed with no failures.
