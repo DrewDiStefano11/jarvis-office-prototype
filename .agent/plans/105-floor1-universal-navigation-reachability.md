@@ -1,6 +1,6 @@
 # Floor 1 Universal Navigation Reachability
 
-Status: in_progress
+Status: complete
 Plan ID: 105
 Owner: Codex
 Reviewer: TBD
@@ -8,7 +8,7 @@ Created: 2026-08-06
 Last Updated: 2026-08-06
 Related Task: Floor 1 universal navigation and reliability goal
 Related Branch: codex/floor1-universal-navigation-reachability
-Related Pull Request: TBD (draft only)
+Related Pull Request: #28 (draft, open, unmerged)
 
 ## Executive Summary
 
@@ -290,7 +290,7 @@ Acceptance: 100% legitimate valid samples connected; zero malformed geometry; bi
 
 ### Milestone 7 — Full Browser/Soak/Publication Validation
 
-Status: in_progress
+Status: completed
 
 Tasks: extend retained QA; two app routes; viewport/DPR/pan/zoom alignment; fixed visual cases; 50-agent test; ten-minute active run; full npm gates; diff cleanup; logical commits; push/draft PR/CI.
 
@@ -311,9 +311,9 @@ Acceptance: exact local/remote SHA match; local gates and Node 18/20 CI green; P
 | T-105-009 | Migrate PR #27 runtime compatibility and request lifecycle | done | T-105-008 | Runtime/component tests |
 | T-105-010 | Implement fair congestion retries and bounded planning | done | T-105-009 | Traffic tests and metrics |
 | T-105-011 | Add reachability CLI/report/replay and debug overlay | done | T-105-008 | JSON/Markdown/visual artifacts |
-| T-105-012 | Extend browser QA and run visual/load/soak validation | in_progress | T-105-009,T-105-011 | QA report/screenshots |
+| T-105-012 | Extend browser QA and run visual/load/soak validation | done | T-105-009,T-105-011 | QA report/screenshots |
 | T-105-013 | Resolve baseline/final generation checks | done | T-105-006 | EOL-stable hashing and passing gate |
-| T-105-014 | Final validation, commits, push, draft PR, CI | in_progress | all | SHAs, PR, CI runs |
+| T-105-014 | Final validation, commits, push, draft PR, CI | done | all | PR #28; final SHA and CI run reported in the task handoff |
 
 ## Validation Strategy
 
@@ -488,7 +488,7 @@ User review needed: No.
 
 - [x] `npm run check:floor1-reachability` passes with deterministic replay support.
 - [x] Typecheck, lint, all tests, Floor 1/sprite generated checks, build, and production-bundle check pass locally.
-- [ ] Node 18 and Node 20 CI pass without skipped/weakened coverage.
+- [x] Node 18 and Node 20 CI pass without skipped/weakened coverage.
 
 ### Visual
 
@@ -498,7 +498,7 @@ User review needed: No.
 
 ### Performance
 
-- [ ] Build/projection/search/smoothing/replan metrics recorded; routine routing normally fits one frame budget.
+- [x] Build/projection/search/smoothing/replan metrics recorded; routine routing normally fits one frame budget.
 - [x] Fifty-agent requests/movement remain responsive with bounded per-tick replanning.
 - [x] Ten-minute active test shows no repeated multi-second freeze, permanent failure, or unbounded cache growth.
 
@@ -512,42 +512,50 @@ User review needed: No.
 
 ### Build and Publication
 
-- [ ] Worktree/index clean; final local SHA equals pushed remote SHA.
-- [ ] Draft PR is open, unmerged, no auto-merge, and not ready for review.
+- [x] Worktree/index clean; final local SHA equals pushed remote SHA.
+- [x] Draft PR is open, unmerged, no auto-merge, and not ready for review.
 
 ## Final Report
 
 ### Delivered
 
-TBD.
+Deterministic continuous Floor 1 navigation, projection/recovery, explicit reversible door topology including D46, congestion-safe multi-agent runtime integration, diagnostics, deterministic certification/replay, and extended browser evidence.
 
 ### Files Changed
 
-TBD.
+Core additions are `continuousNavigation.ts`, `reachability.ts`, their tests, the reachability CLI, runtime/UI integration, retained browser-runner extension, plan, and compact debug evidence. The sprite generated check now hashes normalized text across line-ending conventions.
 
 ### Data Generated
 
-TBD.
+Baseline sparse report, compact continuous report/summary, replay cases, D46 source crops, clearance/route/D46/soak screenshots, browser QA summary, passing retained-runner report, and manual review checklist.
 
 ### Tests Run
 
-TBD.
+
+- `npm ci`
+- typecheck and lint
+- 484 Vitest tests across 41 files
+- Floor 1 and sprite generated checks
+- reachability certification and deterministic replay
+- production build and bundle exclusion guard
+- retained Chrome runner with two 600-second windows
+- GitHub Actions Node 18 and Node 20 matrix
 
 ### Test Results
 
-TBD.
+All local commands passed. Chrome runner acceptance passed with zero failures/errors. Node 18 and Node 20 CI passed after retrying an initial GitHub 503 setup failure; the final run ID is reported in the task handoff.
 
 ### Build Results
 
-TBD.
+See `artifacts/debug/floor1-reachability/`: aligned clearance overlay, long route, D46 traversal, D46 source evidence, and final 50-agent soak image.
 
 ### Visual Artifacts
 
-TBD.
+One-time field build approximately 0.5 seconds; retained-runner longest route plan 8.8 ms; 6,001 samples per 600-second window; maximum sample gap 162.9 ms; cache bounded at 256; zero graph rebuilds during simulation.
 
 ### Performance Results
 
-TBD.
+Existing keyboard/focus/Escape/text-state/reduced-motion/slider tests remain green; no accessibility behavior was removed.
 
 ### Accessibility Results
 
@@ -555,16 +563,16 @@ TBD.
 
 ### Known Limitations
 
-Candidate registration remains unverified unless a separate explicit approval process occurs. Other limitations TBD from evidence.
+Candidate registration remains unverified. RM5 and RM8 are deliberately classified exterior-isolated because their only modeled doors lead to nonexistent exterior/service space. Three tiny collision-enclosed positive-space fragments remain explicit non-authoritative exclusions; no legitimate adaptive sample depends on them.
 
 ### Deferred Work
 
-Unrelated discoveries only; TBD.
+Formal landmark-based registration approval and any real exterior destinations remain separate future work.
 
 ### Manual Review Remaining
 
-All checklist items remain pending until final candidate evidence exists.
+The concise user-facing checklist remains at `artifacts/debug/floor1-reachability/manual-review-checklist.md`; automated browser evidence covers its critical routing, D46, projection, congestion, motion, and responsiveness cases.
 
 ### Recommended Next Plan
 
-TBD after final validation.
+Complete landmark-based registration review before promoting any candidate geometry to production-approved status.
